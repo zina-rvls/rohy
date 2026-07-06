@@ -43,9 +43,9 @@
       selectedGroupId: null,
       selectedPersonId: null,
       people: seed.PEOPLE,
-      groups: seed.GROUPS,
-      expenses: seed.INITIAL_EXPENSES,
-      payments: seed.INITIAL_PAYMENTS,
+      groups: [],
+      expenses: [],
+      payments: [],
       reminders: [],
       toast: null,
       showAddExpense: false,
@@ -190,7 +190,7 @@
   // ---------- Expenses ----------
   function openAddExpense(groupId) {
     var g = groupId ? group(groupId) : state.groups[0];
-    if (!g) return;
+    if (!g) { showToast('crée d\'abord un groupe pour ajouter une dépense'); return; }
     var overrides = {};
     g.memberIds.forEach(function (pid) { if (person(pid).defaultCoveredBy) overrides[pid] = person(pid).defaultCoveredBy; });
     setState({
@@ -865,6 +865,11 @@
       if (stopEl && e.target === stopEl) return;
 
       var el = e.target.closest('[data-action]');
+      // Un data-action trouvé en dehors du conteneur de la modale (typiquement
+      // l'overlay lui-même) ne doit pas s'appliquer à un clic sur un élément
+      // inerte (champ texte, libellé...) à l'intérieur de la modale — sinon
+      // ça la referme au moment même où l'utilisateur essaie de taper.
+      if (el && stopEl && !stopEl.contains(el)) el = null;
       if (!el) return;
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
