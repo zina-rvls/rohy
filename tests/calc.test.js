@@ -56,7 +56,7 @@ test('override ponctuel (overrides) prime sur la prise en charge permanente (def
   const people = [
     { id: 'parent', name: 'Parent' },
     { id: 'tiers', name: 'Tiers' },
-    { id: 'enfant', name: 'Enfant', isChild: true, childPercent: 100, defaultCoveredBy: 'parent' },
+    { id: 'enfant', name: 'Enfant', defaultCoveredBy: 'parent' },
   ];
   // Dépense sans override : l'enfant est pris en charge par son responsable permanent (parent)
   const withoutOverride = [
@@ -76,22 +76,22 @@ test('override ponctuel (overrides) prime sur la prise en charge permanente (def
   close(calc.pairNet('tiers2', 'tiers', debts2), -20, "l'override ponctuel impute la dette au responsable ponctuel");
 });
 
-// --- Scénario 3 : parts enfants mixtes dans une même dépense ---
-test('parts enfants mixtes : poids adulte=1, enfant=childPercent/100', () => {
+// --- Scénario 3 : parts mixtes (contribution réduite) dans une même dépense ---
+test('parts mixtes : poids par défaut=100%, poids réduit=sharePercent/100', () => {
   const people = [
     { id: 'adulte1', name: 'Adulte1' },
     { id: 'adulte2', name: 'Adulte2' },
-    { id: 'enfant50', name: 'Enfant50', isChild: true, childPercent: 50 },
-    { id: 'enfant25', name: 'Enfant25', isChild: true, childPercent: 25 },
+    { id: 'part50', name: 'Part50', sharePercent: 50 },
+    { id: 'part25', name: 'Part25', sharePercent: 25 },
   ];
   // poids totaux : 1 + 1 + 0.5 + 0.25 = 2.75 ; montant 110 -> unité = 40
   const expenses = [
-    { id: 'e1', groupId: 'g', label: 'repas', amount: 110, paidBy: 'adulte1', date: '2026-01-01', participants: ['adulte1', 'adulte2', 'enfant50', 'enfant25'], overrides: {} },
+    { id: 'e1', groupId: 'g', label: 'repas', amount: 110, paidBy: 'adulte1', date: '2026-01-01', participants: ['adulte1', 'adulte2', 'part50', 'part25'], overrides: {} },
   ];
   const debts = calc.computeDebts(people, expenses, []);
   close(calc.pairNet('adulte1', 'adulte2', debts), 40, 'part adulte2 = 40');
-  close(calc.pairNet('adulte1', 'enfant50', debts), 20, 'part enfant50 (50%) = 20');
-  close(calc.pairNet('adulte1', 'enfant25', debts), 10, 'part enfant25 (25%) = 10');
+  close(calc.pairNet('adulte1', 'part50', debts), 20, 'part50 (50%) = 20');
+  close(calc.pairNet('adulte1', 'part25', debts), 10, 'part25 (25%) = 10');
 });
 
 // --- Scénario 4 : paiement partiel réparti sur plusieurs dépenses (FIFO) ---

@@ -17,7 +17,8 @@
   }
 
   function weightFor(person) {
-    return person.isChild ? (person.childPercent || 100) / 100 : 1;
+    var pct = person.sharePercent != null ? person.sharePercent : 100;
+    return pct / 100;
   }
 
   function responsibleFor(expense, participantId, person) {
