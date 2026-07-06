@@ -40,6 +40,8 @@
       showSwitchUser: false,
       showManageMembers: false,
       manageMembersGroupId: null,
+      showConfirmDeleteGroup: false,
+      confirmDeleteGroupId: null,
       selectedGroupId: null,
       selectedPersonId: null,
       people: seed.DEFAULT_PEOPLE.map(function (p) { return Object.assign({}, p); }),
@@ -372,8 +374,17 @@
     setState(function (s) { return { people: s.people.concat(newPeople), groups: s.groups.concat([newGroup]), showAddGroup: false, formError: null }; });
     showToast(newPeople.length ? 'groupe créé, invitations envoyées par e-mail (simulé)' : 'groupe créé');
   }
-  function deleteGroup(groupId) {
-    setState(function (s) { return { groups: s.groups.filter(function (g) { return g.id !== groupId; }), screen: 'groups', navStack: [] }; });
+  function openConfirmDeleteGroup(groupId) { setState({ showConfirmDeleteGroup: true, confirmDeleteGroupId: groupId }); }
+  function confirmDeleteGroup() {
+    var groupId = state.confirmDeleteGroupId;
+    if (!groupId) return;
+    setState(function (s) {
+      return {
+        groups: s.groups.filter(function (g) { return g.id !== groupId; }),
+        expenses: s.expenses.filter(function (e) { return e.groupId !== groupId; }),
+        screen: 'groups', navStack: [], showConfirmDeleteGroup: false, confirmDeleteGroupId: null,
+      };
+    });
     showToast('groupe supprimé');
   }
   function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId }); }
@@ -409,7 +420,12 @@
       loginForm: { email: '', password: '' }, loginError: null, magicSent: false, loginMode: 'password',
     });
   }
-  function closeModal() { setState({ showAddExpense: false, showAddGroup: false, showSettle: false, showSwitchUser: false, showManageMembers: false, formError: null }); }
+  function closeModal() {
+    setState({
+      showAddExpense: false, showAddGroup: false, showSettle: false, showSwitchUser: false, showManageMembers: false,
+      showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
+    });
+  }
 
   // ---------- Rendu ----------
 
@@ -663,7 +679,7 @@
       (isAdmin ?
         '<div class="admin-actions">' +
         '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> gérer les membres</button>' +
-        '<button class="btn-icon-danger pressable" data-action="deleteGroup" data-id="' + g.id + '"><i class="ph-bold ph-trash"></i></button>' +
+        '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' : '') +
       (txns.length ? '<div class="section-label">pour équilibrer</div>' + suggestions : '') +
       '<div class="section-label" style="margin-top:18px">dépenses</div>' + expenseRows +
@@ -791,7 +807,28 @@
     if (state.showSettle) out += renderSettleModal();
     if (state.showSwitchUser) out += renderSwitchUserModal();
     if (state.showManageMembers) out += renderManageMembersModal();
+    if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     return out;
+  }
+
+  function renderConfirmDeleteGroupModal() {
+    var g = group(state.confirmDeleteGroupId);
+    if (!g) return '';
+    var expenseCount = state.expenses.filter(function (e) { return e.groupId === g.id; }).length;
+    return (
+      '<div class="modal-overlay center" data-action="closeModal">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">supprimer « ' + escapeHtml(g.name) + ' » ?</div>' +
+      '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
+      (expenseCount > 0
+        ? 'Cette action supprimera aussi ' + (expenseCount > 1 ? 'ses ' + expenseCount + ' dépenses associées.' : 'sa dépense associée.')
+        : 'Cette action est définitive.') +
+      '</div>' +
+      '<div class="modal-footer-buttons">' +
+      '<button class="btn-cancel pressable" data-action="closeModal">annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmDeleteGroup">supprimer</button>' +
+      '</div></div></div>'
+    );
   }
 
   function renderAddExpenseModal() {
@@ -990,7 +1027,8 @@
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
         case 'openAddGroup': openAddGroup(); break;
         case 'openManageMembers': openManageMembers(id); break;
-        case 'deleteGroup': deleteGroup(id); break;
+        case 'openConfirmDeleteGroup': openConfirmDeleteGroup(id); break;
+        case 'confirmDeleteGroup': confirmDeleteGroup(); break;
         case 'editExpense': openEditExpense(id); break;
         case 'markPaidFull': markExpensePaidFull(id); break;
         case 'closeModal': closeModal(); break;
