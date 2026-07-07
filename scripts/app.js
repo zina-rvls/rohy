@@ -594,7 +594,7 @@
       '</div>' +
       (pendingShare > 0.5 ?
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> à anticiper</div>' +
-        '<div class="warning-banner-body">Ta part (' + fmt(pendingShare) + ') sur des acomptes pas encore soldés à des tiers.</div></div>' : '') +
+        '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmt(pendingShare) + '.</div></div>' : '') +
       '<div class="section-label">par personne</div>' +
       rows
     );
