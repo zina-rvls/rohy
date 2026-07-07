@@ -75,10 +75,12 @@ simulée (aucune vérification de mot de passe, aucune session serveur).
 
 Avant une v1 réellement utilisable, il reste (par ordre de priorité) :
 
-- **P0 — bloquant** : vrai backend d'auth (mots de passe hashés, tokens de
-  lien magique à usage unique, sessions), vraie base de données + API
-  (actuellement `localStorage`), vrai flux d'invitation par e-mail pour
-  rejoindre un groupe.
+- **P0 — bloquant, en cours** : vrai backend d'auth (mots de passe hashés,
+  tokens de lien magique à usage unique, sessions), vraie base de données +
+  API (actuellement `localStorage`), vrai flux d'invitation par e-mail pour
+  rejoindre un groupe. Schéma, policies de sécurité et fonction d'invitation
+  Supabase déjà prêts dans `supabase/` (cf. `supabase/README.md`) ; reste à
+  créer le projet et brancher `scripts/app.js` dessus.
 - **P1 — important** : notifications de relance réelles (push — nécessite
   l'enregistrement d'un token device par utilisateur et un service d'envoi
   type Firebase Cloud Messaging / APNs), édition du responsable par défaut
