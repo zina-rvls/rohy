@@ -76,22 +76,46 @@ test('override ponctuel (overrides) prime sur la prise en charge permanente (def
   close(calc.pairNet('tiers2', 'tiers', debts2), -20, "l'override ponctuel impute la dette au responsable ponctuel");
 });
 
-// --- Scénario 3 : parts mixtes (contribution réduite) dans une même dépense ---
-test('parts mixtes : poids par défaut=100%, poids réduit=sharePercent/100', () => {
+// --- Scénario 3 : parts mixtes (pourcentage absolu de la dépense) ---
+test('computeShares : une part personnalisée est un % absolu de la dépense, le reste se partage également', () => {
   const people = [
-    { id: 'adulte1', name: 'Adulte1' },
-    { id: 'adulte2', name: 'Adulte2' },
+    { id: 'a', name: 'A' },
+    { id: 'part50', name: 'Part50', sharePercent: 50 },
+  ];
+  // Cas rapporté par l'utilisateur : A (normal) + Part50 (50%) sur 25000 -> 12500 chacun.
+  const shares2 = calc.computeShares(25000, ['a', 'part50'], people);
+  close(shares2.part50, 12500, 'part50 doit exactement 50% de 25000');
+  close(shares2.a, 12500, 'le reste (50%) revient à A, seul participant "normal"');
+
+  const people4 = [
+    { id: 'a', name: 'A' },
+    { id: 'b', name: 'B' },
     { id: 'part50', name: 'Part50', sharePercent: 50 },
     { id: 'part25', name: 'Part25', sharePercent: 25 },
   ];
-  // poids totaux : 1 + 1 + 0.5 + 0.25 = 2.75 ; montant 110 -> unité = 40
-  const expenses = [
-    { id: 'e1', groupId: 'g', label: 'repas', amount: 110, paidBy: 'adulte1', date: '2026-01-01', participants: ['adulte1', 'adulte2', 'part50', 'part25'], overrides: {} },
+  // part50 doit 50, part25 doit 25 ; il reste 25% à partager entre A et B (12,5% chacun).
+  const shares4 = calc.computeShares(200, ['a', 'b', 'part50', 'part25'], people4);
+  close(shares4.part50, 100, 'part50 (50% de 200)');
+  close(shares4.part25, 50, 'part25 (25% de 200)');
+  close(shares4.a, 25, 'A se partage le 25% restant à parts égales avec B');
+  close(shares4.b, 25, 'B se partage le 25% restant à parts égales avec A');
+});
+
+test('validateShareSplit rejette des parts personnalisées impossibles', () => {
+  const people = [
+    { id: 'a', name: 'A', sharePercent: 60 },
+    { id: 'b', name: 'B', sharePercent: 60 },
   ];
-  const debts = calc.computeDebts(people, expenses, []);
-  close(calc.pairNet('adulte1', 'adulte2', debts), 40, 'part adulte2 = 40');
-  close(calc.pairNet('adulte1', 'part50', debts), 20, 'part50 (50%) = 20');
-  close(calc.pairNet('adulte1', 'part25', debts), 10, 'part25 (25%) = 10');
+  assert.ok(calc.validateShareSplit(['a', 'b'], people), 'la somme (120%) dépasse 100%, doit être rejetée');
+
+  const peopleOk = [
+    { id: 'a', name: 'A', sharePercent: 40 },
+    { id: 'b', name: 'B', sharePercent: 60 },
+  ];
+  assert.strictEqual(calc.validateShareSplit(['a', 'b'], peopleOk), null, '40% + 60% = 100%, doit être accepté');
+
+  const peopleNormal = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
+  assert.strictEqual(calc.validateShareSplit(['a', 'b'], peopleNormal), null, 'aucune part personnalisée, toujours valide');
 });
 
 // --- Scénario 4 : paiement partiel réparti sur plusieurs dépenses (FIFO) ---

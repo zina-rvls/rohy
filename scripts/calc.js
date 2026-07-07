@@ -16,9 +16,48 @@
     return people.find(function (p) { return p.id === id; });
   }
 
-  function weightFor(person) {
-    var pct = person.sharePercent != null ? person.sharePercent : 100;
-    return pct / 100;
+  function hasCustomShare(person) {
+    return person.sharePercent != null && person.sharePercent !== 100;
+  }
+
+  /**
+   * Part de chaque participant sur un montant donné :
+   * - un participant avec une part personnalisée (sharePercent != 100) doit
+   *   exactement ce pourcentage du montant, quel que soit le nombre d'autres
+   *   participants ;
+   * - le reste (100% moins la somme des parts personnalisées) est réparti à
+   *   parts égales entre les participants "normaux" (sans part personnalisée).
+   * Retourne { [participantId]: montant }.
+   */
+  function computeShares(amount, participantIds, people) {
+    var participants = participantIds.map(function (pid) { return findPerson(people, pid); });
+    var custom = participants.filter(hasCustomShare);
+    var normal = participants.filter(function (p) { return !hasCustomShare(p); });
+    var customPercentSum = custom.reduce(function (s, p) { return s + p.sharePercent; }, 0);
+    var remainingPercent = Math.max(0, 100 - customPercentSum);
+    var normalPercentEach = normal.length ? remainingPercent / normal.length : 0;
+    var shares = {};
+    custom.forEach(function (p) { shares[p.id] = amount * p.sharePercent / 100; });
+    normal.forEach(function (p) { shares[p.id] = amount * normalPercentEach / 100; });
+    return shares;
+  }
+
+  /**
+   * Vérifie que les parts personnalisées des participants sélectionnés ont
+   * un sens : ne dépassent pas 100%, et si tout le monde a une part
+   * personnalisée, qu'elles totalisent bien 100%. Retourne un message
+   * d'erreur (string) ou null si tout va bien.
+   */
+  function validateShareSplit(participantIds, people) {
+    var participants = participantIds.map(function (pid) { return findPerson(people, pid); });
+    var custom = participants.filter(hasCustomShare);
+    var normalCount = participants.length - custom.length;
+    var customSum = custom.reduce(function (s, p) { return s + p.sharePercent; }, 0);
+    if (customSum > 100.5) return 'les parts personnalisées dépassent 100% (' + customSum + '%).';
+    if (normalCount === 0 && participants.length > 0 && Math.abs(customSum - 100) > 0.5) {
+      return 'les parts doivent totaliser 100% (actuellement ' + customSum + '%).';
+    }
+    return null;
   }
 
   function responsibleFor(expense, participantId, person) {
@@ -57,17 +96,11 @@
     }
     expenses.forEach(function (e) {
       var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
-      var parts = e.participants.map(function (pid) {
+      var shares = computeShares(effAmount, e.participants, people);
+      e.participants.forEach(function (pid) {
         var p = findPerson(people, pid);
-        return { pid: pid, weight: weightFor(p) };
-      });
-      var totalWeight = parts.reduce(function (s, x) { return s + x.weight; }, 0) || 1;
-      var unit = effAmount / totalWeight;
-      parts.forEach(function (part) {
-        var share = unit * part.weight;
-        var p = findPerson(people, part.pid);
-        var responsible = responsibleFor(e, part.pid, p);
-        add(responsible, e.paidBy, share);
+        var responsible = responsibleFor(e, pid, p);
+        add(responsible, e.paidBy, shares[pid]);
       });
     });
     payments.forEach(function (pay) { add(pay.to, pay.from, pay.amount); });
@@ -141,17 +174,12 @@
     var expenseOwed = {};
     sortedExpenses.forEach(function (e) {
       var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
-      var parts = e.participants.map(function (pid) {
-        var p = findPerson(people, pid);
-        return { pid: pid, w: weightFor(p) };
-      });
-      var totalWeight = parts.reduce(function (s, x) { return s + x.w; }, 0) || 1;
-      var unit = effAmount / totalWeight;
+      var shares = computeShares(effAmount, e.participants, people);
       var owedTotal = 0;
-      parts.forEach(function (part) {
-        var share = unit * part.w;
-        var p = findPerson(people, part.pid);
-        var responsible = responsibleFor(e, part.pid, p);
+      e.participants.forEach(function (pid) {
+        var share = shares[pid];
+        var p = findPerson(people, pid);
+        var responsible = responsibleFor(e, pid, p);
         if (responsible !== e.paidBy) {
           owedTotal += share;
           var key = responsible + '|' + e.paidBy;
@@ -204,16 +232,11 @@
       var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
       var dueExternal = e.amount - effAmount;
       if (dueExternal < 0.5) return;
-      var parts = e.participants.map(function (pid) {
+      var shares = computeShares(dueExternal, e.participants, people);
+      e.participants.forEach(function (pid) {
         var p = findPerson(people, pid);
-        return { pid: pid, w: weightFor(p) };
-      });
-      var totalWeight = parts.reduce(function (s, x) { return s + x.w; }, 0) || 1;
-      var unit = dueExternal / totalWeight;
-      parts.forEach(function (part) {
-        var p = findPerson(people, part.pid);
-        var responsible = responsibleFor(e, part.pid, p);
-        if (responsible === personId) pending += unit * part.w;
+        var responsible = responsibleFor(e, pid, p);
+        if (responsible === personId) pending += shares[pid];
       });
     });
     return pending;
@@ -227,7 +250,9 @@
 
   return {
     findPerson: findPerson,
-    weightFor: weightFor,
+    hasCustomShare: hasCustomShare,
+    computeShares: computeShares,
+    validateShareSplit: validateShareSplit,
     responsibleFor: responsibleFor,
     computeDebts: computeDebts,
     computeDebtsForGroup: computeDebtsForGroup,

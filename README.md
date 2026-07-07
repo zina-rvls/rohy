@@ -34,18 +34,22 @@ node tests/calc.test.js
 ## Architecture
 
 - `scripts/calc.js` — moteur de calcul pur (aucune dépendance DOM) : parts par
-  participant (poids = `sharePercent/100`, 100% par défaut, réglable par
-  personne), responsabilité (override ponctuel / prise en charge permanente /
-  soi-même), dette brute et nette par paire, simplification glouton
-  créditeurs/débiteurs, statut de remboursement par dépense (FIFO
+  participant (`computeShares` — un participant avec une part personnalisée,
+  `sharePercent` != 100%, doit exactement ce pourcentage absolu de la
+  dépense ; le reste se partage à parts égales entre les participants
+  "normaux" ; `validateShareSplit` rejette les parts personnalisées
+  incohérentes), responsabilité (override ponctuel / prise en charge
+  permanente / soi-même), dette brute et nette par paire, simplification
+  glouton créditeurs/débiteurs, statut de remboursement par dépense (FIFO
   chronologique), part restant due sur un acompte versé à un tiers. C'est la
   partie identifiée comme la plus risquée à réécrire sans filet — elle est
   donc isolée et testée séparément de l'UI, pour pouvoir être reprise telle
   quelle côté serveur.
 - `tests/calc.test.js` — tests unitaires (`node tests/calc.test.js`, sans
   dépendance externe) couvrant : dette croisée entre 2+ personnes, prise en
-  charge permanente vs ponctuelle, parts mixtes (contribution réduite) dans
-  une même dépense, paiement partiel réparti sur plusieurs dépenses (FIFO),
+  charge permanente vs ponctuelle, parts personnalisées (pourcentage absolu
+  de la dépense) mixées avec des parts "normales", validation des parts
+  incohérentes, paiement partiel réparti sur plusieurs dépenses (FIFO),
   acomptes à des tiers, simplification des dettes.
 - `scripts/data.js` — liste des devises proposées à la création d'un groupe
   (les personnes viennent de Supabase, table `profiles`).

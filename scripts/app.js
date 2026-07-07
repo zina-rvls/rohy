@@ -64,6 +64,7 @@
       showSettle: false,
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {} },
       groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', sharePercent: '100' }] },
+      submittingGroup: false,
       settleForm: { from: null, to: null, amount: '' },
       formError: null,
     };
@@ -383,6 +384,8 @@
     if (!amt || amt <= 0) { setState({ formError: 'montant invalide.' }); return; }
     if (!f.date) { setState({ formError: 'choisis une date.' }); return; }
     if (f.participantIds.length === 0) { setState({ formError: 'sélectionne au moins un participant.' }); return; }
+    var shareError = calc.validateShareSplit(f.participantIds, state.people);
+    if (shareError) { setState({ formError: shareError }); return; }
     var g = group(f.groupId);
     var paidExternal = amt;
     if (!f.fullyPaid) {
@@ -430,6 +433,7 @@
     setState({
       showAddGroup: true,
       formError: null,
+      submittingGroup: false,
       groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', sharePercent: '100' }] },
     });
   }
@@ -458,6 +462,7 @@
     });
   }
   function submitGroup() {
+    if (state.submittingGroup) return;
     var gf = state.groupForm;
     if (!gf.name.trim()) { setState({ formError: 'donne un nom au groupe.' }); return; }
     var validInvitees = gf.invitees.filter(function (inv) { return inv.name.trim() || inv.email.trim(); });
@@ -466,13 +471,13 @@
       if (!inv.name.trim()) { setState({ formError: 'donne un prénom à chaque membre invité.' }); return; }
       if (!inv.email.trim() || inv.email.indexOf('@') === -1) { setState({ formError: 'entre un e-mail valide pour ' + inv.name.trim() + '.' }); return; }
     }
-    setState({ formError: null });
+    setState({ formError: null, submittingGroup: true });
 
     sb.from('groups').insert({ name: gf.name.trim(), currency: gf.currency, admin_id: state.currentUserId }).select().single().then(function (res) {
-      if (res.error) { setState({ formError: res.error.message }); return; }
+      if (res.error) { setState({ formError: res.error.message, submittingGroup: false }); return; }
       var newGroup = res.data;
       sb.from('group_members').insert({ group_id: newGroup.id, user_id: state.currentUserId }).then(function (memRes) {
-        if (memRes.error) { setState({ formError: memRes.error.message }); return; }
+        if (memRes.error) { setState({ formError: memRes.error.message, submittingGroup: false }); return; }
 
         var invitePromises = validInvitees.map(function (invitee, idx) {
           return sb.functions.invoke('invite-member', {
@@ -487,7 +492,7 @@
 
         Promise.all(invitePromises).then(function (results) {
           var failedInvites = results.filter(function (name) { return name; });
-          setState({ showAddGroup: false });
+          setState({ showAddGroup: false, submittingGroup: false });
           loadAppData().then(function () {
             if (failedInvites.length) showToast('groupe créé — invitation impossible pour : ' + failedInvites.join(', '));
             else showToast(validInvitees.length ? 'groupe créé, invitations envoyées par e-mail' : 'groupe créé');
@@ -766,11 +771,8 @@
       var share = 0;
       state.expenses.filter(function (e) { return e.groupId === g.id && e.participants.indexOf(pid) !== -1; }).forEach(function (e) {
         var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
-        var parts = e.participants.map(function (id2) { var pp = person(id2); return { id2: id2, weight: calc.weightFor(pp) }; });
-        var totalWeight = parts.reduce(function (a, x) { return a + x.weight; }, 0) || 1;
-        var unit = effAmount / totalWeight;
-        var w = parts.find(function (x) { return x.id2 === pid; }).weight;
-        share += unit * w;
+        var shares = calc.computeShares(effAmount, e.participants, state.people);
+        share += shares[pid] || 0;
       });
       var bal = netBalanceFor(pid, g.id);
       var covered = p.defaultCoveredBy ? person(p.defaultCoveredBy) : null;
@@ -1049,7 +1051,8 @@
       '<div class="section-label">inviter des membres (par e-mail)</div>' +
       inviteeRows +
       '<button class="dashed-btn pressable" style="margin-bottom:6px" data-action="addInviteeRow">+ ajouter un membre</button>' +
-      '<button class="btn-primary pressable" style="margin-top:14px" data-action="submitGroup">créer le groupe</button>' +
+      '<button class="btn-primary pressable" style="margin-top:14px' + (state.submittingGroup ? ';opacity:0.6' : '') + '" data-action="submitGroup">' +
+      (state.submittingGroup ? 'création en cours…' : 'créer le groupe') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       '</div></div>'
     );
