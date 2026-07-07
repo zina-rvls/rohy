@@ -45,6 +45,9 @@
       loginForm: { email: '', password: '', name: '' },
       loginError: null,
       magicSent: false,
+      resetSent: false,
+      passwordRecovery: false,
+      newPasswordForm: { password: '' },
       currentUserId: null,
       showAccount: false,
       showManageMembers: false,
@@ -235,10 +238,12 @@
   function toggleLoginMode() { setState(function (s) { return { loginMode: s.loginMode === 'password' ? 'magic' : 'password', loginError: null, magicSent: false }; }); }
   function showSignup() { setState({ loginMode: 'signup', loginError: null }); }
   function showPasswordLogin() { setState({ loginMode: 'password', loginError: null }); }
+  function showForgotPassword() { setState({ loginMode: 'forgotPassword', loginError: null, resetSent: false }); }
   function backToLoginForm() { setState({ magicSent: false, loginError: null }); }
   function setLoginEmail(v) { setStateSilent(function (s) { return { loginForm: Object.assign({}, s.loginForm, { email: v }), loginError: null }; }); }
   function setLoginPassword(v) { setStateSilent(function (s) { return { loginForm: Object.assign({}, s.loginForm, { password: v }), loginError: null }; }); }
   function setLoginName(v) { setStateSilent(function (s) { return { loginForm: Object.assign({}, s.loginForm, { name: v }), loginError: null }; }); }
+  function setNewPassword(v) { setStateSilent(function (s) { return { newPasswordForm: Object.assign({}, s.newPasswordForm, { password: v }), loginError: null }; }); }
 
   function submitLogin() {
     var f = state.loginForm;
@@ -280,6 +285,34 @@
     }).then(function (res) {
       if (res.error) { setState({ loginError: res.error.message }); return; }
       setState({ magicSent: true });
+    });
+  }
+
+  function submitForgotPassword() {
+    var f = state.loginForm;
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
+    setState({ loginError: null });
+    sb.auth.resetPasswordForEmail(f.email.trim(), {
+      redirectTo: window.location.origin + window.location.pathname,
+    }).then(function (res) {
+      if (res.error) { setState({ loginError: res.error.message }); return; }
+      setState({ resetSent: true });
+    });
+  }
+
+  function submitNewPassword() {
+    var pw = state.newPasswordForm.password;
+    if (!pw || pw.length < 6) { setState({ loginError: 'mot de passe trop court (6 caractères min).' }); return; }
+    setState({ loginError: null });
+    sb.auth.updateUser({ password: pw }).then(function (res) {
+      if (res.error) { setState({ loginError: res.error.message }); return; }
+      setState({ passwordRecovery: false, newPasswordForm: { password: '' } });
+      showToast('mot de passe mis à jour');
+      if (res.data && res.data.user) {
+        setStateSilent({ loggedIn: true, currentUserId: res.data.user.id, dataLoading: true });
+        render();
+        loadAppData();
+      }
     });
   }
 
@@ -647,7 +680,9 @@
     var root = document.getElementById('app');
     var focusInfo = captureFocus(root);
     root.setAttribute('data-theme', state.theme);
-    if (!state.loggedIn) {
+    if (state.passwordRecovery) {
+      root.innerHTML = renderNewPasswordScreen();
+    } else if (!state.loggedIn) {
       root.innerHTML = renderLogin();
     } else if (state.dataLoading || !person(state.currentUserId)) {
       root.innerHTML = renderLoadingScreen();
@@ -684,9 +719,23 @@
         '<input class="text-input" type="password" data-bind="loginPassword" placeholder="••••••••" value="' + escapeHtml(f.password) + '" />' +
         '<button class="btn-primary pressable" data-action="submitLogin">se connecter</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
+        '<div class="link-center" style="margin-top:12px" data-action="showForgotPassword">mot de passe oublié ?</div>' +
         '<div class="divider-or">ou</div>' +
         '<div class="link-center" data-action="toggleLoginMode">se connecter sans mot de passe →</div>' +
         '<div class="link-center" style="margin-top:12px" data-action="showSignup">pas encore de compte ? en créer un →</div>';
+    } else if (state.loginMode === 'forgotPassword') {
+      body = state.resetSent ?
+        '<div class="magic-confirm">' +
+        '<div class="magic-icon"><i class="ph-bold ph-paper-plane-tilt"></i></div>' +
+        '<div class="login-title" style="font-size:20px">e-mail envoyé !</div>' +
+        '<div class="login-subtitle" style="line-height:1.5">clique sur le lien reçu par e-mail pour choisir un nouveau mot de passe.</div>' +
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">retour</div>' +
+        '</div>' :
+        '<div class="field-label">e-mail</div>' +
+        '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+        '<button class="btn-primary pressable" data-action="submitForgotPassword">envoyer le lien de réinitialisation</button>' +
+        (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">retour à la connexion →</div>';
     } else if (state.magicSent) {
       body =
         '<div class="magic-confirm">' +
@@ -709,6 +758,20 @@
       '<div class="login-title">se connecter</div>' +
       '<div class="login-subtitle">retrouve tes groupes et vos comptes</div>' +
       body +
+      '</div>'
+    );
+  }
+
+  function renderNewPasswordScreen() {
+    return (
+      '<div class="login-screen">' +
+      '<div class="login-icon"><i class="ph-bold ph-lock-key"></i></div>' +
+      '<div class="login-title">nouveau mot de passe</div>' +
+      '<div class="login-subtitle">choisis un nouveau mot de passe pour ton compte</div>' +
+      '<div class="field-label">mot de passe</div>' +
+      '<input class="text-input" type="password" data-bind="newPassword" placeholder="•••••••• (6 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
+      '<button class="btn-primary pressable" data-action="submitNewPassword">mettre à jour le mot de passe</button>' +
+      (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
       '</div>'
     );
   }
@@ -1298,10 +1361,13 @@
         case 'toggleLoginMode': toggleLoginMode(); break;
         case 'showSignup': showSignup(); break;
         case 'showPasswordLogin': showPasswordLogin(); break;
+        case 'showForgotPassword': showForgotPassword(); break;
         case 'backToLoginForm': backToLoginForm(); break;
         case 'submitLogin': submitLogin(); break;
         case 'submitSignup': submitSignup(); break;
         case 'submitMagicLink': submitMagicLink(); break;
+        case 'submitForgotPassword': submitForgotPassword(); break;
+        case 'submitNewPassword': submitNewPassword(); break;
         case 'selectGroupForForm': selectGroupForForm(id); break;
         case 'selectPayer': selectPayer(id); break;
         case 'toggleParticipant': toggleParticipant(id); break;
@@ -1332,6 +1398,7 @@
         case 'loginEmail': setLoginEmail(v); break;
         case 'loginPassword': setLoginPassword(v); break;
         case 'loginName': setLoginName(v); break;
+        case 'newPassword': setNewPassword(v); break;
         case 'expenseLabel': setLabel(v); break;
         case 'expenseAmount': setAmount(v); break;
         case 'expenseDate': setDate(v); break;
@@ -1371,6 +1438,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     render();
     sb.auth.onAuthStateChange(function (event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });
+        return;
+      }
       if (session) {
         var alreadyLoaded = state.loggedIn && state.currentUserId === session.user.id;
         setStateSilent({ loggedIn: true, currentUserId: session.user.id, loginError: null });
