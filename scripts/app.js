@@ -796,7 +796,7 @@
       '<div style="font-size:13px;color:var(--text-secondary)">connecté en tant que <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
       '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
       '</button>' +
-      (otherPeople.length === 0 ?
+      (state.groups.length === 0 ?
         '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' :
         '<div class="balance-card">' +
         '<div class="balance-label">solde net total</div>' +
