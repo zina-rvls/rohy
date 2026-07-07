@@ -5,15 +5,16 @@
  * vanilla. Le moteur de calcul est isolé dans scripts/calc.js (testé
  * séparément, cf. tests/calc.test.js).
  *
- * Persistance : localStorage, en attendant une vraie base + API (cf.
- * README, section "Ce qui reste à faire").
+ * Backend : Supabase (auth réelle, Postgres, invitations par e-mail — cf.
+ * supabase/). `scripts/supabase-client.js` expose `window.supabaseClient`.
  */
 (function () {
   'use strict';
 
   var calc = window.KotikotaCalc;
   var seed = window.KotikotaData;
-  var STORAGE_KEY = 'kotikota-state-v1';
+  var sb = window.supabaseClient;
+  var THEME_KEY = 'kotikota-theme';
 
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
@@ -26,25 +27,33 @@
     });
   }
 
+  function loadTheme() {
+    try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (err) { return 'dark'; }
+  }
+  function saveTheme(theme) {
+    try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* mode privé / quota */ }
+  }
+
   function defaultState() {
     return {
       screen: 'home',
       navStack: [],
-      theme: 'dark',
+      theme: loadTheme(),
       loggedIn: false,
+      dataLoading: false,
       loginMode: 'password',
-      loginForm: { email: '', password: '' },
+      loginForm: { email: '', password: '', name: '' },
       loginError: null,
       magicSent: false,
-      currentUserId: 'moi',
-      showSwitchUser: false,
+      currentUserId: null,
+      showAccount: false,
       showManageMembers: false,
       manageMembersGroupId: null,
       showConfirmDeleteGroup: false,
       confirmDeleteGroupId: null,
       selectedGroupId: null,
       selectedPersonId: null,
-      people: seed.DEFAULT_PEOPLE.map(function (p) { return Object.assign({}, p); }),
+      people: [],
       groups: [],
       expenses: [],
       payments: [],
@@ -53,44 +62,19 @@
       showAddExpense: false,
       showAddGroup: false,
       showSettle: false,
-      form: { label: '', amount: '', groupId: null, paidBy: 'moi', participantIds: [], overrides: {} },
+      form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {} },
       groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', sharePercent: '100' }] },
       settleForm: { from: null, to: null, amount: '' },
       formError: null,
     };
   }
 
-  var PERSISTED_KEYS = ['theme', 'currentUserId', 'people', 'groups', 'expenses', 'payments', 'reminders', 'loggedIn'];
-
-  function loadState() {
-    var base = defaultState();
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        var saved = JSON.parse(raw);
-        PERSISTED_KEYS.forEach(function (k) {
-          if (saved[k] !== undefined) base[k] = saved[k];
-        });
-      }
-    } catch (err) {
-      /* localStorage indisponible ou corrompu : on repart des données de départ */
-    }
-    return base;
-  }
-
-  function persist() {
-    var toSave = {};
-    PERSISTED_KEYS.forEach(function (k) { toSave[k] = state[k]; });
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); } catch (err) { /* quota / mode privé */ }
-  }
-
-  var state = loadState();
+  var state = defaultState();
   var toastTimer = null;
 
   function setState(patch) {
     var partial = typeof patch === 'function' ? patch(state) : patch;
     state = Object.assign({}, state, partial);
-    persist();
     render();
   }
 
@@ -147,6 +131,66 @@
     }, 2600);
   }
 
+  function firstErrorOf(results) {
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].error) return results[i].error;
+    }
+    return null;
+  }
+
+  // ---------- Chargement des données (Supabase) ----------
+
+  function loadAppData() {
+    setStateSilent({ dataLoading: true });
+    render();
+    return Promise.all([
+      sb.from('profiles').select('*'),
+      sb.from('groups').select('*'),
+      sb.from('group_members').select('*'),
+      sb.from('expenses').select('*'),
+      sb.from('expense_participants').select('*'),
+      sb.from('payments').select('*'),
+      sb.from('reminders').select('*'),
+    ]).then(function (results) {
+      var err = firstErrorOf(results);
+      if (err) throw err;
+      var profileRows = results[0].data, groupRows = results[1].data, memberRows = results[2].data,
+        expenseRows = results[3].data, participantRows = results[4].data, paymentRows = results[5].data,
+        reminderRows = results[6].data;
+
+      var people = profileRows.map(function (p) {
+        return { id: p.id, name: p.name, color: p.color, sharePercent: p.share_percent, defaultCoveredBy: p.default_covered_by || undefined };
+      });
+      var groups = groupRows.map(function (g) {
+        return {
+          id: g.id, name: g.name, icon: g.icon, currency: g.currency, adminId: g.admin_id,
+          memberIds: memberRows.filter(function (m) { return m.group_id === g.id; }).map(function (m) { return m.user_id; }),
+        };
+      });
+      var expenses = expenseRows.map(function (e) {
+        var parts = participantRows.filter(function (p) { return p.expense_id === e.id; });
+        var overrides = {};
+        parts.forEach(function (p) { if (p.override_responsible_id) overrides[p.user_id] = p.override_responsible_id; });
+        return {
+          id: e.id, groupId: e.group_id, label: e.label, icon: e.icon, amount: Number(e.amount),
+          paidExternal: e.paid_external != null ? Number(e.paid_external) : null,
+          paidBy: e.paid_by, date: e.expense_date, participants: parts.map(function (p) { return p.user_id; }), overrides: overrides,
+        };
+      });
+      var payments = paymentRows.map(function (p) {
+        return { id: p.id, from: p.from_user, to: p.to_user, amount: Number(p.amount), date: p.payment_date, groupId: p.group_id };
+      });
+      var reminders = reminderRows.map(function (r) {
+        return { id: r.id, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message };
+      });
+
+      setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, dataLoading: false });
+    }).catch(function (err) {
+      setState({ dataLoading: false });
+      showToast('erreur de chargement : ' + (err && err.message ? err.message : 'inconnue'));
+    });
+  }
+
   // ---------- Navigation ----------
   function navigate(screen, extra) {
     setState(function (s) {
@@ -166,25 +210,71 @@
   function goExpenses() { setState({ screen: 'expenses', navStack: [] }); }
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id }); }
   function openPerson(id) { navigate('person', { selectedPersonId: id }); }
-  function toggleTheme() { setState(function (s) { return { theme: s.theme === 'dark' ? 'light' : 'dark' }; }); }
+  function toggleTheme() {
+    setState(function (s) {
+      var next = s.theme === 'dark' ? 'light' : 'dark';
+      saveTheme(next);
+      return { theme: next };
+    });
+  }
 
-  // ---------- Login ----------
+  // ---------- Auth ----------
   function toggleLoginMode() { setState(function (s) { return { loginMode: s.loginMode === 'password' ? 'magic' : 'password', loginError: null, magicSent: false }; }); }
+  function showSignup() { setState({ loginMode: 'signup', loginError: null }); }
+  function showPasswordLogin() { setState({ loginMode: 'password', loginError: null }); }
+  function backToLoginForm() { setState({ magicSent: false, loginError: null }); }
   function setLoginEmail(v) { setStateSilent(function (s) { return { loginForm: Object.assign({}, s.loginForm, { email: v }), loginError: null }; }); }
   function setLoginPassword(v) { setStateSilent(function (s) { return { loginForm: Object.assign({}, s.loginForm, { password: v }), loginError: null }; }); }
+  function setLoginName(v) { setStateSilent(function (s) { return { loginForm: Object.assign({}, s.loginForm, { name: v }), loginError: null }; }); }
+
   function submitLogin() {
     var f = state.loginForm;
     if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
     if (!f.password || f.password.length < 4) { setState({ loginError: 'mot de passe trop court.' }); return; }
-    setState({ loggedIn: true, loginError: null });
-    showToast('connecté');
+    setState({ loginError: null });
+    sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }).then(function (res) {
+      if (res.error) setState({ loginError: 'e-mail ou mot de passe incorrect.' });
+      // sinon : onAuthStateChange prend le relais (connexion + chargement des données).
+    });
   }
+
+  function submitSignup() {
+    var f = state.loginForm;
+    if (!f.name.trim()) { setState({ loginError: 'entre ton prénom.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
+    if (!f.password || f.password.length < 6) { setState({ loginError: 'mot de passe trop court (6 caractères min).' }); return; }
+    setState({ loginError: null });
+    sb.auth.signUp({
+      email: f.email.trim(), password: f.password,
+      options: { data: { name: f.name.trim(), color: '#7C5CFF' } },
+    }).then(function (res) {
+      if (res.error) { setState({ loginError: res.error.message }); return; }
+      if (!res.data.session) {
+        setState({ loginMode: 'password', loginForm: { email: '', password: '', name: '' } });
+        showToast('compte créé — vérifie ta boîte mail pour confirmer avant de te connecter.');
+      }
+      // sinon (confirmation e-mail désactivée) : onAuthStateChange connecte directement.
+    });
+  }
+
   function submitMagicLink() {
     var f = state.loginForm;
-    if (!f.email.trim()) { setState({ loginError: 'entre un e-mail ou un numéro.' }); return; }
-    setState({ magicSent: true, loginError: null });
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
+    setState({ loginError: null });
+    sb.auth.signInWithOtp({
+      email: f.email.trim(),
+      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    }).then(function (res) {
+      if (res.error) { setState({ loginError: res.error.message }); return; }
+      setState({ magicSent: true });
+    });
   }
-  function submitMagicContinue() { setState({ loggedIn: true }); showToast('connecté'); }
+
+  function logout() {
+    setState({ showAccount: false });
+    sb.auth.signOut();
+    // onAuthStateChange (SIGNED_OUT) réinitialise l'état et affiche l'écran de connexion.
+  }
 
   // ---------- Reminders / settle ----------
   function sendReminder(personId) {
@@ -192,9 +282,10 @@
     var rel = pairNet(state.currentUserId, personId);
     var amt = rel < 0 ? -rel : 0;
     var msg = 'petit rappel à ' + p.name + ' — psst, tu me dois encore ' + fmt(amt);
-    var reminder = { id: 'r' + Date.now(), toPersonId: personId, amount: amt, date: new Date().toISOString().slice(0, 10), message: msg };
-    setState(function (s) { return { reminders: s.reminders.concat([reminder]) }; });
-    showToast('rappel envoyé à ' + p.name);
+    sb.from('reminders').insert({ from_user: state.currentUserId, to_user: personId, amount: amt, message: msg }).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData().then(function () { showToast('rappel envoyé à ' + p.name); });
+    });
   }
   function openSettle(personId) {
     var me = state.currentUserId;
@@ -208,9 +299,11 @@
     var sf = state.settleForm;
     var amt = parseFloat((sf.amount || '').replace(',', '.'));
     if (!amt || amt <= 0) return;
-    var payment = { id: 'p' + Date.now(), from: sf.from, to: sf.to, amount: amt, date: new Date().toISOString().slice(0, 10), groupId: null };
-    setState(function (s) { return { payments: s.payments.concat([payment]), showSettle: false }; });
-    showToast('paiement enregistré');
+    sb.from('payments').insert({ from_user: sf.from, to_user: sf.to, amount: amt, group_id: null }).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      setState({ showSettle: false });
+      loadAppData().then(function () { showToast('paiement enregistré'); });
+    });
   }
 
   // ---------- Expenses ----------
@@ -242,12 +335,19 @@
   function deleteExpense() {
     var id = state.form.editingId;
     if (!id) return;
-    setState(function (s) { return { expenses: s.expenses.filter(function (e) { return e.id !== id; }), showAddExpense: false }; });
-    showToast('dépense supprimée');
+    sb.from('expenses').delete().eq('id', id).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      setState({ showAddExpense: false });
+      loadAppData().then(function () { showToast('dépense supprimée'); });
+    });
   }
   function markExpensePaidFull(expenseId) {
-    setState(function (s) { return { expenses: s.expenses.map(function (e) { return e.id === expenseId ? Object.assign({}, e, { paidExternal: e.amount }) : e; }) }; });
-    showToast('marqué comme réglé en totalité');
+    var e = state.expenses.find(function (x) { return x.id === expenseId; });
+    if (!e) return;
+    sb.from('expenses').update({ paid_external: e.amount }).eq('id', expenseId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData().then(function () { showToast('marqué comme réglé en totalité'); });
+    });
   }
   function toggleFullyPaid() { setState(function (s) { return { form: Object.assign({}, s.form, { fullyPaid: !s.form.fullyPaid }) }; }); }
   function setPaidExternal(v) { setStateSilent(function (s) { return { form: Object.assign({}, s.form, { paidExternal: v }) }; }); }
@@ -289,27 +389,38 @@
       var pe = parseFloat((f.paidExternal || '').replace(',', '.'));
       paidExternal = isNaN(pe) ? 0 : Math.max(0, Math.min(amt, pe));
     }
+    setState({ formError: null });
+
+    var participantRowsFor = function (expenseId) {
+      return f.participantIds.map(function (pid) { return { expense_id: expenseId, user_id: pid, override_responsible_id: f.overrides[pid] || null }; });
+    };
+
     if (f.editingId) {
-      setState(function (s) {
-        return {
-          expenses: s.expenses.map(function (e) {
-            return e.id === f.editingId ? Object.assign({}, e, {
-              groupId: f.groupId, label: f.label.trim(), amount: amt, paidExternal: paidExternal, date: f.date,
-              paidBy: f.paidBy, participants: f.participantIds.slice(), overrides: Object.assign({}, f.overrides),
-            }) : e;
-          }),
-          showAddExpense: false,
-        };
+      sb.from('expenses').update({
+        group_id: f.groupId, label: f.label.trim(), amount: amt, paid_external: paidExternal, expense_date: f.date, paid_by: f.paidBy,
+      }).eq('id', f.editingId).then(function (res) {
+        if (res.error) { setState({ formError: res.error.message }); return; }
+        sb.from('expense_participants').delete().eq('expense_id', f.editingId).then(function () {
+          sb.from('expense_participants').insert(participantRowsFor(f.editingId)).then(function (insRes) {
+            if (insRes.error) { showToast('erreur : ' + insRes.error.message); return; }
+            setState({ showAddExpense: false });
+            loadAppData().then(function () { showToast('dépense modifiée'); });
+          });
+        });
       });
-      showToast('dépense modifiée');
       return;
     }
-    var expense = {
-      id: 'e' + Date.now(), groupId: f.groupId, label: f.label.trim(), icon: 'ph-bold ph-receipt', amount: amt, paidExternal: paidExternal,
-      paidBy: f.paidBy, date: f.date, participants: f.participantIds.slice(), overrides: Object.assign({}, f.overrides),
-    };
-    setState(function (s) { return { expenses: s.expenses.concat([expense]), showAddExpense: false }; });
-    showToast('dépense ajoutée à ' + g.name);
+
+    sb.from('expenses').insert({
+      group_id: f.groupId, label: f.label.trim(), icon: 'ph-bold ph-receipt', amount: amt, paid_external: paidExternal, paid_by: f.paidBy, expense_date: f.date,
+    }).select().single().then(function (res) {
+      if (res.error) { setState({ formError: res.error.message }); return; }
+      sb.from('expense_participants').insert(participantRowsFor(res.data.id)).then(function (insRes) {
+        if (insRes.error) { showToast('erreur : ' + insRes.error.message); return; }
+        setState({ showAddExpense: false });
+        loadAppData().then(function () { showToast('dépense ajoutée à ' + g.name); });
+      });
+    });
   }
 
   // ---------- Groups ----------
@@ -355,74 +466,74 @@
       if (!inv.name.trim()) { setState({ formError: 'donne un prénom à chaque membre invité.' }); return; }
       if (!inv.email.trim() || inv.email.indexOf('@') === -1) { setState({ formError: 'entre un e-mail valide pour ' + inv.name.trim() + '.' }); return; }
     }
-    var newPeople = validInvitees.map(function (inv, i) {
-      var pct = parseInt(inv.sharePercent, 10);
-      if (isNaN(pct)) pct = 100;
-      pct = Math.max(0, Math.min(100, pct));
-      return {
-        id: 'p' + Date.now() + '_' + i,
-        name: inv.name.trim(),
-        email: inv.email.trim(),
-        color: INVITEE_COLORS[(state.people.length + i) % INVITEE_COLORS.length],
-        sharePercent: pct,
-      };
+    setState({ formError: null });
+
+    sb.from('groups').insert({ name: gf.name.trim(), currency: gf.currency, admin_id: state.currentUserId }).select().single().then(function (res) {
+      if (res.error) { setState({ formError: res.error.message }); return; }
+      var newGroup = res.data;
+      sb.from('group_members').insert({ group_id: newGroup.id, user_id: state.currentUserId }).then(function (memRes) {
+        if (memRes.error) { setState({ formError: memRes.error.message }); return; }
+
+        var invitePromises = validInvitees.map(function (invitee, idx) {
+          return sb.functions.invoke('invite-member', {
+            body: {
+              groupId: newGroup.id, name: invitee.name.trim(), email: invitee.email.trim(),
+              sharePercent: invitee.sharePercent, color: INVITEE_COLORS[idx % INVITEE_COLORS.length],
+            },
+          }).then(function (inviteRes) {
+            return (inviteRes.error || (inviteRes.data && inviteRes.data.error)) ? invitee.name.trim() : null;
+          }).catch(function () { return invitee.name.trim(); });
+        });
+
+        Promise.all(invitePromises).then(function (results) {
+          var failedInvites = results.filter(function (name) { return name; });
+          setState({ showAddGroup: false });
+          loadAppData().then(function () {
+            if (failedInvites.length) showToast('groupe créé — invitation impossible pour : ' + failedInvites.join(', '));
+            else showToast(validInvitees.length ? 'groupe créé, invitations envoyées par e-mail' : 'groupe créé');
+          });
+        });
+      });
     });
-    var newGroup = {
-      id: 'g' + Date.now(), name: gf.name.trim(), icon: 'ph-bold ph-users-three', currency: gf.currency,
-      memberIds: [state.currentUserId].concat(newPeople.map(function (p) { return p.id; })), adminId: state.currentUserId,
-    };
-    setState(function (s) { return { people: s.people.concat(newPeople), groups: s.groups.concat([newGroup]), showAddGroup: false, formError: null }; });
-    showToast(newPeople.length ? 'groupe créé, invitations envoyées par e-mail (simulé)' : 'groupe créé');
   }
   function openConfirmDeleteGroup(groupId) { setState({ showConfirmDeleteGroup: true, confirmDeleteGroupId: groupId }); }
   function confirmDeleteGroup() {
     var groupId = state.confirmDeleteGroupId;
     if (!groupId) return;
-    setState(function (s) {
-      return {
-        groups: s.groups.filter(function (g) { return g.id !== groupId; }),
-        expenses: s.expenses.filter(function (e) { return e.groupId !== groupId; }),
-        screen: 'groups', navStack: [], showConfirmDeleteGroup: false, confirmDeleteGroupId: null,
-      };
+    sb.from('groups').delete().eq('id', groupId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      setState({ screen: 'groups', navStack: [], showConfirmDeleteGroup: false, confirmDeleteGroupId: null });
+      loadAppData().then(function () { showToast('groupe supprimé'); });
     });
-    showToast('groupe supprimé');
   }
   function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId }); }
   function toggleManageMember(groupId, personId) {
     var g = group(groupId);
     if (personId === g.adminId) return;
-    setState(function (s) {
-      return {
-        groups: s.groups.map(function (gr) {
-          if (gr.id !== groupId) return gr;
-          var has = gr.memberIds.indexOf(personId) !== -1;
-          return Object.assign({}, gr, { memberIds: has ? gr.memberIds.filter(function (x) { return x !== personId; }) : gr.memberIds.concat([personId]) });
-        }),
-      };
+    var has = g.memberIds.indexOf(personId) !== -1;
+    var query = has
+      ? sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', personId)
+      : sb.from('group_members').insert({ group_id: groupId, user_id: personId });
+    query.then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData();
     });
   }
   function setSharePercent(personId, value) {
     var n = parseInt(value, 10);
     if (isNaN(n)) return;
     n = Math.max(0, Math.min(100, n));
-    setState(function (s) { return { people: s.people.map(function (p) { return p.id === personId ? Object.assign({}, p, { sharePercent: n }) : p; }) }; });
-  }
-
-  // ---------- User switch / modals ----------
-  function openSwitchUser() { setState({ showSwitchUser: true }); }
-  function switchUser(personId) {
-    setState({ currentUserId: personId, showSwitchUser: false, screen: 'home', navStack: [] });
-    showToast('connecté en tant que ' + person(personId).name);
-  }
-  function logout() {
-    setState({
-      loggedIn: false, showSwitchUser: false, screen: 'home', navStack: [],
-      loginForm: { email: '', password: '' }, loginError: null, magicSent: false, loginMode: 'password',
+    sb.from('profiles').update({ share_percent: n }).eq('id', personId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData();
     });
   }
+
+  // ---------- Modales ----------
+  function openAccount() { setState({ showAccount: true }); }
   function closeModal() {
     setState({
-      showAddExpense: false, showAddGroup: false, showSettle: false, showSwitchUser: false, showManageMembers: false,
+      showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
     });
   }
@@ -458,36 +569,57 @@
     var root = document.getElementById('app');
     var focusInfo = captureFocus(root);
     root.setAttribute('data-theme', state.theme);
-    root.innerHTML = state.loggedIn ? renderApp() : renderLogin();
+    if (!state.loggedIn) {
+      root.innerHTML = renderLogin();
+    } else if (state.dataLoading || !person(state.currentUserId)) {
+      root.innerHTML = renderLoadingScreen();
+    } else {
+      root.innerHTML = renderApp();
+    }
     bindEvents(root);
     restoreFocus(root, focusInfo);
+  }
+
+  function renderLoadingScreen() {
+    return '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:14px">chargement…</div>';
   }
 
   function renderLogin() {
     var f = state.loginForm;
     var body = '';
-    if (state.loginMode === 'password') {
+    if (state.loginMode === 'signup') {
+      body =
+        '<div class="field-label">prénom</div>' +
+        '<input class="text-input" data-bind="loginName" placeholder="Toi" value="' + escapeHtml(f.name) + '" />' +
+        '<div class="field-label">e-mail</div>' +
+        '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+        '<div class="field-label">mot de passe</div>' +
+        '<input class="text-input" type="password" data-bind="loginPassword" placeholder="•••••••• (6 caractères min)" value="' + escapeHtml(f.password) + '" />' +
+        '<button class="btn-primary pressable" data-action="submitSignup">créer le compte</button>' +
+        (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">j\'ai déjà un compte →</div>';
+    } else if (state.loginMode === 'password') {
       body =
         '<div class="field-label">e-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<div class="field-label">mot de passe</div>' +
         '<input class="text-input" type="password" data-bind="loginPassword" placeholder="••••••••" value="' + escapeHtml(f.password) + '" />' +
-        '<div class="link-right">mot de passe oublié ?</div>' +
         '<button class="btn-primary pressable" data-action="submitLogin">se connecter</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
         '<div class="divider-or">ou</div>' +
-        '<div class="link-center" data-action="toggleLoginMode">se connecter sans mot de passe →</div>';
+        '<div class="link-center" data-action="toggleLoginMode">se connecter sans mot de passe →</div>' +
+        '<div class="link-center" style="margin-top:12px" data-action="showSignup">pas encore de compte ? en créer un →</div>';
     } else if (state.magicSent) {
       body =
         '<div class="magic-confirm">' +
         '<div class="magic-icon"><i class="ph-bold ph-paper-plane-tilt"></i></div>' +
         '<div class="login-title" style="font-size:20px">lien envoyé !</div>' +
-        '<div class="login-subtitle" style="line-height:1.5">clique sur le lien reçu par e-mail pour continuer — pour ce prototype, ça te connecte directement</div>' +
-        '<button class="btn-primary pressable" style="margin-top:20px;width:auto;padding:12px 20px" data-action="submitMagicContinue">continuer</button>' +
+        '<div class="login-subtitle" style="line-height:1.5">clique sur le lien reçu par e-mail pour continuer.</div>' +
+        '<div class="link-center" style="margin-top:20px" data-action="backToLoginForm">retour</div>' +
         '</div>';
     } else {
       body =
-        '<div class="field-label">e-mail ou numéro</div>' +
+        '<div class="field-label">e-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<button class="btn-primary pressable" data-action="submitMagicLink">envoyer le lien</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
@@ -524,7 +656,6 @@
       title = g ? g.name : '';
       subtitle = g ? 'admin : ' + person(g.adminId).name : '';
     }
-    var cu = person(state.currentUserId);
     return (
       '<div class="top-bar">' +
       (showBack ? '<button class="icon-btn pressable" data-action="goBack"><i class="ph-bold ph-arrow-left"></i></button>' : '') +
@@ -582,21 +713,22 @@
     var sum = owed - owe;
 
     return (
-      '<button class="current-user-row pressable" data-action="openSwitchUser">' +
+      '<button class="current-user-row pressable" data-action="openAccount">' +
       '<div class="avatar avatar-26" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:13px;color:var(--text-secondary)">connecté en tant que <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
       '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
       '</button>' +
-      '<div class="balance-card">' +
-      '<div class="balance-label">solde net total</div>' +
-      '<div class="balance-amount" style="color:' + colorForBalance(sum) + '">' + (sum >= 0 ? '+' : '-') + fmt(Math.abs(sum)).replace('-', '') + '</div>' +
-      '<div class="balance-detail-row"><div class="owed">on te doit ' + fmt(owed).replace('-', '') + '</div><div class="owe">tu dois ' + fmt(owe).replace('-', '') + '</div></div>' +
-      '</div>' +
+      (otherPeople.length === 0 ?
+        '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' :
+        '<div class="balance-card">' +
+        '<div class="balance-label">solde net total</div>' +
+        '<div class="balance-amount" style="color:' + colorForBalance(sum) + '">' + (sum >= 0 ? '+' : '-') + fmt(Math.abs(sum)).replace('-', '') + '</div>' +
+        '<div class="balance-detail-row"><div class="owed">on te doit ' + fmt(owed).replace('-', '') + '</div><div class="owe">tu dois ' + fmt(owe).replace('-', '') + '</div></div>' +
+        '</div>') +
       (pendingShare > 0.5 ?
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> à anticiper</div>' +
         '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmt(pendingShare) + '.</div></div>' : '') +
-      '<div class="section-label">par personne</div>' +
-      rows
+      (otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '')
     );
   }
 
@@ -805,7 +937,7 @@
     if (state.showAddExpense) out += renderAddExpenseModal();
     if (state.showAddGroup) out += renderAddGroupModal();
     if (state.showSettle) out += renderSettleModal();
-    if (state.showSwitchUser) out += renderSwitchUserModal();
+    if (state.showAccount) out += renderAccountModal();
     if (state.showManageMembers) out += renderManageMembersModal();
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     return out;
@@ -941,22 +1073,18 @@
     );
   }
 
-  function renderSwitchUserModal() {
-    var rows = state.people.map(function (p) {
-      var isCurrent = p.id === state.currentUserId;
-      return '<button class="switch-user-row pressable" data-action="switchUser" data-id="' + p.id + '" style="background:' + (isCurrent ? 'var(--surface-overlay)' : 'transparent') + '">' +
-        '<div class="avatar avatar-38" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
-        '<div style="flex:1;font-size:14.5px;font-weight:600;color:var(--text-primary)">' + escapeHtml(p.name) + '</div>' +
-        (isCurrent ? '<i class="ph-bold ph-check-circle" style="color:var(--status-positive);font-size:18px"></i>' : '') +
-        '</button>';
-    }).join('');
+  function renderAccountModal() {
+    var cu = person(state.currentUserId);
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
-      '<div class="modal-header"><div class="modal-title">se connecter en tant que</div>' +
+      '<div class="modal-header"><div class="modal-title">mon compte</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
-      rows +
-      '<button class="delete-link" style="margin-top:16px" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>se déconnecter</button>' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:4px 0 22px">' +
+      '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
+      '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
+      '</div>' +
+      '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>se déconnecter</button>' +
       '</div></div>'
     );
   }
@@ -1020,8 +1148,7 @@
         case 'openPerson': openPerson(id); break;
         case 'openGroup': openGroup(id); break;
         case 'remind': sendReminder(id); break;
-        case 'openSwitchUser': openSwitchUser(); break;
-        case 'switchUser': switchUser(id); break;
+        case 'openAccount': openAccount(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(state.groups[0] && state.groups[0].id); break;
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
@@ -1033,9 +1160,12 @@
         case 'markPaidFull': markExpensePaidFull(id); break;
         case 'closeModal': closeModal(); break;
         case 'toggleLoginMode': toggleLoginMode(); break;
+        case 'showSignup': showSignup(); break;
+        case 'showPasswordLogin': showPasswordLogin(); break;
+        case 'backToLoginForm': backToLoginForm(); break;
         case 'submitLogin': submitLogin(); break;
+        case 'submitSignup': submitSignup(); break;
         case 'submitMagicLink': submitMagicLink(); break;
-        case 'submitMagicContinue': submitMagicContinue(); break;
         case 'selectGroupForForm': selectGroupForForm(id); break;
         case 'selectPayer': selectPayer(id); break;
         case 'toggleParticipant': toggleParticipant(id); break;
@@ -1062,6 +1192,7 @@
       switch (bind) {
         case 'loginEmail': setLoginEmail(v); break;
         case 'loginPassword': setLoginPassword(v); break;
+        case 'loginName': setLoginName(v); break;
         case 'expenseLabel': setLabel(v); break;
         case 'expenseAmount': setAmount(v); break;
         case 'expenseDate': setDate(v); break;
@@ -1088,5 +1219,24 @@
     };
   }
 
-  document.addEventListener('DOMContentLoaded', render);
+  // ---------- Démarrage ----------
+
+  document.addEventListener('DOMContentLoaded', function () {
+    render();
+    sb.auth.onAuthStateChange(function (event, session) {
+      if (session) {
+        var alreadyLoaded = state.loggedIn && state.currentUserId === session.user.id;
+        setStateSilent({ loggedIn: true, currentUserId: session.user.id, loginError: null });
+        if (!alreadyLoaded) {
+          setStateSilent({ dataLoading: true });
+          render();
+          loadAppData();
+        }
+      } else {
+        var theme = state.theme;
+        state = Object.assign({}, defaultState(), { theme: theme });
+        render();
+      }
+    });
+  });
 }());

@@ -1,15 +1,10 @@
 /**
- * Données de référence de l'app : la personne par défaut au premier
- * lancement (seul l'utilisateur courant est connu ; les autres membres
- * rejoignent via invitation par e-mail à la création d'un groupe) et la
- * liste des devises proposées à la création d'un groupe.
+ * Liste des devises proposées à la création d'un groupe. Les personnes
+ * viennent désormais de Supabase (table `profiles`) — plus de données de
+ * départ statiques pour les comptes.
  */
 (function (root) {
   'use strict';
-
-  var DEFAULT_PEOPLE = [
-    { id: 'moi', name: 'Toi', color: '#7C5CFF', sharePercent: 100 },
-  ];
 
   var CURRENCIES = [
     { code: 'EUR', label: 'Euro', symbol: '€' },
@@ -22,7 +17,6 @@
   ];
 
   var KotikotaData = {
-    DEFAULT_PEOPLE: DEFAULT_PEOPLE,
     CURRENCIES: CURRENCIES,
   };
 

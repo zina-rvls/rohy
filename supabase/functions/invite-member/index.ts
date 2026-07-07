@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return jsonResponse({ error: 'non authentifié.' }, 401);
 
-    const { groupId, name, email, sharePercent } = await req.json();
+    const { groupId, name, email, sharePercent, color } = await req.json();
     if (!groupId || !name || !email) {
       return jsonResponse({ error: 'groupId, name et email sont requis.' }, 400);
     }
@@ -58,11 +58,28 @@ Deno.serve(async (req) => {
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { name, share_percent: pct },
+      data: { name, share_percent: pct, color: color || '#7C5CFF' },
     });
-    if (inviteError) return jsonResponse({ error: inviteError.message }, 400);
 
-    const invitedUserId = invited.user.id;
+    let invitedUserId: string;
+    if (inviteError) {
+      // Cas fréquent : cette personne a déjà un compte (invitée dans un
+      // autre groupe auparavant) — on la retrouve par e-mail et on l'ajoute
+      // simplement au nouveau groupe plutôt que d'échouer.
+      const alreadyExists = /already registered|already exists/i.test(inviteError.message);
+      if (!alreadyExists) return jsonResponse({ error: inviteError.message }, 400);
+      const { data: existingProfile, error: lookupError } = await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+      if (lookupError || !existingProfile) {
+        return jsonResponse({ error: "cette adresse a déjà un compte, mais son profil est introuvable." }, 409);
+      }
+      invitedUserId = existingProfile.id;
+    } else {
+      invitedUserId = invited.user.id;
+    }
 
     const { error: memberError } = await adminClient
       .from('group_members')

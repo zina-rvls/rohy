@@ -8,19 +8,22 @@ e-mail à la création), historique, relance de paiement.
 
 Ce dépôt implémente le hand-off de design **kotikota** (prototype HTML fourni
 séparément) : les écrans ont été recréés fidèlement en HTML/CSS/JS vanilla,
-et le moteur de calcul a été porté tel quel dans un module testé
-indépendamment.
+le moteur de calcul a été porté tel quel dans un module testé
+indépendamment, et le backend réel (auth, base de données, invitations par
+e-mail) tourne sur Supabase — cf. `supabase/README.md` pour la mise en place.
 
 ## Lancer l'app
 
-Aucune dépendance ni build : ouvrir `index.html` dans un navigateur, ou servir
-le dossier statiquement, par exemple :
+Aucune dépendance ni build côté front-end : ouvrir `index.html` dans un
+navigateur, ou servir le dossier statiquement, par exemple :
 
 ```
 python3 -m http.server 8000
 ```
 
-puis http://localhost:8000/.
+puis http://localhost:8000/. Il faut un projet Supabase configuré (cf.
+`supabase/README.md`) pour que l'inscription/connexion et les données
+fonctionnent réellement.
 
 ## Lancer les tests du moteur de calcul
 
@@ -44,43 +47,42 @@ node tests/calc.test.js
   charge permanente vs ponctuelle, parts mixtes (contribution réduite) dans
   une même dépense, paiement partiel réparti sur plusieurs dépenses (FIFO),
   acomptes à des tiers, simplification des dettes.
-- `scripts/data.js` — personne par défaut au premier lancement (seul
-  l'utilisateur courant) et liste des devises proposées à la création d'un
-  groupe.
+- `scripts/data.js` — liste des devises proposées à la création d'un groupe
+  (les personnes viennent de Supabase, table `profiles`).
+- `scripts/supabase-client.js` — instancie le client `supabase-js` (URL du
+  projet + clé publiable — sûres à exposer côté client, protégées par les
+  policies RLS plutôt que par le secret).
 - `scripts/app.js` — état de l'application, rendu de tous les écrans/modales,
-  délégation d'événements, persistance dans `localStorage`.
+  délégation d'événements, auth et données via Supabase (cf. `supabase/`).
 - `styles/style.css` — design tokens kotikota (couleurs, typographie, rayons,
   ombres) en variables CSS, thèmes clair/sombre.
+- `supabase/` — schéma Postgres, policies RLS, fonction d'invitation par
+  e-mail. Cf. `supabase/README.md` pour la mise en place complète.
 
 ## Modèle de données
 
 - Premier lancement : aucun contact ni groupe préexistant, seul le compte
-  courant existe. Les autres membres n'entrent dans l'app qu'invités par
-  e-mail à la création d'un groupe (prénom + e-mail + part de contribution en
-  %) — l'envoi d'e-mail réel n'est pas implémenté (P0, cf. ci-dessous), mais
-  le flux crée bien un contact et un compte simulé pour cette personne.
+  qu'on vient de créer existe. Les autres membres n'entrent dans l'app
+  qu'invités par e-mail à la création d'un groupe (prénom + e-mail + part de
+  contribution en %) — un vrai compte est créé pour eux et un vrai e-mail
+  d'invitation est envoyé (Supabase Auth `inviteUserByEmail`).
 - Chaque groupe a sa propre devise, choisie à sa création, utilisée pour son
   détail, ses suggestions d'équilibrage et ses dépenses (y compris listées
   dans l'onglet "toutes les dépenses"). Les agrégats qui traversent plusieurs
   groupes (solde net total de l'accueil, soldes par personne, cartes résumé)
   utilisent une devise globale unique par simplification : un même compte
   n'est pas censé mélanger plusieurs devises pour ses totaux consolidés.
+- Le sélecteur "connecté en tant que" du prototype de design a été retiré :
+  avec de vrais comptes, on ne peut plus impersonner un autre utilisateur
+  côté client — chacun se connecte avec ses propres identifiants (mot de
+  passe ou lien magique).
 
 ## Ce qui est fidèle au design, ce qui reste à faire
 
-Ce dépôt reste un **prototype front-end** : la persistance est assurée par
-`localStorage` (remplace le stockage en mémoire du prototype de design, mais
-n'est toujours pas une vraie base de données), et l'authentification est
-simulée (aucune vérification de mot de passe, aucune session serveur).
-
-Avant une v1 réellement utilisable, il reste (par ordre de priorité) :
-
-- **P0 — bloquant, en cours** : vrai backend d'auth (mots de passe hashés,
-  tokens de lien magique à usage unique, sessions), vraie base de données +
-  API (actuellement `localStorage`), vrai flux d'invitation par e-mail pour
-  rejoindre un groupe. Schéma, policies de sécurité et fonction d'invitation
-  Supabase déjà prêts dans `supabase/` (cf. `supabase/README.md`) ; reste à
-  créer le projet et brancher `scripts/app.js` dessus.
+- **P0 — fait** : vrai backend d'auth (Supabase Auth — mot de passe, lien
+  magique, et création de compte), vraie base de données Postgres avec RLS
+  (remplace `localStorage`), vrai flux d'invitation par e-mail pour rejoindre
+  un groupe. Cf. `supabase/README.md` pour la configuration du projet.
 - **P1 — important** : notifications de relance réelles (push — nécessite
   l'enregistrement d'un token device par utilisateur et un service d'envoi
   type Firebase Cloud Messaging / APNs), édition du responsable par défaut
@@ -88,9 +90,10 @@ Avant une v1 réellement utilisable, il reste (par ordre de priorité) :
 - **P2 — confort** : recherche/filtres sur dépenses et historique, possibilité
   pour un membre non-admin de quitter un groupe.
 
-Le moteur de calcul (`scripts/calc.js`), lui, est porté fidèlement et testé :
-c'est la brique à réutiliser telle quelle côté serveur le jour où la
-persistance réelle est branchée.
+Le moteur de calcul (`scripts/calc.js`) reste porté fidèlement et testé côté
+client ; la logique de dettes elle-même n'est pas dupliquée côté serveur —
+les policies RLS protègent l'accès aux données, mais les calculs de solde
+restent effectués dans le navigateur à partir des données Postgres chargées.
 
 Hors périmètre explicite (cf. spec de hand-off) : conversion de devises en
 temps réel, export comptable/PDF, rôles avancés au-delà de admin/membre,

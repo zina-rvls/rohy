@@ -17,11 +17,12 @@ tel quel (ex. GitHub Pages) ; seul Supabase héberge la base et l'auth.
 
 ## 2. Appliquer le schéma
 
-Dans le dashboard Supabase → SQL Editor, colle et exécute le contenu de
-`migrations/0001_init.sql` (ou, avec la CLI Supabase installée :
-`supabase link --project-ref <ref>` puis `supabase db push`).
+Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
+`migrations/0001_init.sql` PUIS `migrations/0002_admin_manage_share.sql`
+(ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
+puis `supabase db push`).
 
-Ça crée :
+`0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
   `payments`, `reminders` — cf. commentaires dans le fichier pour le détail.
 - Un trigger qui crée automatiquement une ligne `profiles` à l'inscription
@@ -30,6 +31,12 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute le contenu de
 - Les policies RLS : chacun ne voit que ses groupes et les personnes qui les
   partagent avec lui ; seul l'admin d'un groupe peut le modifier/supprimer
   ou y ajouter des membres.
+
+`0002_admin_manage_share.sql` ajoute :
+- La possibilité pour l'admin d'un groupe de modifier la part de
+  contribution (`share_percent`) d'un co-membre depuis "gérer les membres".
+- Une colonne `email` sur `profiles`, utilisée pour retrouver le compte
+  existant d'une personne ré-invitée dans un autre groupe.
 
 ## 3. Configurer l'authentification
 
@@ -60,10 +67,17 @@ l'environnement de la fonction : rien à configurer manuellement.
 supabase functions deploy invite-member --project-ref <ref>
 ```
 
-## 5. Ce qu'il faut me redonner
+## 5. Front-end branché
 
-Une fois les étapes 1 à 4 faites : l'**URL du projet** et la **clé `anon`**
-(Project Settings → API). Avec ça, je branche `scripts/app.js` sur
-`supabase-js` (chargé en CDN, sans étape de build) : vraie inscription/
-connexion, chargement des données depuis les tables au lieu de
-`localStorage`, et appel de `invite-member` pour inviter des membres.
+`scripts/app.js` appelle désormais Supabase directement (`scripts/supabase-client.js`
+contient l'URL du projet et la clé publiable) : vraie inscription/connexion
+(mot de passe, lien magique, ou création de compte), chargement des données
+depuis les tables au lieu de `localStorage`, et appel de `invite-member`
+pour inviter des membres à la création d'un groupe.
+
+**Si tu avais déjà déployé `invite-member` avant l'ajout de la colonne
+`email` et de la couleur d'avatar** (cf. `0002_admin_manage_share.sql`),
+redéploie la fonction avec le contenu à jour de
+`functions/invite-member/index.ts` pour que les ré-invitations (une
+personne déjà membre d'un autre groupe) et les couleurs d'avatar variées
+fonctionnent.
