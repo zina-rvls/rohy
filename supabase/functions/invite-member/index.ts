@@ -35,14 +35,14 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return jsonResponse({ error: 'non authentifié.' }, 401);
 
-    const { groupId, name, email, sharePercent, color } = await req.json();
+    const { groupId, name, email, shareWeight, color } = await req.json();
     if (!groupId || !name || !email) {
       return jsonResponse({ error: 'groupId, name et email sont requis.' }, 400);
     }
     if (!String(email).includes('@')) {
       return jsonResponse({ error: 'e-mail invalide.' }, 400);
     }
-    const pct = Math.max(0, Math.min(100, parseInt(sharePercent, 10) || 100));
+    const weight = Math.max(0, parseFloat(shareWeight) || 1);
 
     // Client "utilisateur" : respecte les RLS, sert à vérifier que l'appelant
     // est bien admin de ce groupe avant toute action privilégiée.
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { name, share_percent: pct, color: color || '#7C5CFF' },
+      data: { name, share_weight: weight, color: color || '#7C5CFF' },
     });
 
     let invitedUserId: string;

@@ -2,6 +2,15 @@
  * Moteur de calcul kotikota — porté fidèlement depuis le prototype de design
  * (Depenses App.dc.html, classe Component). Fonctions pures, sans dépendance
  * DOM, utilisables côté client comme côté serveur.
+ *
+ * Modèle de coefficient (brief "Gestion des foyers, personnes à charge et
+ * parts pondérées") : chaque participant a un poids relatif (`shareWeight`,
+ * 1 = part entière par défaut). La part de chacun sur une dépense est
+ * proportionnelle à son poids par rapport à la somme des poids de tous les
+ * participants — pas un pourcentage absolu de la dépense. Une personne à
+ * charge (`guardianId` défini) voit sa dette automatiquement fusionnée avec
+ * celle de son responsable (cf. `responsibleFor`) : elle n'apparaît jamais
+ * comme débitrice/créancière dans les soldes finaux.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -16,52 +25,36 @@
     return people.find(function (p) { return p.id === id; });
   }
 
-  function hasCustomShare(person) {
-    return person.sharePercent != null && person.sharePercent !== 100;
+  function weightFor(person) {
+    return person.shareWeight != null ? person.shareWeight : 1;
   }
 
   /**
-   * Part de chaque participant sur un montant donné :
-   * - un participant avec une part personnalisée (sharePercent != 100) doit
-   *   exactement ce pourcentage du montant, quel que soit le nombre d'autres
-   *   participants ;
-   * - le reste (100% moins la somme des parts personnalisées) est réparti à
-   *   parts égales entre les participants "normaux" (sans part personnalisée).
-   * Retourne { [participantId]: montant }.
+   * Part de chaque participant sur un montant donné, proportionnelle à son
+   * poids relatif (shareWeight) par rapport à la somme des poids de tous
+   * les participants. Retourne { [participantId]: montant }.
    */
   function computeShares(amount, participantIds, people) {
-    var participants = participantIds.map(function (pid) { return findPerson(people, pid); });
-    var custom = participants.filter(hasCustomShare);
-    var normal = participants.filter(function (p) { return !hasCustomShare(p); });
-    var customPercentSum = custom.reduce(function (s, p) { return s + p.sharePercent; }, 0);
-    var remainingPercent = Math.max(0, 100 - customPercentSum);
-    var normalPercentEach = normal.length ? remainingPercent / normal.length : 0;
+    var parts = participantIds.map(function (pid) {
+      var p = findPerson(people, pid);
+      return { pid: pid, weight: weightFor(p) };
+    });
+    var totalWeight = parts.reduce(function (s, x) { return s + x.weight; }, 0) || 1;
+    var unit = amount / totalWeight;
     var shares = {};
-    custom.forEach(function (p) { shares[p.id] = amount * p.sharePercent / 100; });
-    normal.forEach(function (p) { shares[p.id] = amount * normalPercentEach / 100; });
+    parts.forEach(function (part) { shares[part.pid] = unit * part.weight; });
     return shares;
   }
 
   /**
-   * Vérifie que les parts personnalisées des participants sélectionnés ont
-   * un sens : ne dépassent pas 100%, et si tout le monde a une part
-   * personnalisée, qu'elles totalisent bien 100%. Retourne un message
-   * d'erreur (string) ou null si tout va bien.
+   * Responsable du paiement de la part d'un participant : override ponctuel
+   * pour cette dépense précise, sinon son responsable permanent (guardian —
+   * personne à charge), sinon lui-même. C'est ce mécanisme qui fusionne
+   * automatiquement la dette d'une personne à charge avec celle de son
+   * responsable partout dans le moteur de calcul.
    */
-  function validateShareSplit(participantIds, people) {
-    var participants = participantIds.map(function (pid) { return findPerson(people, pid); });
-    var custom = participants.filter(hasCustomShare);
-    var normalCount = participants.length - custom.length;
-    var customSum = custom.reduce(function (s, p) { return s + p.sharePercent; }, 0);
-    if (customSum > 100.5) return 'les parts personnalisées dépassent 100% (' + customSum + '%).';
-    if (normalCount === 0 && participants.length > 0 && Math.abs(customSum - 100) > 0.5) {
-      return 'les parts doivent totaliser 100% (actuellement ' + customSum + '%).';
-    }
-    return null;
-  }
-
   function responsibleFor(expense, participantId, person) {
-    return (expense.overrides && expense.overrides[participantId]) || person.defaultCoveredBy || participantId;
+    return (expense.overrides && expense.overrides[participantId]) || person.guardianId || participantId;
   }
 
   function netFromDebt(debt) {
@@ -250,9 +243,8 @@
 
   return {
     findPerson: findPerson,
-    hasCustomShare: hasCustomShare,
+    weightFor: weightFor,
     computeShares: computeShares,
-    validateShareSplit: validateShareSplit,
     responsibleFor: responsibleFor,
     computeDebts: computeDebts,
     computeDebtsForGroup: computeDebtsForGroup,

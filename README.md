@@ -1,10 +1,12 @@
 # kotikota — suivi des dépenses entre amis
 
 Application de suivi de dépenses partagées entre amis/famille : qui a payé
-quoi, la part de contribution de chacun (réglable par personne, ex. 50%) et
-prises en charge par un tiers, et qui doit quoi à qui après paiements déjà
-effectués. Groupes/événements multiples (avec devise et invitation par
-e-mail à la création), historique, relance de paiement.
+quoi, la part de contribution de chacun (coefficient réglable par personne,
+ex. 0,5 = demi-part), foyers et personnes à charge (prise en charge
+permanente, dette automatiquement fusionnée avec le responsable), et qui
+doit quoi à qui après paiements déjà effectués. Groupes/événements multiples
+(avec devise et invitation par e-mail à la création), historique, relance de
+paiement.
 
 Ce dépôt implémente le hand-off de design **kotikota** (prototype HTML fourni
 séparément) : les écrans ont été recréés fidèlement en HTML/CSS/JS vanilla,
@@ -34,23 +36,22 @@ node tests/calc.test.js
 ## Architecture
 
 - `scripts/calc.js` — moteur de calcul pur (aucune dépendance DOM) : parts par
-  participant (`computeShares` — un participant avec une part personnalisée,
-  `sharePercent` != 100%, doit exactement ce pourcentage absolu de la
-  dépense ; le reste se partage à parts égales entre les participants
-  "normaux" ; `validateShareSplit` rejette les parts personnalisées
-  incohérentes), responsabilité (override ponctuel / prise en charge
-  permanente / soi-même), dette brute et nette par paire, simplification
-  glouton créditeurs/débiteurs, statut de remboursement par dépense (FIFO
-  chronologique), part restant due sur un acompte versé à un tiers. C'est la
-  partie identifiée comme la plus risquée à réécrire sans filet — elle est
-  donc isolée et testée séparément de l'UI, pour pouvoir être reprise telle
-  quelle côté serveur.
+  participant (`computeShares` — chaque participant a un poids relatif
+  `shareWeight`, 1 = part entière par défaut ; sa part sur une dépense est
+  proportionnelle à son poids par rapport à la somme des poids de tous les
+  participants), responsabilité (override ponctuel / prise en charge
+  permanente via `guardianId` / soi-même — une personne à charge voit sa
+  dette automatiquement fusionnée avec celle de son responsable), dette
+  brute et nette par paire, simplification glouton créditeurs/débiteurs,
+  statut de remboursement par dépense (FIFO chronologique), part restant due
+  sur un acompte versé à un tiers. C'est la partie identifiée comme la plus
+  risquée à réécrire sans filet — elle est donc isolée et testée séparément
+  de l'UI, pour pouvoir être reprise telle quelle côté serveur.
 - `tests/calc.test.js` — tests unitaires (`node tests/calc.test.js`, sans
   dépendance externe) couvrant : dette croisée entre 2+ personnes, prise en
-  charge permanente vs ponctuelle, parts personnalisées (pourcentage absolu
-  de la dépense) mixées avec des parts "normales", validation des parts
-  incohérentes, paiement partiel réparti sur plusieurs dépenses (FIFO),
-  acomptes à des tiers, simplification des dettes.
+  charge permanente vs ponctuelle, parts pondérées (coefficient relatif)
+  mixées avec des parts "normales", paiement partiel réparti sur plusieurs
+  dépenses (FIFO), acomptes à des tiers, simplification des dettes.
 - `scripts/data.js` — liste des devises proposées à la création d'un groupe
   (les personnes viennent de Supabase, table `profiles`).
 - `scripts/supabase-client.js` — instancie le client `supabase-js` (URL du
@@ -67,9 +68,12 @@ node tests/calc.test.js
 
 - Premier lancement : aucun contact ni groupe préexistant, seul le compte
   qu'on vient de créer existe. Les autres membres n'entrent dans l'app
-  qu'invités par e-mail à la création d'un groupe (prénom + e-mail + part de
-  contribution en %) — un vrai compte est créé pour eux et un vrai e-mail
-  d'invitation est envoyé (Supabase Auth `inviteUserByEmail`).
+  qu'invités par e-mail à la création d'un groupe (prénom + e-mail +
+  coefficient de part) — un vrai compte est créé pour eux et un vrai e-mail
+  d'invitation est envoyé (Supabase Auth `inviteUserByEmail`). Une personne à
+  charge (enfant, dépendant sans compte) se crée elle depuis "gérer les
+  membres" d'un groupe (nom + type + coefficient + responsable), sans e-mail
+  ni compte Supabase Auth.
 - Chaque groupe a sa propre devise, choisie à sa création, utilisée pour son
   détail, ses suggestions d'équilibrage et ses dépenses (y compris listées
   dans l'onglet "toutes les dépenses"). Les agrégats qui traversent plusieurs
@@ -86,11 +90,14 @@ node tests/calc.test.js
 - **P0 — fait** : vrai backend d'auth (Supabase Auth — mot de passe, lien
   magique, et création de compte), vraie base de données Postgres avec RLS
   (remplace `localStorage`), vrai flux d'invitation par e-mail pour rejoindre
-  un groupe. Cf. `supabase/README.md` pour la configuration du projet.
+  un groupe, foyers + personnes à charge + coefficients de part relatifs
+  (édition du type, du coefficient et du responsable depuis "gérer les
+  membres"). Cf. `supabase/README.md` pour la configuration du projet.
 - **P1 — important** : notifications de relance réelles (push — nécessite
   l'enregistrement d'un token device par utilisateur et un service d'envoi
-  type Firebase Cloud Messaging / APNs), édition du responsable par défaut
-  (prise en charge permanente) depuis l'app — actuellement non exposé en UI.
+  type Firebase Cloud Messaging / APNs), vues consolidées par foyer et
+  optimisation avancée des remboursements, profils de répartition
+  réutilisables, dépenses partielles par foyer.
 - **P2 — confort** : recherche/filtres sur dépenses et historique, possibilité
   pour un membre non-admin de quitter un groupe.
 

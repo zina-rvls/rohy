@@ -18,7 +18,8 @@ tel quel (ex. GitHub Pages) ; seul Supabase héberge la base et l'auth.
 ## 2. Appliquer le schéma
 
 Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
-`migrations/0001_init.sql` PUIS `migrations/0002_admin_manage_share.sql`
+`migrations/0001_init.sql`, PUIS `0002_admin_manage_share.sql`, PUIS
+`0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -34,9 +35,17 @@ puis `supabase db push`).
 
 `0002_admin_manage_share.sql` ajoute :
 - La possibilité pour l'admin d'un groupe de modifier la part de
-  contribution (`share_percent`) d'un co-membre depuis "gérer les membres".
+  contribution d'un co-membre depuis "gérer les membres".
 - Une colonne `email` sur `profiles`, utilisée pour retrouver le compte
   existant d'une personne ré-invitée dans un autre groupe.
+
+`0003_group_admin_select.sql` corrige la policy de lecture des groupes pour
+que l'admin voie bien le groupe qu'il vient de créer (`INSERT ... RETURNING`).
+
+`0004_households_dependents_weights.sql` ajoute la gestion des foyers, des
+personnes à charge (profils sans compte de connexion) et des coefficients de
+part relatifs (`share_weight`, qui remplace `share_percent`) — cf. les
+commentaires en tête du fichier pour le détail des changements.
 
 ## 3. Configurer l'authentification
 

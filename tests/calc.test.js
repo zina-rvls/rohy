@@ -52,11 +52,11 @@ test('dette croisée entre 2+ personnes se réduit à un seul solde net par pair
 });
 
 // --- Scénario 2 : prise en charge permanente vs ponctuelle ---
-test('override ponctuel (overrides) prime sur la prise en charge permanente (defaultCoveredBy)', () => {
+test('override ponctuel (overrides) prime sur la prise en charge permanente (guardianId)', () => {
   const people = [
     { id: 'parent', name: 'Parent' },
     { id: 'tiers', name: 'Tiers' },
-    { id: 'enfant', name: 'Enfant', defaultCoveredBy: 'parent' },
+    { id: 'enfant', name: 'Enfant', guardianId: 'parent' },
   ];
   // Dépense sans override : l'enfant est pris en charge par son responsable permanent (parent)
   const withoutOverride = [
@@ -76,46 +76,31 @@ test('override ponctuel (overrides) prime sur la prise en charge permanente (def
   close(calc.pairNet('tiers2', 'tiers', debts2), -20, "l'override ponctuel impute la dette au responsable ponctuel");
 });
 
-// --- Scénario 3 : parts mixtes (pourcentage absolu de la dépense) ---
-test('computeShares : une part personnalisée est un % absolu de la dépense, le reste se partage également', () => {
+// --- Scénario 3 : parts pondérées (coefficient relatif, pas un % absolu) ---
+test('computeShares : la part de chacun est proportionnelle à son poids relatif (shareWeight)', () => {
   const people = [
     { id: 'a', name: 'A' },
-    { id: 'part50', name: 'Part50', sharePercent: 50 },
+    { id: 'part50', name: 'Part50', shareWeight: 0.5 },
   ];
-  // Cas rapporté par l'utilisateur : A (normal) + Part50 (50%) sur 25000 -> 12500 chacun.
+  // Cas rapporté par l'utilisateur : A (poids 1) + Part50 (poids 0.5) sur 25000
+  // -> total des poids = 1.5, valeur d'une part = 16666.67 -> A doit 16666.67, Part50 doit 8333.33.
   const shares2 = calc.computeShares(25000, ['a', 'part50'], people);
-  close(shares2.part50, 12500, 'part50 doit exactement 50% de 25000');
-  close(shares2.a, 12500, 'le reste (50%) revient à A, seul participant "normal"');
+  close(shares2.a, 16666.67, 'A (poids 1) doit les 2/3 de 25000');
+  close(shares2.part50, 8333.33, 'Part50 (poids 0.5) doit le 1/3 de 25000');
 
   const people4 = [
     { id: 'a', name: 'A' },
     { id: 'b', name: 'B' },
-    { id: 'part50', name: 'Part50', sharePercent: 50 },
-    { id: 'part25', name: 'Part25', sharePercent: 25 },
+    { id: 'part50', name: 'Part50', shareWeight: 0.5 },
+    { id: 'part25', name: 'Part25', shareWeight: 0.25 },
   ];
-  // part50 doit 50, part25 doit 25 ; il reste 25% à partager entre A et B (12,5% chacun).
+  // Total des poids = 1 + 1 + 0.5 + 0.25 = 2.75, valeur d'une part = 200 / 2.75.
   const shares4 = calc.computeShares(200, ['a', 'b', 'part50', 'part25'], people4);
-  close(shares4.part50, 100, 'part50 (50% de 200)');
-  close(shares4.part25, 50, 'part25 (25% de 200)');
-  close(shares4.a, 25, 'A se partage le 25% restant à parts égales avec B');
-  close(shares4.b, 25, 'B se partage le 25% restant à parts égales avec A');
-});
-
-test('validateShareSplit rejette des parts personnalisées impossibles', () => {
-  const people = [
-    { id: 'a', name: 'A', sharePercent: 60 },
-    { id: 'b', name: 'B', sharePercent: 60 },
-  ];
-  assert.ok(calc.validateShareSplit(['a', 'b'], people), 'la somme (120%) dépasse 100%, doit être rejetée');
-
-  const peopleOk = [
-    { id: 'a', name: 'A', sharePercent: 40 },
-    { id: 'b', name: 'B', sharePercent: 60 },
-  ];
-  assert.strictEqual(calc.validateShareSplit(['a', 'b'], peopleOk), null, '40% + 60% = 100%, doit être accepté');
-
-  const peopleNormal = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
-  assert.strictEqual(calc.validateShareSplit(['a', 'b'], peopleNormal), null, 'aucune part personnalisée, toujours valide');
+  const unit = 200 / 2.75;
+  close(shares4.a, unit, 'A (poids 1)');
+  close(shares4.b, unit, 'B (poids 1)');
+  close(shares4.part50, unit * 0.5, 'Part50 (poids 0.5)');
+  close(shares4.part25, unit * 0.25, 'Part25 (poids 0.25)');
 });
 
 // --- Scénario 4 : paiement partiel réparti sur plusieurs dépenses (FIFO) ---

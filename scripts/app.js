@@ -62,8 +62,12 @@
       showAddExpense: false,
       showAddGroup: false,
       showSettle: false,
+      showAddDependentForm: false,
+      households: [],
+      newHouseholdName: '',
+      dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {} },
-      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', sharePercent: '100' }] },
+      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1' }] },
       submittingGroup: false,
       settleForm: { from: null, to: null, amount: '' },
       formError: null,
@@ -110,10 +114,10 @@
   }
   function initials(name) { return name.slice(0, 2).toUpperCase(); }
   function colorForBalance(n) { return calc.colorForBalance(n); }
-  function hasReducedShare(p) { return p.sharePercent != null && p.sharePercent !== 100; }
+  function hasCustomWeight(p) { return p.shareWeight != null && Math.abs(p.shareWeight - 1) > 0.001; }
   function shareBadge(p, inline) {
-    if (!hasReducedShare(p)) return '';
-    return '<span class="badge-child' + (inline ? ' inline' : '') + '">part ' + p.sharePercent + '%</span>';
+    if (!hasCustomWeight(p)) return '';
+    return '<span class="badge-child' + (inline ? ' inline' : '') + '">coef. ' + String(p.shareWeight).replace('.', ',') + '</span>';
   }
 
   function computeDebts() { return calc.computeDebts(state.people, state.expenses, state.payments); }
@@ -152,15 +156,23 @@
       sb.from('expense_participants').select('*'),
       sb.from('payments').select('*'),
       sb.from('reminders').select('*'),
+      sb.from('households').select('*'),
     ]).then(function (results) {
       var err = firstErrorOf(results);
       if (err) throw err;
       var profileRows = results[0].data, groupRows = results[1].data, memberRows = results[2].data,
         expenseRows = results[3].data, participantRows = results[4].data, paymentRows = results[5].data,
-        reminderRows = results[6].data;
+        reminderRows = results[6].data, householdRows = results[7].data;
 
       var people = profileRows.map(function (p) {
-        return { id: p.id, name: p.name, color: p.color, sharePercent: p.share_percent, defaultCoveredBy: p.default_covered_by || undefined };
+        return {
+          id: p.id, name: p.name, color: p.color, shareWeight: p.share_weight,
+          guardianId: p.guardian_id || undefined, participantType: p.participant_type,
+          householdId: p.household_id || undefined,
+        };
+      });
+      var households = householdRows.map(function (h) {
+        return { id: h.id, name: h.name, color: h.color, createdBy: h.created_by };
       });
       var groups = groupRows.map(function (g) {
         return {
@@ -185,7 +197,7 @@
         return { id: r.id, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message };
       });
 
-      setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, dataLoading: false });
+      setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, households: households, dataLoading: false });
     }).catch(function (err) {
       setState({ dataLoading: false });
       showToast('erreur de chargement : ' + (err && err.message ? err.message : 'inconnue'));
@@ -312,7 +324,7 @@
     var g = groupId ? group(groupId) : state.groups[0];
     if (!g) { showToast('crée d\'abord un groupe pour ajouter une dépense'); return; }
     var overrides = {};
-    g.memberIds.forEach(function (pid) { if (person(pid).defaultCoveredBy) overrides[pid] = person(pid).defaultCoveredBy; });
+    g.memberIds.forEach(function (pid) { if (person(pid).guardianId) overrides[pid] = person(pid).guardianId; });
     setState({
       showAddExpense: true,
       formError: null,
@@ -358,7 +370,7 @@
   function selectGroupForForm(groupId) {
     var g = group(groupId);
     var overrides = {};
-    g.memberIds.forEach(function (pid) { if (person(pid).defaultCoveredBy) overrides[pid] = person(pid).defaultCoveredBy; });
+    g.memberIds.forEach(function (pid) { if (person(pid).guardianId) overrides[pid] = person(pid).guardianId; });
     setState(function (s) { return { form: Object.assign({}, s.form, { groupId: groupId, participantIds: g.memberIds.slice(), overrides: overrides }) }; });
   }
   function selectPayer(pid) { setState(function (s) { return { form: Object.assign({}, s.form, { paidBy: pid }) }; }); }
@@ -384,8 +396,6 @@
     if (!amt || amt <= 0) { setState({ formError: 'montant invalide.' }); return; }
     if (!f.date) { setState({ formError: 'choisis une date.' }); return; }
     if (f.participantIds.length === 0) { setState({ formError: 'sélectionne au moins un participant.' }); return; }
-    var shareError = calc.validateShareSplit(f.participantIds, state.people);
-    if (shareError) { setState({ formError: shareError }); return; }
     var g = group(f.groupId);
     var paidExternal = amt;
     if (!f.fullyPaid) {
@@ -434,7 +444,7 @@
       showAddGroup: true,
       formError: null,
       submittingGroup: false,
-      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', sharePercent: '100' }] },
+      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1' }] },
     });
   }
   function setGroupName(v) { setStateSilent(function (s) { return { groupForm: Object.assign({}, s.groupForm, { name: v }) }; }); }
@@ -450,14 +460,14 @@
   }
   function setInviteeName(index, v) { updateInvitee(index, 'name', v, true); }
   function setInviteeEmail(index, v) { updateInvitee(index, 'email', v, true); }
-  function setInviteeShare(index, v) { updateInvitee(index, 'sharePercent', v, true); }
+  function setInviteeShare(index, v) { updateInvitee(index, 'shareWeight', v, true); }
   function addInviteeRow() {
-    setState(function (s) { return { groupForm: Object.assign({}, s.groupForm, { invitees: s.groupForm.invitees.concat([{ name: '', email: '', sharePercent: '100' }]) }) }; });
+    setState(function (s) { return { groupForm: Object.assign({}, s.groupForm, { invitees: s.groupForm.invitees.concat([{ name: '', email: '', shareWeight: '1' }]) }) }; });
   }
   function removeInviteeRow(index) {
     setState(function (s) {
       var invitees = s.groupForm.invitees.filter(function (_, i) { return i !== index; });
-      if (invitees.length === 0) invitees = [{ name: '', email: '', sharePercent: '100' }];
+      if (invitees.length === 0) invitees = [{ name: '', email: '', shareWeight: '1' }];
       return { groupForm: Object.assign({}, s.groupForm, { invitees: invitees }) };
     });
   }
@@ -483,7 +493,7 @@
           return sb.functions.invoke('invite-member', {
             body: {
               groupId: newGroup.id, name: invitee.name.trim(), email: invitee.email.trim(),
-              sharePercent: invitee.sharePercent, color: INVITEE_COLORS[idx % INVITEE_COLORS.length],
+              shareWeight: invitee.shareWeight, color: INVITEE_COLORS[idx % INVITEE_COLORS.length],
             },
           }).then(function (inviteRes) {
             return (inviteRes.error || (inviteRes.data && inviteRes.data.error)) ? invitee.name.trim() : null;
@@ -524,13 +534,76 @@
       loadAppData();
     });
   }
-  function setSharePercent(personId, value) {
-    var n = parseInt(value, 10);
-    if (isNaN(n)) return;
-    n = Math.max(0, Math.min(100, n));
-    sb.from('profiles').update({ share_percent: n }).eq('id', personId).then(function (res) {
+  function setShareWeight(personId, value) {
+    var w = parseFloat(String(value).replace(',', '.'));
+    if (isNaN(w) || w < 0) return;
+    sb.from('profiles').update({ share_weight: w }).eq('id', personId).then(function (res) {
       if (res.error) { showToast('erreur : ' + res.error.message); return; }
       loadAppData();
+    });
+  }
+  function setParticipantType(personId, type) {
+    sb.from('profiles').update({ participant_type: type }).eq('id', personId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData();
+    });
+  }
+  function setGuardian(personId, guardianId) {
+    if (guardianId === personId) return;
+    sb.from('profiles').update({ guardian_id: guardianId || null }).eq('id', personId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData();
+    });
+  }
+  function setMemberHousehold(personId, householdId) {
+    sb.from('profiles').update({ household_id: householdId || null }).eq('id', personId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      loadAppData();
+    });
+  }
+  function setNewHouseholdName(v) { setStateSilent({ newHouseholdName: v }); }
+  function createHousehold() {
+    var name = (state.newHouseholdName || '').trim();
+    if (!name) return;
+    sb.from('households').insert({ name: name, created_by: state.currentUserId }).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      setState({ newHouseholdName: '' });
+      loadAppData().then(function () { showToast('foyer créé'); });
+    });
+  }
+
+  // ---------- Personnes à charge ----------
+  function toggleAddDependentForm() {
+    setState(function (s) {
+      return {
+        showAddDependentForm: !s.showAddDependentForm,
+        formError: null,
+        dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null },
+      };
+    });
+  }
+  function setDependentName(v) { setStateSilent(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { name: v }) }; }); }
+  function setDependentWeight(v) { setStateSilent(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { shareWeight: v }) }; }); }
+  function setDependentType(v) { setState(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { participantType: v }) }; }); }
+  function setDependentGuardian(v) { setState(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { guardianId: v || null }) }; }); }
+  function submitDependent() {
+    var df = state.dependentForm;
+    var groupId = state.manageMembersGroupId;
+    if (!df.name.trim()) { setState({ formError: 'donne un prénom à la personne à charge.' }); return; }
+    if (!df.guardianId) { setState({ formError: 'choisis un responsable.' }); return; }
+    var w = parseFloat((df.shareWeight || '1').replace(',', '.'));
+    if (isNaN(w) || w < 0) { setState({ formError: 'coefficient invalide.' }); return; }
+    setState({ formError: null });
+    sb.from('profiles').insert({
+      name: df.name.trim(), color: INVITEE_COLORS[state.people.length % INVITEE_COLORS.length],
+      share_weight: w, participant_type: df.participantType, guardian_id: df.guardianId,
+    }).select().single().then(function (res) {
+      if (res.error) { setState({ formError: res.error.message }); return; }
+      sb.from('group_members').insert({ group_id: groupId, user_id: res.data.id }).then(function (memRes) {
+        if (memRes.error) { showToast('erreur : ' + memRes.error.message); return; }
+        setState({ showAddDependentForm: false, dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null } });
+        loadAppData().then(function () { showToast('personne à charge ajoutée'); });
+      });
     });
   }
 
@@ -539,7 +612,7 @@
   function closeModal() {
     setState({
       showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
-      showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
+      showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null, showAddDependentForm: false,
     });
   }
 
@@ -691,14 +764,14 @@
     var moi = state.currentUserId;
     var cu = person(moi);
     var globalDebts = computeDebts();
-    var otherPeople = state.people.filter(function (p) { return p.id !== moi; });
+    var otherPeople = state.people.filter(function (p) { return p.id !== moi && !p.guardianId; });
     var pendingShare = calc.computePendingShare(state.people, state.expenses, moi);
 
     var owed = 0, owe = 0;
     var rows = otherPeople.map(function (p) {
       var bal = pairNet(moi, p.id, globalDebts);
       if (bal > 0) owed += bal; else owe += -bal;
-      var covered = p.defaultCoveredBy ? person(p.defaultCoveredBy) : null;
+      var covered = p.guardianId ? person(p.guardianId) : null;
       var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmt(bal) : 'tu dois ' + fmt(-bal));
       return (
         '<button class="person-row pressable" data-action="openPerson" data-id="' + p.id + '">' +
@@ -775,7 +848,7 @@
         share += shares[pid] || 0;
       });
       var bal = netBalanceFor(pid, g.id);
-      var covered = p.defaultCoveredBy ? person(p.defaultCoveredBy) : null;
+      var covered = p.guardianId ? person(p.guardianId) : null;
       var balLabel = covered ? '→ ' + covered.name : (Math.abs(bal) < 0.5 ? '0,00' : fmtIn(bal, g.currency));
       var balColor = covered ? 'var(--status-neutral)' : colorForBalance(bal);
       return (
@@ -826,7 +899,7 @@
     if (!p) return '';
     var moi = state.currentUserId;
     var bal = pairNet(moi, p.id);
-    var covered = p.defaultCoveredBy ? person(p.defaultCoveredBy) : null;
+    var covered = p.guardianId ? person(p.guardianId) : null;
     var lastReminder = state.reminders.slice().reverse().find(function (r) { return r.toPersonId === p.id; });
     var relatedExpenses = state.expenses.filter(function (e) { return e.participants.indexOf(p.id) !== -1 || e.paidBy === p.id; })
       .slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
@@ -837,7 +910,7 @@
       '<div class="person-header">' +
       '<div class="avatar avatar-64" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
       '<div class="person-header-name">' + escapeHtml(p.name) + '</div>' +
-      (hasReducedShare(p) ? '<div style="margin-top:8px">' + shareBadge(p, false) + '</div>' : '') +
+      (hasCustomWeight(p) ? '<div style="margin-top:8px">' + shareBadge(p, false) + '</div>' : '') +
       (covered ? '<div class="covered-note" style="margin-top:6px">pris en charge par ' + escapeHtml(covered.name) + '</div>' : '') +
       '<div class="person-header-amount" style="color:' + colorForBalance(bal) + '">' + escapeHtml(amountLabel) + '</div>' +
       '</div>' +
@@ -1033,9 +1106,8 @@
         '</div>' +
         '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
         '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span style="font-size:12.5px;color:var(--text-secondary)">part de contribution</span>' +
-        '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.sharePercent) + '" inputmode="numeric" />' +
-        '<span style="font-size:11px;color:var(--text-tertiary)">%</span>' +
+        '<span style="font-size:12.5px;color:var(--text-secondary)">coefficient (1 = part entière)</span>' +
+        '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
         '</div>' +
         '</div>'
       );
@@ -1095,25 +1167,86 @@
   function renderManageMembersModal() {
     var mg = group(state.manageMembersGroupId);
     if (!mg) return '';
+
+    var guardianOptionsFor = function (p) {
+      var opts = '<option value=""' + (!p.guardianId ? ' selected' : '') + '>— aucun —</option>';
+      opts += state.people.filter(function (x) { return x.id !== p.id; }).map(function (x) {
+        return '<option value="' + x.id + '"' + (p.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>';
+      }).join('');
+      return opts;
+    };
+    var householdOptionsFor = function (p) {
+      var opts = '<option value=""' + (!p.householdId ? ' selected' : '') + '>— aucun foyer —</option>';
+      opts += state.households.map(function (h) {
+        return '<option value="' + h.id + '"' + (p.householdId === h.id ? ' selected' : '') + '>' + escapeHtml(h.name) + '</option>';
+      }).join('');
+      return opts;
+    };
+    var typeOptionsFor = function (p) {
+      return ['adulte', 'enfant', 'personne_a_charge'].map(function (t) {
+        return '<option value="' + t + '"' + ((p.participantType || 'adulte') === t ? ' selected' : '') + '>' + t.replace(/_/g, ' ') + '</option>';
+      }).join('');
+    };
+
     var rows = state.people.map(function (p) {
       var checked = mg.memberIds.indexOf(p.id) !== -1;
       var isAdmin = p.id === mg.adminId;
       return (
-        '<div class="checkbox-row">' +
+        '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
+        '<div class="checkbox-row" style="border-top:none">' +
         '<div class="checkbox' + (checked ? ' checked' : '') + '" data-action="toggleManageMember" data-group-id="' + mg.id + '" data-id="' + p.id + '">' + (checked ? '<i class="ph-bold ph-check"></i>' : '') + '</div>' +
         '<div style="flex:1;font-size:14px;color:var(--text-primary);font-weight:600">' + escapeHtml(p.name) + (isAdmin ? ' (admin)' : '') + '</div>' +
-        '<div style="display:flex;align-items:center;gap:4px">' +
-        '<input class="child-percent-input" data-bind-change="sharePercent" data-id="' + p.id + '" value="' + (p.sharePercent != null ? p.sharePercent : 100) + '" inputmode="numeric" />' +
-        '<span style="font-size:11px;color:var(--text-tertiary)">%</span></div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">type</div>' +
+        '<select class="text-input" style="margin-bottom:0" data-bind-change="participantType" data-id="' + p.id + '">' + typeOptionsFor(p) + '</select></div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">coefficient</div>' +
+        '<input class="text-input" style="margin-bottom:0" data-bind-change="shareWeight" data-id="' + p.id + '" value="' + (p.shareWeight != null ? p.shareWeight : 1) + '" inputmode="decimal" /></div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">responsable</div>' +
+        '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select></div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">foyer</div>' +
+        '<select class="text-input" style="margin-bottom:0" data-bind-change="household" data-id="' + p.id + '">' + householdOptionsFor(p) + '</select></div>' +
+        '</div>' +
         '</div>'
       );
     }).join('');
+
+    var dependentSection = !state.showAddDependentForm ? '' :
+      '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
+      '<div class="field-label">prénom</div>' +
+      '<input class="text-input" data-bind="dependentName" placeholder="ex : Léo" value="' + escapeHtml(state.dependentForm.name) + '" />' +
+      '<div class="field-label">type</div>' +
+      '<select class="text-input" data-bind-change="dependentType">' +
+      ['personne_a_charge', 'enfant', 'adulte'].map(function (t) {
+        return '<option value="' + t + '"' + (state.dependentForm.participantType === t ? ' selected' : '') + '>' + t.replace(/_/g, ' ') + '</option>';
+      }).join('') +
+      '</select>' +
+      '<div class="field-label">coefficient</div>' +
+      '<input class="text-input" data-bind="dependentWeight" inputmode="decimal" value="' + escapeHtml(state.dependentForm.shareWeight) + '" />' +
+      '<div class="field-label">responsable</div>' +
+      '<select class="text-input" data-bind-change="dependentGuardian">' +
+      '<option value="">— choisir —</option>' +
+      state.people.map(function (x) { return '<option value="' + x.id + '"' + (state.dependentForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
+      '</select>' +
+      '<button class="btn-primary pressable" style="margin-top:10px" data-action="submitDependent">ajouter</button>' +
+      '</div>';
+
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">membres · ' + escapeHtml(mg.name) + '</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
-      rows + '</div></div>'
+      '<div class="section-label">foyers</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:14px">' +
+      '<input class="text-input" style="margin-bottom:0;flex:1" data-bind="newHouseholdName" placeholder="nom du foyer" value="' + escapeHtml(state.newHouseholdName) + '" />' +
+      '<button class="btn-outline pressable" style="flex-shrink:0" data-action="createHousehold">+ créer</button>' +
+      '</div>' +
+      '<div class="section-label">participants</div>' +
+      rows +
+      dependentSection +
+      '<button class="dashed-btn pressable" data-action="toggleAddDependentForm">' + (state.showAddDependentForm ? 'annuler' : '+ ajouter une personne à charge') + '</button>' +
+      (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
+      '</div></div>'
     );
   }
 
@@ -1182,6 +1315,9 @@
         case 'openSettle': openSettle(id); break;
         case 'submitSettle': submitSettle(); break;
         case 'toggleManageMember': toggleManageMember(groupId, id); break;
+        case 'createHousehold': createHousehold(); break;
+        case 'toggleAddDependentForm': toggleAddDependentForm(); break;
+        case 'submitDependent': submitDependent(); break;
         default: break;
       }
     };
@@ -1205,6 +1341,9 @@
         case 'inviteeName': setInviteeName(parseInt(id, 10), v); break;
         case 'inviteeEmail': setInviteeEmail(parseInt(id, 10), v); break;
         case 'inviteeShare': setInviteeShare(parseInt(id, 10), v); break;
+        case 'newHouseholdName': setNewHouseholdName(v); break;
+        case 'dependentName': setDependentName(v); break;
+        case 'dependentWeight': setDependentWeight(v); break;
         default: break;
       }
     };
@@ -1216,7 +1355,12 @@
       var id = el.getAttribute('data-id');
       switch (bind) {
         case 'override': setOverride(id, el.value); break;
-        case 'sharePercent': setSharePercent(id, el.value); break;
+        case 'shareWeight': setShareWeight(id, el.value); break;
+        case 'participantType': setParticipantType(id, el.value); break;
+        case 'guardian': setGuardian(id, el.value); break;
+        case 'household': setMemberHousehold(id, el.value); break;
+        case 'dependentType': setDependentType(el.value); break;
+        case 'dependentGuardian': setDependentGuardian(el.value); break;
         default: break;
       }
     };
