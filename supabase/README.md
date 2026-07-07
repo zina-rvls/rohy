@@ -19,7 +19,8 @@ tel quel (ex. GitHub Pages) ; seul Supabase héberge la base et l'auth.
 
 Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 `migrations/0001_init.sql`, PUIS `0002_admin_manage_share.sql`, PUIS
-`0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`
+`0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`,
+PUIS `0005_households_scoped_to_group.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -46,6 +47,11 @@ que l'admin voie bien le groupe qu'il vient de créer (`INSERT ... RETURNING`).
 personnes à charge (profils sans compte de connexion) et des coefficients de
 part relatifs (`share_weight`, qui remplace `share_percent`) — cf. les
 commentaires en tête du fichier pour le détail des changements.
+
+`0005_households_scoped_to_group.sql` rattache chaque foyer à un groupe
+(`households.group_id`, obligatoire) : un foyer créé dans un groupe n'est
+plus visible ni sélectionnable depuis un autre groupe, au même titre que les
+membres.
 
 ## 3. Configurer l'authentification
 

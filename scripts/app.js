@@ -175,7 +175,7 @@
         };
       });
       var households = householdRows.map(function (h) {
-        return { id: h.id, name: h.name, color: h.color, createdBy: h.created_by };
+        return { id: h.id, name: h.name, color: h.color, createdBy: h.created_by, groupId: h.group_id };
       });
       var groups = groupRows.map(function (g) {
         return {
@@ -598,7 +598,7 @@
   function createHousehold() {
     var name = (state.newHouseholdName || '').trim();
     if (!name) return;
-    sb.from('households').insert({ name: name, created_by: state.currentUserId }).then(function (res) {
+    sb.from('households').insert({ name: name, created_by: state.currentUserId, group_id: state.manageMembersGroupId }).then(function (res) {
       if (res.error) { showToast('erreur : ' + res.error.message); return; }
       setState({ newHouseholdName: '' });
       loadAppData().then(function () { showToast('foyer créé'); });
@@ -1238,9 +1238,10 @@
       }).join('');
       return opts;
     };
+    var groupHouseholds = state.households.filter(function (h) { return h.groupId === mg.id; });
     var householdOptionsFor = function (p) {
       var opts = '<option value=""' + (!p.householdId ? ' selected' : '') + '>— aucun foyer —</option>';
-      opts += state.households.map(function (h) {
+      opts += groupHouseholds.map(function (h) {
         return '<option value="' + h.id + '"' + (p.householdId === h.id ? ' selected' : '') + '>' + escapeHtml(h.name) + '</option>';
       }).join('');
       return opts;
