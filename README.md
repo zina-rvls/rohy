@@ -84,7 +84,21 @@ node tests/calc.test.js
   d'un seul groupe dans sa devise. En vue agrégée ("tous les groupes"), si
   les groupes du compte n'utilisent pas tous la même devise, un message
   invite à filtrer par groupe plutôt que d'afficher un total qui
-  additionnerait des devises différentes.
+  additionnerait des devises différentes. En vue agrégée (tous les groupes
+  partagent la même devise), c'est cette devise commune qui est utilisée,
+  pas un symbole câblé en dur.
+- Dans le détail d'un groupe, les membres qui partagent un même foyer sont
+  fusionnés en une seule ligne consolidée (payé/part/solde sommés, noms
+  listés en sous-titre) plutôt que d'apparaître individuellement ; les
+  suggestions de règlement ("pour équilibrer") sont pareillement consolidées
+  par foyer (un règlement entre deux membres d'un même foyer devient interne
+  et n'est plus suggéré). Le moteur de calcul (`calc.js`) continue de
+  travailler personne par personne — cette consolidation est purement un
+  regroupement d'affichage.
+- Un membre non-admin peut quitter un groupe lui-même ("quitter ce groupe"
+  dans le détail du groupe) ; comme pour un retrait par l'admin, un solde non
+  réglé reste dû et affiché tant qu'il n'est pas soldé. Seul l'admin peut
+  réintégrer quelqu'un ensuite (depuis "gérer les membres").
 - Le sélecteur "connecté en tant que" du prototype de design a été retiré :
   avec de vrais comptes, on ne peut plus impersonner un autre utilisateur
   côté client — chacun se connecte avec ses propres identifiants (mot de
@@ -102,16 +116,16 @@ node tests/calc.test.js
   magique, et création de compte), vraie base de données Postgres avec RLS
   (remplace `localStorage`), vrai flux d'invitation par e-mail pour rejoindre
   un groupe, foyers + personnes à charge + parts pondérées (édition de la
-  part et du responsable depuis "gérer les membres"). Cf. `supabase/README.md`
-  pour la configuration du projet.
+  part et du responsable depuis "gérer les membres"), vues consolidées par
+  foyer dans le détail d'un groupe, possibilité pour un membre non-admin de
+  quitter un groupe. Cf. `supabase/README.md` pour la configuration du
+  projet.
 - **P1 — important** : notifications de relance réelles (push — nécessite
   l'enregistrement d'un token device par utilisateur et un service d'envoi
-  type Firebase Cloud Messaging / APNs), vues consolidées par foyer et
-  optimisation avancée des remboursements, profils de répartition
-  réutilisables, dépenses partielles par foyer, simplification des dettes à
-  l'échelle du compte (actuellement groupe par groupe uniquement).
-- **P2 — confort** : possibilité pour un membre non-admin de quitter un
-  groupe.
+  type Firebase Cloud Messaging / APNs), optimisation avancée des
+  remboursements, profils de répartition réutilisables, dépenses partielles
+  par foyer, simplification des dettes à l'échelle du compte (actuellement
+  groupe par groupe uniquement).
 
 ## Audit de cohérence (comparatif Splitwise / Tricount)
 
@@ -128,6 +142,7 @@ charge, parts pondérées). Statut des points relevés :
 | Retirer un membre d'un groupe faisait disparaître son solde non réglé du tableau | ✅ corrigé — reste affiché, marqué "ex-membre", tant qu'il n'est pas soldé |
 | "Personne à charge" présentée comme un 3e "type" au même niveau qu'Adulte/Enfant | ✅ corrigé — `participant_type` retiré ; la prise en charge est un badge calculé à partir du responsable, indépendant de toute catégorie |
 | "+ ajouter une dépense" ciblait toujours le premier groupe créé, pas le dernier consulté | ✅ corrigé |
+| L'accueil affichait toujours "€" (devise câblée en dur) même quand tous les groupes du compte utilisent une autre devise (ex. Ar) — incohérent avec la page Groupes, qui affiche la bonne devise | ✅ corrigé — l'accueil (et les autres vues agrégées) reprend la devise commune des groupes du compte |
 
 **Gains rapides livrés**
 
@@ -149,6 +164,7 @@ charge, parts pondérées). Statut des points relevés :
 | Message d'erreur générique de `invite-member` ("Edge Function returned a non-2xx status code") au lieu du vrai motif d'échec | ✅ corrigé |
 | Invitations envoyées en parallèle à la création d'un groupe, peu robuste | ✅ corrigé — désormais séquentielles, avec possibilité de réessayer depuis "gérer les membres" |
 | Aucun moyen d'ajouter un nouveau membre après la création du groupe | ✅ corrigé — "+ ajouter un membre" dans "gérer les membres" (e-mail facultatif) |
+| Montant total peu lisible (gris clair) sur la page "toutes les dépenses" | ✅ corrigé — couleur pleine (`--text-primary`) au lieu d'une couleur héritée insuffisamment contrastée |
 
 **Reste à faire / différé**
 
@@ -156,9 +172,8 @@ charge, parts pondérées). Statut des points relevés :
 |---|---|
 | Simplification des dettes à l'échelle du compte (actuellement calculée groupe par groupe, ce qui peut suggérer des transactions redondantes entre deux mêmes personnes partageant plusieurs groupes) | ⏳ différé |
 | Montant ou pourcentage exact par personne sur une dépense, au-delà du poids relatif | ⏳ différé — recoupe la Fonctionnalité 8 du brief (dépenses partielles), prévue en Étape 3 |
-| Vues consolidées par foyer + optimisation avancée des remboursements | ⏳ différé — Fonctionnalités 6 et 9 du brief, Étape 2 |
+| Optimisation avancée des remboursements (au-delà de la simplification gloutonne actuelle) | ⏳ différé — Fonctionnalité 9 du brief, Étape 2 |
 | Dépenses récurrentes | ⏳ différé — hors brief actuel, à arbitrer |
-| Possibilité pour un membre non-admin de quitter un groupe | ⏳ différé |
 
 Le moteur de calcul (`scripts/calc.js`) reste porté fidèlement et testé côté
 client ; la logique de dettes elle-même n'est pas dupliquée côté serveur —

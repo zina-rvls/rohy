@@ -57,6 +57,8 @@
       showConfirmRemoveMember: false,
       confirmRemoveMemberGroupId: null,
       confirmRemoveMemberId: null,
+      showConfirmLeaveGroup: false,
+      confirmLeaveGroupId: null,
       selectedGroupId: null,
       selectedPersonId: null,
       homeGroupFilter: null,
@@ -113,11 +115,16 @@
   // Devise par défaut utilisée pour les agrégats qui traversent plusieurs
   // groupes (accueil, toutes les dépenses, historique) : on considère qu'un
   // même compte n'utilise en pratique qu'une seule devise à la fois (cf.
-  // README). Chaque groupe a sa propre devise pour son propre affichage.
-  function currencySymbol() { return '€'; }
+  // README) — ces vues agrégées ne s'affichent d'ailleurs que si tous les
+  // groupes du compte partagent la même devise (cf. groupsHaveSingleCurrency),
+  // donc celle du premier groupe. Chaque groupe garde sa propre devise pour
+  // son propre affichage. '€' ne sert que si le compte n'a encore aucun
+  // groupe (aucun montant à afficher de toute façon).
+  function defaultCurrency() { return state.groups.length ? state.groups[0].currency : null; }
+  function currencySymbol() { return currencySymbolFor(defaultCurrency()); }
   function currencySymbolFor(code) {
     var c = seed.CURRENCIES.find(function (x) { return x.code === code; });
-    return c ? c.symbol : currencySymbol();
+    return c ? c.symbol : '€';
   }
   function fmt(n) { return fmtIn(n, null); }
   function fmtIn(n, currencyCode) {
@@ -761,6 +768,21 @@
       loadAppData().then(function () { showToast('membre retiré du groupe'); });
     });
   }
+  function openConfirmLeaveGroup(groupId) {
+    var g = group(groupId);
+    if (!g || g.adminId === state.currentUserId) return;
+    setState({ showConfirmLeaveGroup: true, confirmLeaveGroupId: groupId });
+  }
+  function cancelLeaveGroup() { setState({ showConfirmLeaveGroup: false, confirmLeaveGroupId: null }); }
+  function confirmLeaveGroup() {
+    var groupId = state.confirmLeaveGroupId;
+    if (!groupId) return;
+    sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', state.currentUserId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      setState({ showConfirmLeaveGroup: false, confirmLeaveGroupId: null, screen: 'groups', navStack: [], selectedGroupId: null });
+      loadAppData().then(function () { showToast('tu as quitté le groupe'); });
+    });
+  }
   function setShareWeight(personId, value) {
     var w = parseFloat(String(value).replace(',', '.'));
     if (isNaN(w) || w < 0) return;
@@ -801,6 +823,7 @@
       showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
+      showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
       settleGroupId: null, showAddMemberForm: false,
     });
   }
@@ -1094,6 +1117,67 @@
     return cards + '<button class="dashed-btn pressable" data-action="openAddGroup">+ nouveau groupe / événement</button>';
   }
 
+  // Regroupe les membres d'un groupe partageant un même foyer en une seule
+  // "unité" d'affichage (vue consolidée par foyer) : paid/part/solde
+  // sommés, membres listés en sous-titre. Le moteur de calcul (calc.js)
+  // continue de travailler personne par personne — cette consolidation
+  // est purement un regroupement d'affichage, appliqué seulement aux
+  // membres qui ont effectivement un foyer commun dans ce groupe.
+  function computeGroupUnits(g, effectiveIds) {
+    var groupHouseholds = state.households.filter(function (h) { return h.groupId === g.id; });
+    var units = [];
+    var unitByHousehold = {};
+    effectiveIds.forEach(function (pid) {
+      var p = person(pid);
+      var h = p.householdId ? groupHouseholds.find(function (x) { return x.id === p.householdId; }) : null;
+      if (!h) { units.push({ key: pid, label: p.name, memberIds: [pid] }); return; }
+      var existing = unitByHousehold[h.id];
+      if (existing) { existing.memberIds.push(pid); return; }
+      var unit = { key: 'foyer:' + h.id, label: h.name, memberIds: [pid] };
+      unitByHousehold[h.id] = unit;
+      units.push(unit);
+    });
+    return units;
+  }
+
+  // Reprend les suggestions de règlement calculées personne par personne
+  // (calc.simplify) et les consolide par foyer : un règlement entre deux
+  // membres d'un même foyer devient interne (plus besoin de le suggérer),
+  // et les montants entre deux mêmes foyers/personnes sont additionnés en
+  // une seule suggestion nette.
+  function consolidateSuggestionsByUnit(txns, units) {
+    var unitKeyOfPerson = {}, labelOfUnit = {};
+    units.forEach(function (u) {
+      labelOfUnit[u.key] = u.label;
+      u.memberIds.forEach(function (pid) { unitKeyOfPerson[pid] = u.key; });
+    });
+    var totals = {};
+    txns.forEach(function (t) {
+      var fu = unitKeyOfPerson[t.from], tu = unitKeyOfPerson[t.to];
+      if (!fu || !tu || fu === tu) return;
+      var k = fu + '>' + tu;
+      totals[k] = (totals[k] || 0) + t.amount;
+    });
+    var seen = {}, out = [];
+    Object.keys(totals).forEach(function (k) {
+      if (seen[k]) return;
+      seen[k] = true;
+      var parts = k.split('>'), fu = parts[0], tu = parts[1];
+      var revKey = tu + '>' + fu;
+      var amt = totals[k];
+      if (totals[revKey] != null) {
+        seen[revKey] = true;
+        var net = amt - totals[revKey];
+        if (Math.abs(net) < 0.005) return;
+        if (net > 0) out.push({ fromLabel: labelOfUnit[fu], toLabel: labelOfUnit[tu], amount: net });
+        else out.push({ fromLabel: labelOfUnit[tu], toLabel: labelOfUnit[fu], amount: -net });
+      } else {
+        out.push({ fromLabel: labelOfUnit[fu], toLabel: labelOfUnit[tu], amount: amt });
+      }
+    });
+    return out;
+  }
+
   function renderGroupDetail() {
     var g = group(state.selectedGroupId);
     if (!g) return '';
@@ -1113,35 +1197,56 @@
       if (Math.abs(netBalanceFor(p.id, g.id)) > 0.5) effectiveIds.push(p.id);
     });
 
-    var memberRows = effectiveIds.map(function (pid) {
-      var p = person(pid);
-      var isExMember = g.memberIds.indexOf(pid) === -1;
-      var paid = state.expenses.filter(function (e) { return e.groupId === g.id && e.paidBy === pid; })
-        .reduce(function (a, e) { return a + (e.paidExternal != null ? e.paidExternal : e.amount); }, 0);
-      var share = 0;
-      state.expenses.filter(function (e) { return e.groupId === g.id && e.participants.indexOf(pid) !== -1; }).forEach(function (e) {
-        var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
-        var shares = calc.computeShares(effAmount, e.participants, state.people);
-        share += shares[pid] || 0;
+    var units = computeGroupUnits(g, effectiveIds);
+    var memberRows = units.map(function (u) {
+      var isHousehold = u.memberIds.length > 1;
+      var paid = 0, share = 0, bal = 0;
+      u.memberIds.forEach(function (pid) {
+        paid += state.expenses.filter(function (e) { return e.groupId === g.id && e.paidBy === pid; })
+          .reduce(function (a, e) { return a + (e.paidExternal != null ? e.paidExternal : e.amount); }, 0);
+        state.expenses.filter(function (e) { return e.groupId === g.id && e.participants.indexOf(pid) !== -1; }).forEach(function (e) {
+          var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
+          var shares = calc.computeShares(effAmount, e.participants, state.people);
+          share += shares[pid] || 0;
+        });
+        bal += netBalanceFor(pid, g.id);
       });
-      var bal = netBalanceFor(pid, g.id);
-      var covered = p.guardianId ? person(p.guardianId) : null;
-      var balLabel = covered ? '→ ' + covered.name : (Math.abs(bal) < 0.5 ? '0,00' : fmtIn(bal, g.currency));
-      var balColor = covered ? 'var(--status-neutral)' : colorForBalance(bal);
+
+      if (!isHousehold) {
+        var pid0 = u.memberIds[0];
+        var p = person(pid0);
+        var isExMember = g.memberIds.indexOf(pid0) === -1;
+        var covered = p.guardianId ? person(p.guardianId) : null;
+        var balLabel = covered ? '→ ' + covered.name : (Math.abs(bal) < 0.5 ? '0,00' : fmtIn(bal, g.currency));
+        var balColor = covered ? 'var(--status-neutral)' : colorForBalance(bal);
+        return (
+          '<div class="member-row">' +
+          '<div class="avatar avatar-30" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
+          '<div class="col-name">' + escapeHtml(p.name) + (isExMember ? '<span class="badge-child inline">ex-membre</span>' : '') + shareBadge(p, true) + '</div>' +
+          '<div class="col-num">' + fmtIn(paid, g.currency) + '</div>' +
+          '<div class="col-num">' + fmtIn(share, g.currency) + '</div>' +
+          '<div class="col-bal" style="color:' + balColor + '">' + escapeHtml(balLabel) + '</div>' +
+          '</div>'
+        );
+      }
+
+      var memberNames = u.memberIds.map(function (pid) { return person(pid).name; }).join(', ');
+      var balLabelH = Math.abs(bal) < 0.5 ? '0,00' : fmtIn(bal, g.currency);
       return (
         '<div class="member-row">' +
-        '<div class="avatar avatar-30" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
-        '<div class="col-name">' + escapeHtml(p.name) + (isExMember ? '<span class="badge-child inline">ex-membre</span>' : '') + shareBadge(p, true) + '</div>' +
+        '<div class="avatar avatar-30" style="background:var(--surface-overlay);color:var(--text-secondary)"><i class="ph-bold ph-house-line"></i></div>' +
+        '<div class="col-name">' + escapeHtml(u.label) + '<span class="badge-child inline">foyer</span>' +
+        '<div style="font-size:11px;font-weight:400;color:var(--text-tertiary);margin-top:2px">' + escapeHtml(memberNames) + '</div></div>' +
         '<div class="col-num">' + fmtIn(paid, g.currency) + '</div>' +
         '<div class="col-num">' + fmtIn(share, g.currency) + '</div>' +
-        '<div class="col-bal" style="color:' + balColor + '">' + escapeHtml(balLabel) + '</div>' +
+        '<div class="col-bal" style="color:' + colorForBalance(bal) + '">' + escapeHtml(balLabelH) + '</div>' +
         '</div>'
       );
     }).join('');
 
-    var txns = calc.simplify(debts, effectiveIds);
+    var txns = consolidateSuggestionsByUnit(calc.simplify(debts, effectiveIds), units);
     var suggestions = txns.map(function (t) {
-      return '<div class="suggestion-row"><div><b>' + escapeHtml(person(t.from).name) + '</b> → <b>' + escapeHtml(person(t.to).name) + '</b></div>' +
+      return '<div class="suggestion-row"><div><b>' + escapeHtml(t.fromLabel) + '</b> → <b>' + escapeHtml(t.toLabel) + '</b></div>' +
         '<div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div></div>';
     }).join('');
 
@@ -1164,7 +1269,10 @@
         '<div class="admin-actions">' +
         '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> gérer les membres</button>' +
         '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '"><i class="ph-bold ph-trash"></i></button>' +
-        '</div>' : '') +
+        '</div>' :
+        '<div class="admin-actions">' +
+        '<button class="btn-outline pressable" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open"></i> quitter ce groupe</button>' +
+        '</div>') +
       (txns.length ? '<div class="section-label">pour équilibrer</div>' + suggestions : '') +
       '<div class="section-label" style="margin-top:18px">dépenses</div>' + expenseRows +
       '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseForGroup">ajouter une dépense</button>'
@@ -1264,7 +1372,7 @@
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> devises multiples</div>' +
         '<div class="warning-banner-body">Tes groupes utilisent des devises différentes — choisis un groupe ci-dessus pour voir les totaux.</div></div>' :
         '<div class="summary-cards">' +
-        '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value">' + fmtC(total) + '</div></div>' +
+        '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value" style="color:var(--text-primary)">' + fmtC(total) + '</div></div>' +
         '<div class="summary-card"><div class="summary-card-label">remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmtC(totalOwed - totalRemaining) + '</div></div>' +
         '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
         '</div>' +
@@ -1284,7 +1392,8 @@
       items.push({ date: e.date, icon: e.icon, iconBg: 'var(--surface-overlay)', iconColor: 'var(--text-secondary)', text: escapeHtml(person(e.paidBy).name) + ' a payé « ' + escapeHtml(e.label) + ' »' + (g ? ' · ' + escapeHtml(g.name) : ''), amountLabel: fmtIn(e.amount, g && g.currency), color: 'var(--text-primary)' });
     });
     state.payments.forEach(function (p) {
-      items.push({ date: p.date, icon: 'ph-bold ph-check-circle', iconBg: 'var(--status-positive-bg)', iconColor: 'var(--status-positive)', text: escapeHtml(person(p.from).name) + ' → ' + escapeHtml(person(p.to).name), amountLabel: fmt(p.amount), color: 'var(--status-positive)' });
+      var pg = p.groupId ? group(p.groupId) : null;
+      items.push({ date: p.date, icon: 'ph-bold ph-check-circle', iconBg: 'var(--status-positive-bg)', iconColor: 'var(--status-positive)', text: escapeHtml(person(p.from).name) + ' → ' + escapeHtml(person(p.to).name), amountLabel: fmtIn(p.amount, pg && pg.currency), color: 'var(--status-positive)' });
     });
     state.reminders.forEach(function (r) {
       items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'rappel envoyé à ' + escapeHtml(person(r.toPersonId).name), amountLabel: null, color: null });
@@ -1321,6 +1430,7 @@
     if (state.showManageMembers) out += renderManageMembersModal();
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
+    if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
     return out;
   }
 
@@ -1367,6 +1477,27 @@
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="cancelRemoveMember">annuler</button>' +
       '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmRemoveMember">retirer</button>' +
+      '</div></div></div>'
+    );
+  }
+
+  function renderConfirmLeaveGroupModal() {
+    var g = group(state.confirmLeaveGroupId);
+    if (!g) return '';
+    var bal = netBalanceFor(state.currentUserId, g.id);
+    var hasBalance = Math.abs(bal) > 0.5;
+    return (
+      '<div class="modal-overlay center" data-action="cancelLeaveGroup">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">quitter « ' + escapeHtml(g.name) + ' » ?</div>' +
+      '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
+      (hasBalance
+        ? 'Tu as un solde non réglé de ' + fmtIn(Math.abs(bal), g.currency) + ' dans ce groupe — il reste dû même après ton départ. Tu ne verras plus ce groupe ; seul l\'admin pourra t\'y réintégrer.'
+        : 'Tu ne verras plus ce groupe. Seul l\'admin pourra t\'y réintégrer.') +
+      '</div>' +
+      '<div class="modal-footer-buttons">' +
+      '<button class="btn-cancel pressable" data-action="cancelLeaveGroup">annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmLeaveGroup">quitter</button>' +
       '</div></div></div>'
     );
   }
@@ -1681,6 +1812,9 @@
         case 'openConfirmRemoveMember': openConfirmRemoveMember(groupId, id); break;
         case 'cancelRemoveMember': cancelRemoveMember(); break;
         case 'confirmRemoveMember': confirmRemoveMember(); break;
+        case 'openConfirmLeaveGroup': openConfirmLeaveGroup(id); break;
+        case 'cancelLeaveGroup': cancelLeaveGroup(); break;
+        case 'confirmLeaveGroup': confirmLeaveGroup(); break;
         case 'createHousehold': createHousehold(); break;
         case 'toggleAddMemberForm': toggleAddMemberForm(); break;
         case 'submitAddMember': submitAddMember(); break;
