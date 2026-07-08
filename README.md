@@ -86,7 +86,14 @@ node tests/calc.test.js
   invite à filtrer par groupe plutôt que d'afficher un total qui
   additionnerait des devises différentes. En vue agrégée (tous les groupes
   partagent la même devise), c'est cette devise commune qui est utilisée,
-  pas un symbole câblé en dur.
+  pas un symbole câblé en dur. La liste des devises proposées à la création
+  d'un groupe (`scripts/data.js`) couvre en priorité les monnaies
+  africaines (public cible principal de l'app), en plus des devises
+  internationales usuelles. Chaque montant affiché sépare les milliers
+  (convention française) et n'affiche des décimales que pour les devises
+  qui en utilisent couramment au quotidien — la plupart des francs
+  africains (FCFA, Ariary, franc guinéen, rwandais...) s'affichent donc
+  sans décimales.
 - Dans le détail d'un groupe, les membres qui partagent un même foyer sont
   fusionnés en une seule ligne consolidée (payé/part/solde sommés, noms
   listés en sous-titre) plutôt que d'apparaître individuellement ; les
@@ -153,6 +160,9 @@ charge, parts pondérées). Statut des points relevés :
 | Bouton "créer un groupe" visible directement sur l'accueil vide | ✅ fait |
 | Terminologie "coefficient" renommée en "part" (plus parlant pour un usage non technique) | ✅ fait |
 | Pièce jointe/reçu par dépense (photo ou PDF, stockage privé + URL signée) | ✅ fait |
+| Devises africaines dans le choix de devise (public cible principal de l'app), pas seulement EUR/USD/GBP/CHF/CAD | ✅ fait |
+| Séparateur de milliers sur tous les montants ; décimales masquées pour les devises qui n'en utilisent pas couramment (la plupart des francs africains) | ✅ fait |
+| Thème par défaut : clair (au lieu de sombre), plus adapté à un premier lancement en plein jour | ✅ fait |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 

@@ -28,7 +28,7 @@
   }
 
   function loadTheme() {
-    try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (err) { return 'dark'; }
+    try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (err) { return 'light'; }
   }
   function saveTheme(theme) {
     try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* mode privé / quota */ }
@@ -121,16 +121,27 @@
   // son propre affichage. '€' ne sert que si le compte n'a encore aucun
   // groupe (aucun montant à afficher de toute façon).
   function defaultCurrency() { return state.groups.length ? state.groups[0].currency : null; }
-  function currencySymbol() { return currencySymbolFor(defaultCurrency()); }
+  function currencyMeta(code) {
+    var resolved = code || defaultCurrency();
+    return seed.CURRENCIES.find(function (c) { return c.code === resolved; }) || null;
+  }
   function currencySymbolFor(code) {
-    var c = seed.CURRENCIES.find(function (x) { return x.code === code; });
-    return c ? c.symbol : '€';
+    var m = currencyMeta(code);
+    return m ? m.symbol : '€';
+  }
+  function currencyDecimalsFor(code) {
+    var m = currencyMeta(code);
+    return m ? m.decimals : 2;
   }
   function fmt(n) { return fmtIn(n, null); }
+  // Sépare les milliers (espace, convention française) et n'affiche des
+  // décimales que si la devise les utilise couramment au quotidien (la
+  // plupart des francs africains n'en ont pas, cf. scripts/data.js).
   function fmtIn(n, currencyCode) {
+    var decimals = currencyDecimalsFor(currencyCode);
     var sign = n < 0 ? '-' : '';
-    var v = Math.abs(n).toFixed(2).replace('.', ',');
-    return sign + v + ' ' + (currencyCode ? currencySymbolFor(currencyCode) : currencySymbol());
+    var v = Math.abs(n).toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return sign + v + ' ' + currencySymbolFor(currencyCode);
   }
   function initials(name) { return name.slice(0, 2).toUpperCase(); }
   function colorForBalance(n) { return calc.colorForBalance(n); }
@@ -371,7 +382,8 @@
     var bal = pairNet(me, personId, debts);
     var from = bal < 0 ? personId : me;
     var to = bal < 0 ? me : personId;
-    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(2).replace('.', ',') } });
+    var decimals = currencyDecimalsFor(groupId && group(groupId) ? group(groupId).currency : null);
+    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(decimals).replace('.', ',') } });
   }
   function setSettleAmount(v) { setStateSilent(function (s) { return { settleForm: Object.assign({}, s.settleForm, { amount: v }) }; }); }
   function submitSettle() {
