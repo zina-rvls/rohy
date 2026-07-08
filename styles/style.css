@@ -80,6 +80,11 @@ button { font-family: inherit; }
   height: 840px;
   position: relative;
   background: var(--surface-canvas);
+  /* `data-theme` (clair/sombre) est porté par cet élément, pas par <body> —
+     sans ce color explicite, tout texte sans couleur propre hérite du
+     color de <body>, résolu HORS de ce scope de thème (donc toujours celui
+     du thème sombre, quel que soit le thème réellement actif). */
+  color: var(--text-primary);
 }
 
 .pressable { cursor: pointer; }
