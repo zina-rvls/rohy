@@ -21,9 +21,9 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 `migrations/0001_init.sql`, PUIS `0002_admin_manage_share.sql`, PUIS
 `0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`,
 PUIS `0005_households_scoped_to_group.sql`, PUIS
-`0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`
-(ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
-puis `supabase db push`).
+`0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`,
+PUIS `0008_guest_members_no_email.sql` (ou, avec la CLI Supabase installée :
+`supabase link --project-ref <ref>` puis `supabase db push`).
 
 `0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
@@ -66,6 +66,19 @@ avec `personne_a_charge` sont migrés vers `enfant`.
 (le calcul dépend uniquement de `share_weight` et `guardian_id`), et n'était
 donc qu'un libellé descriptif redondant avec la notion de coefficient/part
 et de responsable déjà en place.
+
+`0008_guest_members_no_email.sql` fusionne les anciens flux "inviter par
+e-mail" et "ajouter une personne à charge" en un seul formulaire "+ ajouter
+un membre" côté front-end (e-mail et responsable désormais tous les deux
+facultatifs) : un membre sans e-mail n'a donc plus forcément de
+responsable — ça peut être un simple "invité" dont la part est suivie
+manuellement, réglée hors app. Ajoute une colonne `created_by` sur
+`profiles` (qui a créé un profil sans compte pour le compte de qui, utile
+pour la policy de lecture juste après l'`INSERT ... RETURNING`, avant que
+le nouveau profil ne partage un groupe avec son créateur) et une policy
+`profiles_insert_guest` dédiée à ce cas (l'ancienne `profiles_insert_dependent`
+de `0004_households_dependents_weights.sql` exige toujours `guardian_id`
+non nul, et reste inchangée pour le cas classique d'une personne à charge).
 
 ## 3. Configurer l'authentification
 

@@ -66,12 +66,17 @@ node tests/calc.test.js
 ## Modèle de données
 
 - Premier lancement : aucun contact ni groupe préexistant, seul le compte
-  qu'on vient de créer existe. Les autres membres n'entrent dans l'app
-  qu'invités par e-mail à la création d'un groupe (prénom + e-mail + part) —
+  qu'on vient de créer existe. Les autres membres n'entrent dans l'app soit
+  invités par e-mail à la création d'un groupe (prénom + e-mail + part) —
   un vrai compte est créé pour eux et un vrai e-mail d'invitation est envoyé
-  (Supabase Auth `inviteUserByEmail`). Une personne à charge (dépendant sans
-  compte) se crée elle depuis "gérer les membres" d'un groupe (nom + part +
-  responsable), sans e-mail ni compte Supabase Auth.
+  (Supabase Auth `inviteUserByEmail`) — soit via "+ ajouter un membre" depuis
+  "gérer les membres" d'un groupe déjà créé, un formulaire unique (prénom +
+  e-mail facultatif + part + responsable facultatif) : l'e-mail, s'il est
+  renseigné, déclenche la même invitation (vrai compte créé) ; sinon on crée
+  juste un profil sans compte Supabase Auth. Le responsable (`guardian_id`)
+  est indépendant de l'e-mail — un membre avec compte peut aussi avoir un
+  responsable, et un membre sans compte peut ne pas en avoir (un simple
+  "invité" dont la part est suivie manuellement, réglée hors app).
 - Chaque groupe a sa propre devise, choisie à sa création, utilisée pour son
   détail, ses suggestions d'équilibrage et ses dépenses (y compris listées
   dans l'onglet "toutes les dépenses"). Un filtre par groupe est disponible
@@ -136,7 +141,7 @@ charge, parts pondérées). Statut des points relevés :
 | Perte de la position de scroll dans les modales après un rechargement de données (donnait l'impression qu'un changement n'était pas enregistré) | ✅ corrigé |
 | Message d'erreur générique de `invite-member` ("Edge Function returned a non-2xx status code") au lieu du vrai motif d'échec | ✅ corrigé |
 | Invitations envoyées en parallèle à la création d'un groupe, peu robuste | ✅ corrigé — désormais séquentielles, avec possibilité de réessayer depuis "gérer les membres" |
-| Aucun moyen d'inviter un nouveau membre après la création du groupe | ✅ corrigé — "+ inviter un membre par e-mail" dans "gérer les membres" |
+| Aucun moyen d'ajouter un nouveau membre après la création du groupe | ✅ corrigé — "+ ajouter un membre" dans "gérer les membres" (e-mail facultatif) |
 
 **Reste à faire / différé**
 
