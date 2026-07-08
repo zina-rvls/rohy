@@ -61,7 +61,7 @@
       confirmLeaveGroupId: null,
       selectedGroupId: null,
       selectedPersonId: null,
-      equilibrerMode: 'foyer',
+      groupUnitMode: 'foyer',
       homeGroupFilter: null,
       expensesGroupFilter: null,
       personGroupFilter: null,
@@ -1191,7 +1191,7 @@
     return out;
   }
 
-  function setEquilibrerMode(mode) { setState({ equilibrerMode: mode }); }
+  function setGroupUnitMode(mode) { setState({ groupUnitMode: mode }); }
 
   function renderGroupDetail() {
     var g = group(state.selectedGroupId);
@@ -1212,8 +1212,32 @@
       if (Math.abs(netBalanceFor(p.id, g.id)) > 0.5) effectiveIds.push(p.id);
     });
 
+    // La vue "par foyer / par membre" (bouton commun aux deux sections
+    // ci-dessous) n'est proposée que si au moins un foyer regroupe
+    // effectivement plusieurs membres de ce groupe, sinon les deux vues
+    // seraient strictement identiques.
     var units = computeGroupUnits(g, effectiveIds);
-    var memberRows = units.map(function (u) {
+    var hasFoyerConsolidation = units.some(function (u) { return u.memberIds.length > 1; });
+    var identityUnits = effectiveIds.map(function (pid) { return { key: pid, label: person(pid).name, memberIds: [pid] }; });
+    var activeUnits = hasFoyerConsolidation && state.groupUnitMode === 'membre' ? identityUnits : units;
+    var groupUnitToggle = !hasFoyerConsolidation ? '' :
+      '<div class="pill-row" style="margin-bottom:10px">' +
+      '<div class="pill' + (state.groupUnitMode !== 'membre' ? ' active' : '') + '" data-action="setGroupUnitMode" data-id="foyer">par foyer</div>' +
+      '<div class="pill' + (state.groupUnitMode === 'membre' ? ' active' : '') + '" data-action="setGroupUnitMode" data-id="membre">par membre</div>' +
+      '</div>';
+
+    // En-têtes de colonnes alignées sur .col-num/.col-bal — sans elles, les
+    // trois nombres de chaque ligne (payé / part / solde) n'étaient
+    // distinguables qu'en devinant leur position.
+    var memberTableHeader =
+      '<div style="display:flex;align-items:center;gap:10px;padding:0 0 6px">' +
+      '<div style="width:30px;flex-shrink:0"></div><div style="flex:1"></div>' +
+      '<div class="col-num" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">payé</div>' +
+      '<div class="col-num" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">part</div>' +
+      '<div class="col-bal" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">solde</div>' +
+      '</div>';
+
+    var memberRows = activeUnits.map(function (u) {
       var isHousehold = u.memberIds.length > 1;
       var paid = 0, share = 0, bal = 0;
       u.memberIds.forEach(function (pid) {
@@ -1259,24 +1283,11 @@
       );
     }).join('');
 
-    // "pour équilibrer" peut se voir par foyer (défaut, unités consolidées
-    // comme le tableau payé/part/solde) ou par membre (chaque personne
-    // séparément) — le bouton n'est proposé que si au moins un foyer
-    // regroupe effectivement plusieurs membres de ce groupe, sinon les deux
-    // vues seraient strictement identiques.
-    var hasFoyerConsolidation = units.some(function (u) { return u.memberIds.length > 1; });
-    var identityUnits = effectiveIds.map(function (pid) { return { key: pid, label: person(pid).name, memberIds: [pid] }; });
-    var equilibrerUnits = hasFoyerConsolidation && state.equilibrerMode === 'membre' ? identityUnits : units;
-    var txns = consolidateSuggestionsByUnit(calc.simplify(debts, effectiveIds), equilibrerUnits);
+    var txns = consolidateSuggestionsByUnit(calc.simplify(debts, effectiveIds), activeUnits);
     var suggestions = txns.map(function (t) {
       return '<div class="suggestion-row"><div><b>' + escapeHtml(t.fromLabel) + '</b> → <b>' + escapeHtml(t.toLabel) + '</b></div>' +
         '<div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div></div>';
     }).join('');
-    var equilibrerToggle = !hasFoyerConsolidation ? '' :
-      '<div class="pill-row" style="margin-bottom:10px">' +
-      '<div class="pill' + (state.equilibrerMode !== 'membre' ? ' active' : '') + '" data-action="setEquilibrerMode" data-id="foyer">par foyer</div>' +
-      '<div class="pill' + (state.equilibrerMode === 'membre' ? ' active' : '') + '" data-action="setEquilibrerMode" data-id="membre">par membre</div>' +
-      '</div>';
 
     var expenseRows = state.expenses.filter(function (e) { return e.groupId === g.id; })
       .slice().sort(function (a, b) { return b.date.localeCompare(a.date); })
@@ -1292,7 +1303,7 @@
       }).join('');
 
     return (
-      '<div class="member-table"><div class="section-label">payé / part / solde</div>' + memberRows + '</div>' +
+      '<div class="member-table"><div class="section-label">payé / part / solde</div>' + groupUnitToggle + memberTableHeader + memberRows + '</div>' +
       (isAdmin ?
         '<div class="admin-actions">' +
         '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> gérer les membres</button>' +
@@ -1302,7 +1313,7 @@
         '<button class="btn-outline pressable" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open"></i> quitter ce groupe</button>' +
         '</div>') +
       (txns.length || hasFoyerConsolidation ?
-        '<div class="section-label">pour équilibrer</div>' + equilibrerToggle +
+        '<div class="section-label">pour équilibrer</div>' +
         (txns.length ? suggestions : '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">rien à régler pour le moment.</div>') : '') +
       '<div class="section-label" style="margin-top:18px">dépenses</div>' + expenseRows +
       '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseForGroup">ajouter une dépense</button>'
@@ -1845,7 +1856,7 @@
         case 'openConfirmLeaveGroup': openConfirmLeaveGroup(id); break;
         case 'cancelLeaveGroup': cancelLeaveGroup(); break;
         case 'confirmLeaveGroup': confirmLeaveGroup(); break;
-        case 'setEquilibrerMode': setEquilibrerMode(id); break;
+        case 'setGroupUnitMode': setGroupUnitMode(id); break;
         case 'createHousehold': createHousehold(); break;
         case 'toggleAddMemberForm': toggleAddMemberForm(); break;
         case 'submitAddMember': submitAddMember(); break;
