@@ -61,6 +61,8 @@
       selectedPersonId: null,
       homeGroupFilter: null,
       expensesGroupFilter: null,
+      personGroupFilter: null,
+      settleGroupId: null,
       people: [],
       groups: [],
       expenses: [],
@@ -230,9 +232,10 @@
   function goHistory() { setState({ screen: 'history', navStack: [] }); }
   function goExpenses() { setState({ screen: 'expenses', navStack: [] }); }
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id }); }
-  function openPerson(id) { navigate('person', { selectedPersonId: id }); }
+  function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
+  function setPersonGroupFilter(id) { setState({ personGroupFilter: id || null }); }
   function toggleTheme() {
     setState(function (s) {
       var next = s.theme === 'dark' ? 'light' : 'dark';
@@ -330,31 +333,37 @@
   }
 
   // ---------- Reminders / settle ----------
-  function sendReminder(personId) {
+  // groupId (optionnel) doit correspondre au filtre actif sur l'écran d'où
+  // l'action est déclenchée, pour que le montant proposé corresponde à ce
+  // qui est affiché à l'écran plutôt qu'au solde tous groupes confondus.
+  function sendReminder(personId, groupId) {
     var p = person(personId);
-    var rel = pairNet(state.currentUserId, personId);
-    var amt = rel < 0 ? -rel : 0;
-    var msg = 'petit rappel à ' + p.name + ' — psst, tu me dois encore ' + fmt(amt);
+    var g = groupId ? group(groupId) : null;
+    var debts = groupId ? computeDebtsForGroup(groupId) : computeDebts();
+    var rel = pairNet(state.currentUserId, personId, debts);
+    var amt = rel > 0 ? rel : 0;
+    var msg = 'petit rappel à ' + p.name + ' — psst, tu me dois encore ' + (g ? fmtIn(amt, g.currency) : fmt(amt));
     sb.from('reminders').insert({ from_user: state.currentUserId, to_user: personId, amount: amt, message: msg }).then(function (res) {
       if (res.error) { showToast('erreur : ' + res.error.message); return; }
       loadAppData().then(function () { showToast('rappel envoyé à ' + p.name); });
     });
   }
-  function openSettle(personId) {
+  function openSettle(personId, groupId) {
     var me = state.currentUserId;
-    var bal = pairNet(me, personId);
+    var debts = groupId ? computeDebtsForGroup(groupId) : computeDebts();
+    var bal = pairNet(me, personId, debts);
     var from = bal < 0 ? personId : me;
     var to = bal < 0 ? me : personId;
-    setState({ showSettle: true, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(2).replace('.', ',') } });
+    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(2).replace('.', ',') } });
   }
   function setSettleAmount(v) { setStateSilent(function (s) { return { settleForm: Object.assign({}, s.settleForm, { amount: v }) }; }); }
   function submitSettle() {
     var sf = state.settleForm;
     var amt = parseFloat((sf.amount || '').replace(',', '.'));
     if (!amt || amt <= 0) return;
-    sb.from('payments').insert({ from_user: sf.from, to_user: sf.to, amount: amt, group_id: null }).then(function (res) {
+    sb.from('payments').insert({ from_user: sf.from, to_user: sf.to, amount: amt, group_id: state.settleGroupId || null }).then(function (res) {
       if (res.error) { showToast('erreur : ' + res.error.message); return; }
-      setState({ showSettle: false });
+      setState({ showSettle: false, settleGroupId: null });
       loadAppData().then(function () { showToast('paiement enregistré'); });
     });
   }
@@ -670,6 +679,7 @@
       showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null, showAddDependentForm: false,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
+      settleGroupId: null,
     });
   }
 
@@ -847,6 +857,16 @@
     }
   }
 
+  // Additionner des soldes/montants de groupes en devises différentes n'a pas
+  // de sens (la somme ne correspond à aucune monnaie réelle) : on ne montre
+  // un agrégat "tous les groupes" que si tous les groupes du compte partagent
+  // la même devise, sinon on invite explicitement à filtrer par groupe.
+  function groupsHaveSingleCurrency() {
+    if (state.groups.length === 0) return true;
+    var first = state.groups[0].currency;
+    return state.groups.every(function (g) { return g.currency === first; });
+  }
+
   function renderGroupFilterPills(selectedId, action) {
     if (state.groups.length < 2) return '';
     var allPill = '<div class="pill' + (!selectedId ? ' active' : '') + '" data-action="' + action + '" data-id="">tous les groupes</div>';
@@ -886,12 +906,13 @@
         '</div>' +
         '<div style="text-align:right;flex-shrink:0">' +
         '<div class="person-amount" style="color:' + colorForBalance(bal) + '">' + escapeHtml(amountLabel) + '</div>' +
-        (bal > 0.5 ? '<span class="remind-link" data-action="remind" data-id="' + p.id + '">envoyer un rappel →</span>' : '') +
+        (bal > 0.5 ? '<span class="remind-link" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">envoyer un rappel →</span>' : '') +
         '</div></button>'
       );
     }).join('');
 
     var sum = owed - owe;
+    var mixedCurrencies = !filterId && !groupsHaveSingleCurrency();
 
     return (
       renderGroupFilterPills(filterId, 'setHomeGroupFilter') +
@@ -902,15 +923,18 @@
       '</button>' +
       (state.groups.length === 0 ?
         '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' :
+      mixedCurrencies ?
+        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> devises multiples</div>' +
+        '<div class="warning-banner-body">Tes groupes utilisent des devises différentes — choisis un groupe ci-dessus pour voir ton solde.</div></div>' :
         '<div class="balance-card">' +
         '<div class="balance-label">solde net total' + (filterGroup ? ' · ' + escapeHtml(filterGroup.name) : '') + '</div>' +
         '<div class="balance-amount" style="color:' + colorForBalance(sum) + '">' + (sum >= 0 ? '+' : '-') + fmtC(Math.abs(sum)).replace('-', '') + '</div>' +
         '<div class="balance-detail-row"><div class="owed">on te doit ' + fmtC(owed).replace('-', '') + '</div><div class="owe">tu dois ' + fmtC(owe).replace('-', '') + '</div></div>' +
         '</div>') +
-      (pendingShare > 0.5 ?
+      (!mixedCurrencies && pendingShare > 0.5 ?
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> à anticiper</div>' +
         '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmtC(pendingShare) + '.</div></div>' : '') +
-      (otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '')
+      (!mixedCurrencies && otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '')
     );
   }
 
@@ -1002,15 +1026,20 @@
     var p = person(state.selectedPersonId);
     if (!p) return '';
     var moi = state.currentUserId;
-    var bal = pairNet(moi, p.id);
+    var filterId = state.personGroupFilter && group(state.personGroupFilter) ? state.personGroupFilter : null;
+    var filterGroup = filterId ? group(filterId) : null;
+    var fmtC = function (n) { return fmtIn(n, filterGroup ? filterGroup.currency : null); };
+    var bal = filterId ? pairNet(moi, p.id, computeDebtsForGroup(filterId)) : pairNet(moi, p.id);
     var covered = p.guardianId ? person(p.guardianId) : null;
     var lastReminder = state.reminders.slice().reverse().find(function (r) { return r.toPersonId === p.id; });
-    var relatedExpenses = state.expenses.filter(function (e) { return e.participants.indexOf(p.id) !== -1 || e.paidBy === p.id; })
-      .slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+    var relatedExpenses = state.expenses.filter(function (e) {
+      return (e.participants.indexOf(p.id) !== -1 || e.paidBy === p.id) && (!filterId || e.groupId === filterId);
+    }).slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
 
-    var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmt(bal) : 'tu dois ' + fmt(-bal));
+    var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmtC(bal) : 'tu dois ' + fmtC(-bal));
 
     return (
+      renderGroupFilterPills(filterId, 'setPersonGroupFilter') +
       '<div class="person-header">' +
       '<div class="avatar avatar-64" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
       '<div class="person-header-name">' + escapeHtml(p.name) + '</div>' +
@@ -1019,15 +1048,16 @@
       '<div class="person-header-amount" style="color:' + colorForBalance(bal) + '">' + escapeHtml(amountLabel) + '</div>' +
       '</div>' +
       '<div class="person-actions">' +
-      (bal > 0.5 ? '<button class="btn-danger-fill pressable" data-action="remind" data-id="' + p.id + '"><i class="ph-bold ph-bell-ringing" style="margin-right:6px"></i>envoyer un rappel</button>' : '') +
-      '<button class="btn-outline-flex pressable" data-action="openSettle" data-id="' + p.id + '">enregistrer un paiement</button>' +
+      (bal > 0.5 ? '<button class="btn-danger-fill pressable" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '"><i class="ph-bold ph-bell-ringing" style="margin-right:6px"></i>envoyer un rappel</button>' : '') +
+      '<button class="btn-outline-flex pressable" data-action="openSettle" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">enregistrer un paiement</button>' +
       '</div>' +
       (lastReminder ? '<div class="reminder-preview">' + escapeHtml(lastReminder.message) + '</div>' : '') +
       '<div class="section-label">dépenses concernées</div>' +
       relatedExpenses.map(function (e) {
+        var eg = group(e.groupId);
         return '<div class="person-expense-row"><i class="' + e.icon + '" style="color:var(--text-secondary);font-size:15px;width:18px;text-align:center"></i>' +
           '<div style="flex:1;font-size:13.5px;color:var(--text-primary)">' + escapeHtml(e.label) + '</div>' +
-          '<div style="font-size:13px;font-weight:600;color:var(--text-secondary)">' + fmt(e.amount) + '</div></div>';
+          '<div style="font-size:13px;font-weight:600;color:var(--text-secondary)">' + fmtIn(e.amount, eg && eg.currency) + '</div></div>';
       }).join('')
     );
   }
@@ -1069,14 +1099,19 @@
       );
     }).join('');
 
+    var mixedCurrencies = !filterId && !groupsHaveSingleCurrency();
+
     return (
       renderGroupFilterPills(filterId, 'setExpensesGroupFilter') +
-      '<div class="summary-cards">' +
-      '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value">' + fmtC(total) + '</div></div>' +
-      '<div class="summary-card"><div class="summary-card-label">remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmtC(totalOwed - totalRemaining) + '</div></div>' +
-      '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
-      '</div>' +
-      (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '') +
+      (mixedCurrencies ?
+        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> devises multiples</div>' +
+        '<div class="warning-banner-body">Tes groupes utilisent des devises différentes — choisis un groupe ci-dessus pour voir les totaux.</div></div>' :
+        '<div class="summary-cards">' +
+        '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value">' + fmtC(total) + '</div></div>' +
+        '<div class="summary-card"><div class="summary-card-label">remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmtC(totalOwed - totalRemaining) + '</div></div>' +
+        '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
+        '</div>' +
+        (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
       (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense dans ce groupe.</div>' : rows) +
       '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">ajouter une dépense</button>'
     );
@@ -1268,12 +1303,13 @@
     var sf = state.settleForm;
     var fromName = sf.from ? person(sf.from).name : '';
     var toName = sf.to ? person(sf.to).name : '';
+    var settleGroup = state.settleGroupId ? group(state.settleGroupId) : null;
     return (
       '<div class="modal-overlay center" data-action="closeModal">' +
       '<div class="modal-card" data-stop-click>' +
       '<div class="modal-title" style="margin-bottom:14px">enregistrer un paiement</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:14px">' + escapeHtml(fromName) + ' → ' + escapeHtml(toName) + '</div>' +
-      '<div class="field-label">montant (' + currencySymbol() + ')</div>' +
+      '<div class="field-label">montant (' + currencySymbolFor(settleGroup && settleGroup.currency) + ')</div>' +
       '<input class="text-input" data-bind="settleAmount" inputmode="decimal" value="' + escapeHtml(sf.amount) + '" />' +
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="closeModal">annuler</button>' +
@@ -1428,12 +1464,13 @@
         case 'toggleTheme': toggleTheme(); break;
         case 'openPerson': openPerson(id); break;
         case 'openGroup': openGroup(id); break;
-        case 'remind': sendReminder(id); break;
+        case 'remind': sendReminder(id, groupId || null); break;
         case 'openAccount': openAccount(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
         case 'setExpensesGroupFilter': setExpensesGroupFilter(id); break;
+        case 'setPersonGroupFilter': setPersonGroupFilter(id); break;
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
         case 'openAddGroup': openAddGroup(); break;
         case 'openManageMembers': openManageMembers(id); break;
@@ -1462,7 +1499,7 @@
         case 'addInviteeRow': addInviteeRow(); break;
         case 'removeInviteeRow': removeInviteeRow(parseInt(id, 10)); break;
         case 'submitGroup': submitGroup(); break;
-        case 'openSettle': openSettle(id); break;
+        case 'openSettle': openSettle(id, groupId || null); break;
         case 'submitSettle': submitSettle(); break;
         case 'toggleManageMember': toggleManageMember(groupId, id); break;
         case 'openConfirmRemoveMember': openConfirmRemoveMember(groupId, id); break;
