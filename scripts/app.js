@@ -665,6 +665,35 @@
     }, Promise.resolve()).then(function () { return failed; });
   }
 
+  // Un invité sans e-mail à la création d'un groupe est ajouté directement
+  // comme profil sans compte (même logique que submitAddMember pour
+  // "gérer les membres") plutôt que de passer par invite-member, qui exige
+  // un e-mail.
+  function addGuestMemberToGroup(groupId, name, shareWeight, color) {
+    var w = parseFloat((shareWeight || '1').replace(',', '.'));
+    if (isNaN(w) || w < 0) w = 1;
+    return sb.from('profiles').insert({
+      name: name, color: color, share_weight: w, created_by: state.currentUserId,
+    }).select().single().then(function (res) {
+      if (res.error) return { ok: false, failure: name + ' (' + res.error.message + ')' };
+      return sb.from('group_members').insert({ group_id: groupId, user_id: res.data.id }).then(function (memRes) {
+        if (memRes.error) return { ok: false, failure: name + ' (' + memRes.error.message + ')' };
+        return { ok: true, failure: null };
+      });
+    }).catch(function (err) {
+      return { ok: false, failure: name + ' (' + (err && err.message ? err.message : 'erreur réseau') + ')' };
+    });
+  }
+  function addGuestMembersSequentially(invitees, groupId, colorOffset) {
+    var failed = [];
+    return invitees.reduce(function (chain, invitee, idx) {
+      return chain.then(function () {
+        return addGuestMemberToGroup(groupId, invitee.name.trim(), invitee.shareWeight, INVITEE_COLORS[(colorOffset + idx) % INVITEE_COLORS.length])
+          .then(function (result) { if (!result.ok) failed.push(result.failure); });
+      });
+    }, Promise.resolve()).then(function () { return failed; });
+  }
+
   function submitGroup() {
     if (state.submittingGroup) return;
     var gf = state.groupForm;
@@ -673,9 +702,12 @@
     for (var i = 0; i < validInvitees.length; i++) {
       var inv = validInvitees[i];
       if (!inv.name.trim()) { setState({ formError: 'donne un prénom à chaque membre invité.' }); return; }
-      if (!inv.email.trim() || inv.email.indexOf('@') === -1) { setState({ formError: 'entre un e-mail valide pour ' + inv.name.trim() + '.' }); return; }
+      if (inv.email.trim() && inv.email.indexOf('@') === -1) { setState({ formError: 'e-mail invalide pour ' + inv.name.trim() + '.' }); return; }
     }
     setState({ formError: null, submittingGroup: true });
+
+    var withEmail = validInvitees.filter(function (inv) { return inv.email.trim(); });
+    var withoutEmail = validInvitees.filter(function (inv) { return !inv.email.trim(); });
 
     sb.from('groups').insert({ name: gf.name.trim(), currency: gf.currency, admin_id: state.currentUserId }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message, submittingGroup: false }); return; }
@@ -683,11 +715,18 @@
       sb.from('group_members').insert({ group_id: newGroup.id, user_id: state.currentUserId }).then(function (memRes) {
         if (memRes.error) { setState({ formError: memRes.error.message, submittingGroup: false }); return; }
 
-        inviteSequentially(validInvitees, newGroup.id).then(function (failedInvites) {
+        Promise.all([
+          inviteSequentially(withEmail, newGroup.id),
+          addGuestMembersSequentially(withoutEmail, newGroup.id, withEmail.length),
+        ]).then(function (results) {
+          var failedInvites = results[0].concat(results[1]);
           setState({ showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id });
           loadAppData().then(function () {
-            if (failedInvites.length) showToast('erreur : invitation impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".');
-            else showToast(validInvitees.length ? 'groupe créé, invitations envoyées par e-mail' : 'groupe créé');
+            if (failedInvites.length) { showToast('erreur : ajout impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".'); return; }
+            var msgParts = [];
+            if (withEmail.length) msgParts.push('invitations envoyées par e-mail');
+            if (withoutEmail.length) msgParts.push(withoutEmail.length > 1 ? 'membres ajoutés' : 'membre ajouté');
+            showToast(msgParts.length ? 'groupe créé, ' + msgParts.join(' et ') : 'groupe créé');
           });
         });
       });
@@ -1611,8 +1650,8 @@
 
   function renderAddGroupModal() {
     var gf = state.groupForm;
-    var currencyChoices = seed.CURRENCIES.map(function (c) {
-      return '<div class="pill' + (gf.currency === c.code ? ' active' : '') + '" data-action="setGroupCurrency" data-id="' + c.code + '">' + c.code + ' ' + c.symbol + '</div>';
+    var currencyOptions = seed.CURRENCIES.map(function (c) {
+      return '<option value="' + c.code + '"' + (gf.currency === c.code ? ' selected' : '') + '>' + c.code + ' — ' + escapeHtml(c.label) + ' (' + c.symbol + ')</option>';
     }).join('');
     var inviteeRows = gf.invitees.map(function (inv, i) {
       return (
@@ -1621,7 +1660,7 @@
         '<input class="text-input" style="margin-bottom:0" data-bind="inviteeName" data-id="' + i + '" placeholder="prénom" value="' + escapeHtml(inv.name) + '" />' +
         (gf.invitees.length > 1 ? '<button class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeInviteeRow" data-id="' + i + '"><i class="ph-bold ph-x"></i></button>' : '') +
         '</div>' +
-        '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
+        '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
         '<div style="display:flex;align-items:center;gap:8px">' +
         '<span style="font-size:12.5px;color:var(--text-secondary)">part (1 = part entière)</span>' +
         '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
@@ -1636,8 +1675,10 @@
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
       '<div class="field-label">nom</div>' +
       '<input class="text-input" data-bind="groupName" placeholder="ex : week-end à lyon" value="' + escapeHtml(gf.name) + '" />' +
-      '<div class="field-label">devise</div><div class="pill-row">' + currencyChoices + '</div>' +
-      '<div class="section-label">inviter des membres (par e-mail)</div>' +
+      '<div class="field-label">devise</div>' +
+      '<select class="text-input" data-bind-change="groupCurrency">' + currencyOptions + '</select>' +
+      '<div class="section-label">ajouter des membres</div>' +
+      '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-8px 0 12px">l\'e-mail est facultatif : renseigné, une invitation est envoyée pour que la personne se connecte elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
       inviteeRows +
       '<button class="dashed-btn pressable" style="margin-bottom:6px" data-action="addInviteeRow">+ ajouter un membre</button>' +
       '<button class="btn-primary pressable" style="margin-top:14px' + (state.submittingGroup ? ';opacity:0.6' : '') + '" data-action="submitGroup">' +
@@ -1844,7 +1885,6 @@
         case 'deleteExpense': deleteExpense(); break;
         case 'viewReceipt': viewReceipt(el.getAttribute('data-path')); break;
         case 'removeReceipt': removeReceipt(); break;
-        case 'setGroupCurrency': setGroupCurrency(id); break;
         case 'addInviteeRow': addInviteeRow(); break;
         case 'removeInviteeRow': removeInviteeRow(parseInt(id, 10)); break;
         case 'submitGroup': submitGroup(); break;
@@ -1905,6 +1945,7 @@
         case 'guardian': setGuardian(id, el.value); break;
         case 'household': setMemberHousehold(id, el.value); break;
         case 'addMemberGuardian': setAddMemberGuardian(el.value); break;
+        case 'groupCurrency': setGroupCurrency(el.value); break;
         default: break;
       }
     };

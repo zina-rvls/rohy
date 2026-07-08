@@ -66,15 +66,15 @@ node tests/calc.test.js
 ## Modèle de données
 
 - Premier lancement : aucun contact ni groupe préexistant, seul le compte
-  qu'on vient de créer existe. Les autres membres n'entrent dans l'app soit
-  invités par e-mail à la création d'un groupe (prénom + e-mail + part) —
-  un vrai compte est créé pour eux et un vrai e-mail d'invitation est envoyé
-  (Supabase Auth `inviteUserByEmail`) — soit via "+ ajouter un membre" depuis
-  "gérer les membres" d'un groupe déjà créé, un formulaire unique (prénom +
-  e-mail facultatif + part + responsable facultatif) : l'e-mail, s'il est
-  renseigné, déclenche la même invitation (vrai compte créé) ; sinon on crée
-  juste un profil sans compte Supabase Auth. Le responsable (`guardian_id`)
-  est indépendant de l'e-mail — un membre avec compte peut aussi avoir un
+  qu'on vient de créer existe. Les autres membres entrent dans l'app soit à
+  la création d'un groupe (prénom + e-mail facultatif + part), soit via
+  "+ ajouter un membre" depuis "gérer les membres" d'un groupe déjà créé
+  (même formulaire). Dans les deux cas, l'e-mail, s'il est renseigné,
+  déclenche une vraie invitation (compte créé, e-mail envoyé via Supabase
+  Auth `inviteUserByEmail`) ; sinon un profil sans compte Supabase Auth est
+  simplement ajouté au groupe. Le responsable (`guardian_id`, réglable
+  seulement depuis "gérer les membres" une fois le groupe créé) est
+  indépendant de l'e-mail — un membre avec compte peut aussi avoir un
   responsable, et un membre sans compte peut ne pas en avoir (un simple
   "invité" dont la part est suivie manuellement, réglée hors app).
 - Chaque groupe a sa propre devise, choisie à sa création, utilisée pour son
@@ -184,6 +184,8 @@ charge, parts pondérées). Statut des points relevés :
 | Montant total peu lisible (gris clair) sur la page "toutes les dépenses" | ✅ corrigé (patch ponctuel, puis cause racine identifiée et corrigée séparément, cf. ligne suivante) |
 | Cause racine trouvée en creusant le bug précédent : `data-theme` est porté par `.app-frame`, pas par `<body>` — tout texte sans couleur propre héritait donc du `color` de `<body>`, résolu hors du scope de thème (toujours les valeurs du thème sombre, quel que soit le thème actif). Invisible tant que le thème sombre était celui par défaut, ce bug rendait illisible tout texte "nu" en thème clair (ex. "xxx Ar restent à verser à des tiers") | ✅ corrigé — `color: var(--text-primary)` explicite sur `.app-frame`, qui porte déjà `data-theme` |
 | Couleurs d'accent (montants positifs en vert, avertissements en doré, badges en rouge) trop claires sur fond clair (ratio de contraste ~2.5–3.8, sous le seuil WCAG AA de 4.5) | ✅ corrigé — teintes assombries en thème clair (`--status-positive`/`--status-warning`/`--status-danger`/`--brand-secondary`), même teinte conservée |
+| Sélecteur de devise à la création d'un groupe : une ligne de pastilles pour ~35 devises prend toute la page | ✅ corrigé — remplacé par un menu déroulant |
+| Le formulaire d'invités à la création d'un groupe exigeait toujours un e-mail valide (`submitGroup`), alors que "gérer les membres" avait déjà rendu l'e-mail facultatif — incohérence entre les deux points d'entrée pour ajouter un membre | ✅ corrigé — même règle partout : un invité sans e-mail est ajouté directement comme profil sans compte |
 
 **Reste à faire / différé**
 
