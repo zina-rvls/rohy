@@ -123,6 +123,12 @@ node tests/calc.test.js
   "payé/part/solde" affiche désormais un en-tête par colonne (au lieu d'un
   seul libellé combiné au-dessus de toute la table) pour qu'on distingue
   sans ambiguïté quel nombre correspond à quoi.
+- Chaque suggestion de règlement ("pour équilibrer", groupe ou "tous les
+  groupes") propose un raccourci pour enregistrer directement le paiement
+  correspondant, sans passer par la fiche personne. Absent quand la
+  suggestion concerne un foyer consolidé (payer "pour" un foyer de
+  plusieurs personnes serait ambigu — qui règle concrètement ?) : dans ce
+  cas, bascule en vue "par membre" pour régler individuellement.
 - Un membre non-admin peut quitter un groupe lui-même ("quitter ce groupe"
   dans le détail du groupe) ; comme pour un retrait par l'admin, un solde non
   réglé reste dû et affiché tant qu'il n'est pas soldé. Seul l'admin peut

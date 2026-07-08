@@ -388,6 +388,15 @@
     var decimals = currencyDecimalsFor(groupId && group(groupId) ? group(groupId).currency : null);
     setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(decimals).replace('.', ',') } });
   }
+  // Raccourci "enregistrer" directement sur une ligne de suggestion : à la
+  // différence de openSettle (qui déduit qui doit à qui en comparant "moi"
+  // à une personne), le from/to/montant sont ici déjà connus tels quels
+  // (la suggestion peut concerner deux personnes sans que "moi" soit
+  // impliqué, ex. sur la vue "tous les groupes").
+  function openSettleForPair(fromId, toId, amount, groupId) {
+    var decimals = currencyDecimalsFor(groupId && group(groupId) ? group(groupId).currency : null);
+    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: fromId, to: toId, amount: Math.abs(amount).toFixed(decimals).replace('.', ',') } });
+  }
   function setSettleAmount(v) { setStateSilent(function (s) { return { settleForm: Object.assign({}, s.settleForm, { amount: v }) }; }); }
   function submitSettle() {
     var sf = state.settleForm;
@@ -1208,7 +1217,9 @@
         globalSuggestions = '<div class="section-label" style="margin-top:18px">pour équilibrer (tous les groupes)</div>' +
           globalTxns.map(function (t) {
             return '<div class="suggestion-row"><div><b>' + escapeHtml(person(t.from).name) + '</b> → <b>' + escapeHtml(person(t.to).name) + '</b></div>' +
-              '<div class="suggestion-amount">' + fmtC(t.amount) + '</div></div>';
+              '<div style="display:flex;align-items:center;gap:8px"><div class="suggestion-amount">' + fmtC(t.amount) + '</div>' +
+              '<button class="btn-icon-settle pressable" title="enregistrer ce paiement" data-action="quickSettle" data-from="' + t.from + '" data-to="' + t.to + '" data-amount="' + t.amount + '" data-group-id=""><i class="ph-bold ph-check-circle"></i></button>' +
+              '</div></div>';
           }).join('');
       }
     }
@@ -1288,9 +1299,13 @@
   // et les montants entre deux mêmes foyers/personnes sont additionnés en
   // une seule suggestion nette.
   function consolidateSuggestionsByUnit(txns, units) {
-    var unitKeyOfPerson = {}, labelOfUnit = {};
+    var unitKeyOfPerson = {}, labelOfUnit = {}, soloIdOfUnit = {};
     units.forEach(function (u) {
       labelOfUnit[u.key] = u.label;
+      // Un raccourci "enregistrer" n'a de sens que si l'unité représente une
+      // seule personne (pas un foyer consolidé, où on ne sait pas laquelle
+      // des deux personnes règle concrètement).
+      soloIdOfUnit[u.key] = u.memberIds.length === 1 ? u.memberIds[0] : null;
       u.memberIds.forEach(function (pid) { unitKeyOfPerson[pid] = u.key; });
     });
     var totals = {};
@@ -1311,10 +1326,10 @@
         seen[revKey] = true;
         var net = amt - totals[revKey];
         if (Math.abs(net) < 0.005) return;
-        if (net > 0) out.push({ fromLabel: labelOfUnit[fu], toLabel: labelOfUnit[tu], amount: net });
-        else out.push({ fromLabel: labelOfUnit[tu], toLabel: labelOfUnit[fu], amount: -net });
+        if (net > 0) out.push({ fromLabel: labelOfUnit[fu], toLabel: labelOfUnit[tu], amount: net, fromId: soloIdOfUnit[fu], toId: soloIdOfUnit[tu] });
+        else out.push({ fromLabel: labelOfUnit[tu], toLabel: labelOfUnit[fu], amount: -net, fromId: soloIdOfUnit[tu], toId: soloIdOfUnit[fu] });
       } else {
-        out.push({ fromLabel: labelOfUnit[fu], toLabel: labelOfUnit[tu], amount: amt });
+        out.push({ fromLabel: labelOfUnit[fu], toLabel: labelOfUnit[tu], amount: amt, fromId: soloIdOfUnit[fu], toId: soloIdOfUnit[tu] });
       }
     });
     return out;
@@ -1414,8 +1429,11 @@
 
     var txns = consolidateSuggestionsByUnit(calc.simplify(debts, effectiveIds), activeUnits);
     var suggestions = txns.map(function (t) {
+      var canSettle = t.fromId && t.toId;
       return '<div class="suggestion-row"><div><b>' + escapeHtml(t.fromLabel) + '</b> → <b>' + escapeHtml(t.toLabel) + '</b></div>' +
-        '<div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div></div>';
+        '<div style="display:flex;align-items:center;gap:8px"><div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div>' +
+        (canSettle ? '<button class="btn-icon-settle pressable" title="enregistrer ce paiement" data-action="quickSettle" data-from="' + t.fromId + '" data-to="' + t.toId + '" data-amount="' + t.amount + '" data-group-id="' + g.id + '"><i class="ph-bold ph-check-circle"></i></button>' : '') +
+        '</div></div>';
     }).join('');
 
     var expenseRows = state.expenses.filter(function (e) { return e.groupId === g.id; })
@@ -2010,6 +2028,7 @@
         case 'removeInviteeRow': removeInviteeRow(parseInt(id, 10)); break;
         case 'submitGroup': submitGroup(); break;
         case 'openSettle': openSettle(id, groupId || null); break;
+        case 'quickSettle': openSettleForPair(el.getAttribute('data-from'), el.getAttribute('data-to'), parseFloat(el.getAttribute('data-amount')), groupId || null); break;
         case 'submitSettle': submitSettle(); break;
         case 'openConfirmRemoveMember': openConfirmRemoveMember(groupId, id); break;
         case 'cancelRemoveMember': cancelRemoveMember(); break;
