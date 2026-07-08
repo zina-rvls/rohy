@@ -183,6 +183,7 @@ charge, parts pondérées). Statut des points relevés :
 | Aucun moyen d'ajouter un nouveau membre après la création du groupe | ✅ corrigé — "+ ajouter un membre" dans "gérer les membres" (e-mail facultatif) |
 | Montant total peu lisible (gris clair) sur la page "toutes les dépenses" | ✅ corrigé (patch ponctuel, puis cause racine identifiée et corrigée séparément, cf. ligne suivante) |
 | Cause racine trouvée en creusant le bug précédent : `data-theme` est porté par `.app-frame`, pas par `<body>` — tout texte sans couleur propre héritait donc du `color` de `<body>`, résolu hors du scope de thème (toujours les valeurs du thème sombre, quel que soit le thème actif). Invisible tant que le thème sombre était celui par défaut, ce bug rendait illisible tout texte "nu" en thème clair (ex. "xxx Ar restent à verser à des tiers") | ✅ corrigé — `color: var(--text-primary)` explicite sur `.app-frame`, qui porte déjà `data-theme` |
+| Couleurs d'accent (montants positifs en vert, avertissements en doré, badges en rouge) trop claires sur fond clair (ratio de contraste ~2.5–3.8, sous le seuil WCAG AA de 4.5) | ✅ corrigé — teintes assombries en thème clair (`--status-positive`/`--status-warning`/`--status-danger`/`--brand-secondary`), même teinte conservée |
 
 **Reste à faire / différé**
 

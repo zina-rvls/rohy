@@ -35,12 +35,17 @@
   --border-default: #D8D4C9;
   --brand-primary: #6C4CF3;
   --brand-primary-hover: #5B3FDB;
-  --brand-secondary: #29B876;
-  --status-positive: #29B876;
+  --brand-secondary: #1E8656;
+  /* Versions assombries de ces couleurs par rapport à leur teinte "brand"
+     d'origine (#29B876/#C99A1E/#E1533F) : sur fond clair, ces teintes plus
+     vives tombaient sous 3:1 de contraste (illisibles). Les fonds `-bg`
+     (halos très clairs) gardent la teinte d'origine, seule la couleur de
+     texte/icône pleine est assombrie. */
+  --status-positive: #1E8656;
   --status-positive-bg: rgba(41, 184, 118, .12);
-  --status-warning: #C99A1E;
+  --status-warning: #947116;
   --status-warning-bg: rgba(201, 154, 30, .12);
-  --status-danger: #E1533F;
+  --status-danger: #DC3922;
   --status-danger-bg: rgba(225, 83, 63, .1);
   --status-neutral: #6B6E78;
   --status-neutral-bg: rgba(107, 110, 120, .1);
