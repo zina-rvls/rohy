@@ -21,7 +21,7 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 `migrations/0001_init.sql`, PUIS `0002_admin_manage_share.sql`, PUIS
 `0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`,
 PUIS `0005_households_scoped_to_group.sql`, PUIS
-`0006_participant_type_two_values.sql`
+`0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -60,6 +60,12 @@ valeurs possibles de `participant_type` (ne reste plus que `adulte`/`enfant`)
 indépendamment de la catégorie d'âge ; la présenter comme un 3e "type" au
 même niveau qu'adulte/enfant était source de confusion. Les profils existants
 avec `personne_a_charge` sont migrés vers `enfant`.
+
+`0007_drop_participant_type.sql` retire complètement la colonne
+`participant_type` : elle ne pilotait aucun calcul ni aucune règle de l'app
+(le calcul dépend uniquement de `share_weight` et `guardian_id`), et n'était
+donc qu'un libellé descriptif redondant avec la notion de coefficient/part
+et de responsable déjà en place.
 
 ## 3. Configurer l'authentification
 

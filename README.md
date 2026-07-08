@@ -1,12 +1,11 @@
 # kotikota — suivi des dépenses entre amis
 
 Application de suivi de dépenses partagées entre amis/famille : qui a payé
-quoi, la part de contribution de chacun (coefficient réglable par personne,
-ex. 0,5 = demi-part), foyers et personnes à charge (prise en charge
-permanente, dette automatiquement fusionnée avec le responsable), et qui
-doit quoi à qui après paiements déjà effectués. Groupes/événements multiples
-(avec devise et invitation par e-mail à la création), historique, relance de
-paiement.
+quoi, la part de contribution de chacun (réglable par personne, ex. 0,5 =
+demi-part), foyers et personnes à charge (prise en charge permanente, dette
+automatiquement fusionnée avec le responsable), et qui doit quoi à qui après
+paiements déjà effectués. Groupes/événements multiples (avec devise et
+invitation par e-mail à la création), historique, relance de paiement.
 
 Ce dépôt implémente le hand-off de design **kotikota** (prototype HTML fourni
 séparément) : les écrans ont été recréés fidèlement en HTML/CSS/JS vanilla,
@@ -49,7 +48,7 @@ node tests/calc.test.js
   de l'UI, pour pouvoir être reprise telle quelle côté serveur.
 - `tests/calc.test.js` — tests unitaires (`node tests/calc.test.js`, sans
   dépendance externe) couvrant : dette croisée entre 2+ personnes, prise en
-  charge permanente vs ponctuelle, parts pondérées (coefficient relatif)
+  charge permanente vs ponctuelle, parts pondérées (poids relatif)
   mixées avec des parts "normales", paiement partiel réparti sur plusieurs
   dépenses (FIFO), acomptes à des tiers, simplification des dettes.
 - `scripts/data.js` — liste des devises proposées à la création d'un groupe
@@ -68,12 +67,11 @@ node tests/calc.test.js
 
 - Premier lancement : aucun contact ni groupe préexistant, seul le compte
   qu'on vient de créer existe. Les autres membres n'entrent dans l'app
-  qu'invités par e-mail à la création d'un groupe (prénom + e-mail +
-  coefficient de part) — un vrai compte est créé pour eux et un vrai e-mail
-  d'invitation est envoyé (Supabase Auth `inviteUserByEmail`). Une personne à
-  charge (enfant, dépendant sans compte) se crée elle depuis "gérer les
-  membres" d'un groupe (nom + type + coefficient + responsable), sans e-mail
-  ni compte Supabase Auth.
+  qu'invités par e-mail à la création d'un groupe (prénom + e-mail + part) —
+  un vrai compte est créé pour eux et un vrai e-mail d'invitation est envoyé
+  (Supabase Auth `inviteUserByEmail`). Une personne à charge (dépendant sans
+  compte) se crée elle depuis "gérer les membres" d'un groupe (nom + part +
+  responsable), sans e-mail ni compte Supabase Auth.
 - Chaque groupe a sa propre devise, choisie à sa création, utilisée pour son
   détail, ses suggestions d'équilibrage et ses dépenses (y compris listées
   dans l'onglet "toutes les dépenses"). Les agrégats qui traversent plusieurs
@@ -90,9 +88,9 @@ node tests/calc.test.js
 - **P0 — fait** : vrai backend d'auth (Supabase Auth — mot de passe, lien
   magique, et création de compte), vraie base de données Postgres avec RLS
   (remplace `localStorage`), vrai flux d'invitation par e-mail pour rejoindre
-  un groupe, foyers + personnes à charge + coefficients de part relatifs
-  (édition du type, du coefficient et du responsable depuis "gérer les
-  membres"). Cf. `supabase/README.md` pour la configuration du projet.
+  un groupe, foyers + personnes à charge + parts pondérées (édition de la
+  part et du responsable depuis "gérer les membres"). Cf. `supabase/README.md`
+  pour la configuration du projet.
 - **P1 — important** : notifications de relance réelles (push — nécessite
   l'enregistrement d'un token device par utilisateur et un service d'envoi
   type Firebase Cloud Messaging / APNs), vues consolidées par foyer et

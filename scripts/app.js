@@ -77,7 +77,7 @@
       invitingMember: false,
       households: [],
       newHouseholdName: '',
-      dependentForm: { name: '', participantType: 'enfant', shareWeight: '1', guardianId: null },
+      dependentForm: { name: '', shareWeight: '1', guardianId: null },
       inviteMemberForm: { name: '', email: '', shareWeight: '1' },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
       expensesSearchQuery: '',
@@ -187,7 +187,7 @@
       var people = profileRows.map(function (p) {
         return {
           id: p.id, name: p.name, color: p.color, shareWeight: p.share_weight,
-          guardianId: p.guardian_id || undefined, participantType: p.participant_type,
+          guardianId: p.guardian_id || undefined,
           householdId: p.household_id || undefined,
         };
       });
@@ -674,12 +674,6 @@
       loadAppData();
     });
   }
-  function setParticipantType(personId, type) {
-    sb.from('profiles').update({ participant_type: type }).eq('id', personId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
-      loadAppData();
-    });
-  }
   function setGuardian(personId, guardianId) {
     if (guardianId === personId) return;
     sb.from('profiles').update({ guardian_id: guardianId || null }).eq('id', personId).then(function (res) {
@@ -710,13 +704,12 @@
       return {
         showAddDependentForm: !s.showAddDependentForm,
         formError: null,
-        dependentForm: { name: '', participantType: 'enfant', shareWeight: '1', guardianId: null },
+        dependentForm: { name: '', shareWeight: '1', guardianId: null },
       };
     });
   }
   function setDependentName(v) { setStateSilent(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { name: v }) }; }); }
   function setDependentWeight(v) { setStateSilent(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { shareWeight: v }) }; }); }
-  function setDependentType(v) { setState(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { participantType: v }) }; }); }
   function setDependentGuardian(v) { setState(function (s) { return { dependentForm: Object.assign({}, s.dependentForm, { guardianId: v || null }) }; }); }
   function submitDependent() {
     var df = state.dependentForm;
@@ -724,16 +717,16 @@
     if (!df.name.trim()) { setState({ formError: 'donne un prénom à la personne à charge.' }); return; }
     if (!df.guardianId) { setState({ formError: 'choisis un responsable.' }); return; }
     var w = parseFloat((df.shareWeight || '1').replace(',', '.'));
-    if (isNaN(w) || w < 0) { setState({ formError: 'coefficient invalide.' }); return; }
+    if (isNaN(w) || w < 0) { setState({ formError: 'nombre de parts invalide.' }); return; }
     setState({ formError: null });
     sb.from('profiles').insert({
       name: df.name.trim(), color: INVITEE_COLORS[state.people.length % INVITEE_COLORS.length],
-      share_weight: w, participant_type: df.participantType, guardian_id: df.guardianId,
+      share_weight: w, guardian_id: df.guardianId,
     }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('group_members').insert({ group_id: groupId, user_id: res.data.id }).then(function (memRes) {
         if (memRes.error) { showToast('erreur : ' + memRes.error.message); return; }
-        setState({ showAddDependentForm: false, dependentForm: { name: '', participantType: 'enfant', shareWeight: '1', guardianId: null } });
+        setState({ showAddDependentForm: false, dependentForm: { name: '', shareWeight: '1', guardianId: null } });
         loadAppData().then(function () { showToast('personne à charge ajoutée'); });
       });
     });
@@ -1389,7 +1382,7 @@
         '</div>' +
         '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
         '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span style="font-size:12.5px;color:var(--text-secondary)">coefficient (1 = part entière)</span>' +
+        '<span style="font-size:12.5px;color:var(--text-secondary)">part (1 = part entière)</span>' +
         '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
         '</div>' +
         '</div>'
@@ -1471,12 +1464,6 @@
       }).join('');
       return opts;
     };
-    var typeOptionsFor = function (p) {
-      return ['adulte', 'enfant'].map(function (t) {
-        return '<option value="' + t + '"' + ((p.participantType || 'adulte') === t ? ' selected' : '') + '>' + t + '</option>';
-      }).join('');
-    };
-
     var rows = members.map(function (p) {
       var isAdmin = p.id === mg.adminId;
       return (
@@ -1485,17 +1472,14 @@
         '<div style="flex:1;font-size:14px;color:var(--text-primary);font-weight:600">' + escapeHtml(p.name) +
         (isAdmin ? ' (admin)' : '') +
         // "à charge" est un badge calculé (responsable défini), pas une
-        // catégorie au même niveau qu'adulte/enfant — ça évite de présenter
-        // la prise en charge comme un 3e choix de "type".
+        // catégorie à choisir séparément.
         (p.guardianId ? '<span class="badge-child inline">à charge</span>' : '') +
         '</div>' +
         (!isAdmin ?
           '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">catégorie</div>' +
-        '<select class="text-input" style="margin-bottom:0" data-bind-change="participantType" data-id="' + p.id + '">' + typeOptionsFor(p) + '</select></div>' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">coefficient</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">part (1 = part entière)</div>' +
         '<input class="text-input" style="margin-bottom:0" data-bind-change="shareWeight" data-id="' + p.id + '" value="' + (p.shareWeight != null ? p.shareWeight : 1) + '" inputmode="decimal" /></div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">responsable (si à charge)</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select>' +
@@ -1513,7 +1497,7 @@
       '<input class="text-input" data-bind="inviteMemberName" placeholder="prénom" value="' + escapeHtml(state.inviteMemberForm.name) + '" />' +
       '<div class="field-label">e-mail</div>' +
       '<input class="text-input" data-bind="inviteMemberEmail" placeholder="e-mail" value="' + escapeHtml(state.inviteMemberForm.email) + '" />' +
-      '<div class="field-label">coefficient (1 = part entière)</div>' +
+      '<div class="field-label">part (1 = part entière)</div>' +
       '<input class="text-input" data-bind="inviteMemberWeight" inputmode="decimal" value="' + escapeHtml(state.inviteMemberForm.shareWeight) + '" />' +
       '<button class="btn-primary pressable" style="margin-top:10px' + (state.invitingMember ? ';opacity:0.6' : '') + '" data-action="submitInviteMember">' +
       (state.invitingMember ? 'invitation en cours…' : 'envoyer l\'invitation') + '</button>' +
@@ -1523,13 +1507,7 @@
       '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
       '<div class="field-label">prénom</div>' +
       '<input class="text-input" data-bind="dependentName" placeholder="ex : Léo" value="' + escapeHtml(state.dependentForm.name) + '" />' +
-      '<div class="field-label">catégorie</div>' +
-      '<select class="text-input" data-bind-change="dependentType">' +
-      ['enfant', 'adulte'].map(function (t) {
-        return '<option value="' + t + '"' + (state.dependentForm.participantType === t ? ' selected' : '') + '>' + t + '</option>';
-      }).join('') +
-      '</select>' +
-      '<div class="field-label">coefficient</div>' +
+      '<div class="field-label">part (1 = part entière)</div>' +
       '<input class="text-input" data-bind="dependentWeight" inputmode="decimal" value="' + escapeHtml(state.dependentForm.shareWeight) + '" />' +
       '<div class="field-label">responsable</div>' +
       '<select class="text-input" data-bind-change="dependentGuardian">' +
@@ -1690,10 +1668,8 @@
       switch (bind) {
         case 'override': setOverride(id, el.value); break;
         case 'shareWeight': setShareWeight(id, el.value); break;
-        case 'participantType': setParticipantType(id, el.value); break;
         case 'guardian': setGuardian(id, el.value); break;
         case 'household': setMemberHousehold(id, el.value); break;
-        case 'dependentType': setDependentType(el.value); break;
         case 'dependentGuardian': setDependentGuardian(el.value); break;
         default: break;
       }
