@@ -73,9 +73,12 @@
       showAddGroup: false,
       showSettle: false,
       showAddDependentForm: false,
+      showInviteMemberForm: false,
+      invitingMember: false,
       households: [],
       newHouseholdName: '',
       dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null },
+      inviteMemberForm: { name: '', email: '', shareWeight: '1' },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
       expensesSearchQuery: '',
       lastActiveGroupId: null,
@@ -143,9 +146,14 @@
   function showToast(msg) {
     clearTimeout(toastTimer);
     setState({ toast: msg });
+    // Les messages d'erreur restent affichés plus longtemps : un toast de
+    // 2,6s qui disparaît tout seul est facile à manquer, notamment pour un
+    // échec d'invitation qu'on ne remarque qu'en constatant après coup
+    // qu'un membre n'a pas été ajouté.
+    var duration = /^erreur/i.test(msg) ? 6500 : 2600;
     toastTimer = setTimeout(function () {
       setState(function (s) { return s.toast === msg ? { toast: null } : {}; });
-    }, 2600);
+    }, duration);
   }
 
   function firstErrorOf(results) {
@@ -533,6 +541,35 @@
       return { groupForm: Object.assign({}, s.groupForm, { invitees: invitees }) };
     });
   }
+  // Invite un membre par e-mail dans un groupe déjà créé. Retourne une
+  // promesse résolue avec null en cas de succès, ou une chaîne décrivant
+  // l'échec sinon — jamais rejetée, pour pouvoir enchaîner les invitations
+  // d'une série les unes après les autres sans qu'un échec en bloque
+  // d'autres.
+  function inviteMemberToGroup(groupId, name, email, shareWeight, color) {
+    return sb.functions.invoke('invite-member', {
+      body: { groupId: groupId, name: name, email: email, shareWeight: shareWeight, color: color },
+    }).then(function (inviteRes) {
+      var reason = inviteRes.error ? inviteRes.error.message : (inviteRes.data && inviteRes.data.error);
+      return reason ? (name + ' (' + reason + ')') : null;
+    }).catch(function (err) {
+      return name + ' (' + (err && err.message ? err.message : 'erreur réseau') + ')';
+    });
+  }
+
+  // Enchaîne les invitations une par une (plutôt qu'en parallèle) : plus
+  // simple à diagnostiquer en cas d'échec, et évite de solliciter l'API
+  // d'invitation de Supabase avec plusieurs appels concurrents d'un coup.
+  function inviteSequentially(invitees, groupId) {
+    var failed = [];
+    return invitees.reduce(function (chain, invitee, idx) {
+      return chain.then(function () {
+        return inviteMemberToGroup(groupId, invitee.name.trim(), invitee.email.trim(), invitee.shareWeight, INVITEE_COLORS[idx % INVITEE_COLORS.length])
+          .then(function (failure) { if (failure) failed.push(failure); });
+      });
+    }, Promise.resolve()).then(function () { return failed; });
+  }
+
   function submitGroup() {
     if (state.submittingGroup) return;
     var gf = state.groupForm;
@@ -551,22 +588,10 @@
       sb.from('group_members').insert({ group_id: newGroup.id, user_id: state.currentUserId }).then(function (memRes) {
         if (memRes.error) { setState({ formError: memRes.error.message, submittingGroup: false }); return; }
 
-        var invitePromises = validInvitees.map(function (invitee, idx) {
-          return sb.functions.invoke('invite-member', {
-            body: {
-              groupId: newGroup.id, name: invitee.name.trim(), email: invitee.email.trim(),
-              shareWeight: invitee.shareWeight, color: INVITEE_COLORS[idx % INVITEE_COLORS.length],
-            },
-          }).then(function (inviteRes) {
-            return (inviteRes.error || (inviteRes.data && inviteRes.data.error)) ? invitee.name.trim() : null;
-          }).catch(function () { return invitee.name.trim(); });
-        });
-
-        Promise.all(invitePromises).then(function (results) {
-          var failedInvites = results.filter(function (name) { return name; });
+        inviteSequentially(validInvitees, newGroup.id).then(function (failedInvites) {
           setState({ showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id });
           loadAppData().then(function () {
-            if (failedInvites.length) showToast('groupe créé — invitation impossible pour : ' + failedInvites.join(', '));
+            if (failedInvites.length) showToast('erreur : invitation impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".');
             else showToast(validInvitees.length ? 'groupe créé, invitations envoyées par e-mail' : 'groupe créé');
           });
         });
@@ -584,16 +609,31 @@
     });
   }
   function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId }); }
-  function toggleManageMember(groupId, personId) {
-    var g = group(groupId);
-    if (personId === g.adminId) return;
-    var has = g.memberIds.indexOf(personId) !== -1;
-    var query = has
-      ? sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', personId)
-      : sb.from('group_members').insert({ group_id: groupId, user_id: personId });
-    query.then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
-      loadAppData();
+  function toggleInviteMemberForm() {
+    setState(function (s) {
+      return {
+        showInviteMemberForm: !s.showInviteMemberForm,
+        formError: null,
+        inviteMemberForm: { name: '', email: '', shareWeight: '1' },
+      };
+    });
+  }
+  function setInviteMemberName(v) { setStateSilent(function (s) { return { inviteMemberForm: Object.assign({}, s.inviteMemberForm, { name: v }) }; }); }
+  function setInviteMemberEmail(v) { setStateSilent(function (s) { return { inviteMemberForm: Object.assign({}, s.inviteMemberForm, { email: v }) }; }); }
+  function setInviteMemberWeight(v) { setStateSilent(function (s) { return { inviteMemberForm: Object.assign({}, s.inviteMemberForm, { shareWeight: v }) }; }); }
+  function submitInviteMember() {
+    if (state.invitingMember) return;
+    var f = state.inviteMemberForm;
+    var groupId = state.manageMembersGroupId;
+    if (!f.name.trim()) { setState({ formError: 'donne un prénom.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ formError: 'entre un e-mail valide.' }); return; }
+    setState({ formError: null, invitingMember: true });
+    var color = INVITEE_COLORS[state.people.length % INVITEE_COLORS.length];
+    inviteMemberToGroup(groupId, f.name.trim(), f.email.trim(), f.shareWeight, color).then(function (failure) {
+      setState({ invitingMember: false });
+      if (failure) { setState({ formError: 'invitation impossible : ' + failure }); return; }
+      setState({ showInviteMemberForm: false, inviteMemberForm: { name: '', email: '', shareWeight: '1' } });
+      loadAppData().then(function () { showToast('invitation envoyée par e-mail'); });
     });
   }
   function openConfirmRemoveMember(groupId, personId) {
@@ -688,11 +728,12 @@
   // ---------- Modales ----------
   function openAccount() { setState({ showAccount: true }); }
   function closeModal() {
+    lastModalScrollTop = null;
     setState({
       showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null, showAddDependentForm: false,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
-      settleGroupId: null,
+      settleGroupId: null, showInviteMemberForm: false,
     });
   }
 
@@ -723,9 +764,20 @@
     }
   }
 
+  // Persiste au-delà d'un seul appel à render() : une modification dans une
+  // modale (ex. changer le foyer d'un membre) déclenche un loadAppData(),
+  // qui affiche brièvement l'écran de chargement (la modale disparaît du
+  // DOM) avant de la recréer une fois les données rechargées. Sans ça, la
+  // modale recréée repart toujours en haut, ce qui donne l'impression que
+  // la page "s'est rechargée" et a perdu la modification qu'on venait de
+  // faire plus bas dans la liste.
+  var lastModalScrollTop = null;
+
   function render() {
     var root = document.getElementById('app');
     var focusInfo = captureFocus(root);
+    var priorModalSheet = root.querySelector('.modal-sheet');
+    if (priorModalSheet) lastModalScrollTop = priorModalSheet.scrollTop;
     root.setAttribute('data-theme', state.theme);
     if (state.passwordRecovery) {
       root.innerHTML = renderNewPasswordScreen();
@@ -738,6 +790,8 @@
     }
     bindEvents(root);
     restoreFocus(root, focusInfo);
+    var newModalSheet = root.querySelector('.modal-sheet');
+    if (newModalSheet && lastModalScrollTop != null) newModalSheet.scrollTop = lastModalScrollTop;
   }
 
   function renderLoadingScreen() {
@@ -1382,10 +1436,14 @@
   function renderManageMembersModal() {
     var mg = group(state.manageMembersGroupId);
     if (!mg) return '';
+    // Seules les personnes déjà membres de CE groupe apparaissent ici — pour
+    // ajouter quelqu'un d'autre, on passe par "+ inviter un membre" (par
+    // e-mail) plutôt que par une liste de tous les comptes existants.
+    var members = mg.memberIds.map(function (id) { return person(id); }).filter(Boolean);
 
     var guardianOptionsFor = function (p) {
       var opts = '<option value=""' + (!p.guardianId ? ' selected' : '') + '>— aucun —</option>';
-      opts += state.people.filter(function (x) { return x.id !== p.id; }).map(function (x) {
+      opts += members.filter(function (x) { return x.id !== p.id; }).map(function (x) {
         return '<option value="' + x.id + '"' + (p.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>';
       }).join('');
       return opts;
@@ -1404,15 +1462,13 @@
       }).join('');
     };
 
-    var rows = state.people.map(function (p) {
-      var checked = mg.memberIds.indexOf(p.id) !== -1;
+    var rows = members.map(function (p) {
       var isAdmin = p.id === mg.adminId;
       return (
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
         '<div class="checkbox-row" style="border-top:none">' +
-        '<div class="checkbox' + (checked ? ' checked' : '') + '" data-action="toggleManageMember" data-group-id="' + mg.id + '" data-id="' + p.id + '">' + (checked ? '<i class="ph-bold ph-check"></i>' : '') + '</div>' +
         '<div style="flex:1;font-size:14px;color:var(--text-primary);font-weight:600">' + escapeHtml(p.name) + (isAdmin ? ' (admin)' : '') + '</div>' +
-        (checked && !isAdmin ?
+        (!isAdmin ?
           '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
@@ -1432,6 +1488,18 @@
       );
     }).join('');
 
+    var inviteSection = !state.showInviteMemberForm ? '' :
+      '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
+      '<div class="field-label">prénom</div>' +
+      '<input class="text-input" data-bind="inviteMemberName" placeholder="prénom" value="' + escapeHtml(state.inviteMemberForm.name) + '" />' +
+      '<div class="field-label">e-mail</div>' +
+      '<input class="text-input" data-bind="inviteMemberEmail" placeholder="e-mail" value="' + escapeHtml(state.inviteMemberForm.email) + '" />' +
+      '<div class="field-label">coefficient (1 = part entière)</div>' +
+      '<input class="text-input" data-bind="inviteMemberWeight" inputmode="decimal" value="' + escapeHtml(state.inviteMemberForm.shareWeight) + '" />' +
+      '<button class="btn-primary pressable" style="margin-top:10px' + (state.invitingMember ? ';opacity:0.6' : '') + '" data-action="submitInviteMember">' +
+      (state.invitingMember ? 'invitation en cours…' : 'envoyer l\'invitation') + '</button>' +
+      '</div>';
+
     var dependentSection = !state.showAddDependentForm ? '' :
       '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
       '<div class="field-label">prénom</div>' +
@@ -1447,7 +1515,7 @@
       '<div class="field-label">responsable</div>' +
       '<select class="text-input" data-bind-change="dependentGuardian">' +
       '<option value="">— choisir —</option>' +
-      state.people.map(function (x) { return '<option value="' + x.id + '"' + (state.dependentForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
+      members.map(function (x) { return '<option value="' + x.id + '"' + (state.dependentForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
       '</select>' +
       '<button class="btn-primary pressable" style="margin-top:10px" data-action="submitDependent">ajouter</button>' +
       '</div>';
@@ -1464,7 +1532,9 @@
       '</div>' +
       '<div class="section-label">participants</div>' +
       rows +
+      inviteSection +
       dependentSection +
+      '<button class="dashed-btn pressable" style="margin-bottom:8px" data-action="toggleInviteMemberForm">' + (state.showInviteMemberForm ? 'annuler' : '+ inviter un membre par e-mail') + '</button>' +
       '<button class="dashed-btn pressable" data-action="toggleAddDependentForm">' + (state.showAddDependentForm ? 'annuler' : '+ ajouter une personne à charge') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       '</div></div>'
@@ -1550,13 +1620,14 @@
         case 'submitGroup': submitGroup(); break;
         case 'openSettle': openSettle(id, groupId || null); break;
         case 'submitSettle': submitSettle(); break;
-        case 'toggleManageMember': toggleManageMember(groupId, id); break;
         case 'openConfirmRemoveMember': openConfirmRemoveMember(groupId, id); break;
         case 'cancelRemoveMember': cancelRemoveMember(); break;
         case 'confirmRemoveMember': confirmRemoveMember(); break;
         case 'createHousehold': createHousehold(); break;
         case 'toggleAddDependentForm': toggleAddDependentForm(); break;
         case 'submitDependent': submitDependent(); break;
+        case 'toggleInviteMemberForm': toggleInviteMemberForm(); break;
+        case 'submitInviteMember': submitInviteMember(); break;
         default: break;
       }
     };
@@ -1585,6 +1656,9 @@
         case 'newHouseholdName': setNewHouseholdName(v); break;
         case 'dependentName': setDependentName(v); break;
         case 'dependentWeight': setDependentWeight(v); break;
+        case 'inviteMemberName': setInviteMemberName(v); break;
+        case 'inviteMemberEmail': setInviteMemberEmail(v); break;
+        case 'inviteMemberWeight': setInviteMemberWeight(v); break;
         default: break;
       }
     };
