@@ -1124,6 +1124,32 @@
     var sum = owed - owe;
     var mixedCurrencies = !filterId && !groupsHaveSingleCurrency();
 
+    // Suggestions de règlement à l'échelle du compte : computeDebts() (sans
+    // filtre de groupe) fusionne déjà nativement la dette entre deux mêmes
+    // personnes partageant plusieurs groupes (les clés de dette ne sont pas
+    // scopées par groupe) — simplify() sur cet ensemble complet donne donc
+    // directement le nombre minimal de transactions à l'échelle du compte,
+    // au lieu des suggestions potentiellement redondantes qu'on obtiendrait
+    // en simplifiant groupe par groupe. Seulement affiché en vue agrégée
+    // (pas de filtre par groupe actif) avec plusieurs groupes de la même
+    // devise — un seul groupe donnerait exactement le même résultat que sa
+    // propre section "pour équilibrer".
+    var globalSuggestions = '';
+    if (!filterId && !mixedCurrencies && state.groups.length > 1) {
+      var allMemberIds = [];
+      state.groups.forEach(function (g) {
+        g.memberIds.forEach(function (id) { if (allMemberIds.indexOf(id) === -1) allMemberIds.push(id); });
+      });
+      var globalTxns = calc.simplify(globalDebts, allMemberIds);
+      if (globalTxns.length) {
+        globalSuggestions = '<div class="section-label" style="margin-top:18px">pour équilibrer (tous les groupes)</div>' +
+          globalTxns.map(function (t) {
+            return '<div class="suggestion-row"><div><b>' + escapeHtml(person(t.from).name) + '</b> → <b>' + escapeHtml(person(t.to).name) + '</b></div>' +
+              '<div class="suggestion-amount">' + fmtC(t.amount) + '</div></div>';
+          }).join('');
+      }
+    }
+
     return (
       renderGroupFilterPills(filterId, 'setHomeGroupFilter') +
       '<button class="current-user-row pressable" data-action="openAccount">' +
@@ -1145,7 +1171,8 @@
       (!mixedCurrencies && pendingShare > 0.5 ?
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> à anticiper</div>' +
         '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmtC(pendingShare) + '.</div></div>' : '') +
-      (!mixedCurrencies && otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '')
+      (!mixedCurrencies && otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '') +
+      globalSuggestions
     );
   }
 

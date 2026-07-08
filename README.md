@@ -181,6 +181,7 @@ charge, parts pondérées). Statut des points relevés :
 | Message d'erreur générique de `invite-member` ("Edge Function returned a non-2xx status code") au lieu du vrai motif d'échec | ✅ corrigé |
 | Invitations envoyées en parallèle à la création d'un groupe, peu robuste | ✅ corrigé — désormais séquentielles, avec possibilité de réessayer depuis "gérer les membres" |
 | Aucun moyen d'ajouter un nouveau membre après la création du groupe | ✅ corrigé — "+ ajouter un membre" dans "gérer les membres" (e-mail facultatif) |
+| Simplification des dettes calculée groupe par groupe uniquement, ce qui pouvait suggérer des transactions redondantes entre deux mêmes personnes partageant plusieurs groupes | ✅ corrigé — section "pour équilibrer (tous les groupes)" sur l'accueil (vue agrégée, devise commune), qui réutilise `computeDebts()` (déjà fusionné par paire indépendamment du groupe) + `simplify()` sur l'ensemble des membres ; la section "pour équilibrer" de chaque groupe reste utile pour régler ce groupe précisément |
 | Montant total peu lisible (gris clair) sur la page "toutes les dépenses" | ✅ corrigé (patch ponctuel, puis cause racine identifiée et corrigée séparément, cf. ligne suivante) |
 | Cause racine trouvée en creusant le bug précédent : `data-theme` est porté par `.app-frame`, pas par `<body>` — tout texte sans couleur propre héritait donc du `color` de `<body>`, résolu hors du scope de thème (toujours les valeurs du thème sombre, quel que soit le thème actif). Invisible tant que le thème sombre était celui par défaut, ce bug rendait illisible tout texte "nu" en thème clair (ex. "xxx Ar restent à verser à des tiers") | ✅ corrigé — `color: var(--text-primary)` explicite sur `.app-frame`, qui porte déjà `data-theme` |
 | Couleurs d'accent (montants positifs en vert, avertissements en doré, badges en rouge) trop claires sur fond clair (ratio de contraste ~2.5–3.8, sous le seuil WCAG AA de 4.5) | ✅ corrigé — teintes assombries en thème clair (`--status-positive`/`--status-warning`/`--status-danger`/`--brand-secondary`), même teinte conservée |
@@ -191,7 +192,6 @@ charge, parts pondérées). Statut des points relevés :
 
 | Piste | Statut |
 |---|---|
-| Simplification des dettes à l'échelle du compte (actuellement calculée groupe par groupe, ce qui peut suggérer des transactions redondantes entre deux mêmes personnes partageant plusieurs groupes) | ⏳ différé |
 | Montant ou pourcentage exact par personne sur une dépense, au-delà du poids relatif | ⏳ différé — recoupe la Fonctionnalité 8 du brief (dépenses partielles), prévue en Étape 3 |
 | Optimisation avancée des remboursements (au-delà de la simplification gloutonne actuelle) | ⏳ différé — Fonctionnalité 9 du brief, Étape 2 |
 | Dépenses récurrentes | ⏳ différé — hors brief actuel, à arbitrer |
