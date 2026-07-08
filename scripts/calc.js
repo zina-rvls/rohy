@@ -30,14 +30,38 @@
   }
 
   /**
-   * Part de chaque participant sur un montant donné, proportionnelle à son
-   * poids relatif (shareWeight) par rapport à la somme des poids de tous
-   * les participants. Retourne { [participantId]: montant }.
+   * Part de chaque participant sur un montant donné, proportionnelle à un
+   * poids par participant — par défaut (ou si `expense` est omis), ce poids
+   * est le poids relatif permanent de chacun (shareWeight), comportement
+   * historique inchangé.
+   *
+   * `expense.splitMode` permet de remplacer la source du poids pour une
+   * dépense précise, sans toucher au poids permanent des profils :
+   *   'equal'   : poids 1 pour tous (parts strictement égales)
+   *   'shares'  : poids ponctuel par participant (`expense.splitValues`),
+   *               valable pour cette dépense uniquement
+   *   'exact'   : montant exact par participant (`expense.splitValues`) —
+   *               utilisé tel quel comme poids : la normalisation par le
+   *               poids total ci-dessous fait qu'un montant qui somme au
+   *               total de la dépense reproduit exactement ces montants,
+   *               tout en restant proportionnellement correct si jamais on
+   *               répartit un montant partiel (cf. `paidExternal`)
+   *   'percent' : pourcentage par participant (`expense.splitValues`) —
+   *               même principe, un poids qui somme à 100
+   * Dans tous les cas, un participant sans valeur ponctuelle retombe sur
+   * son poids permanent (shareWeight) plutôt que sur un poids de zéro.
+   * Retourne { [participantId]: montant }.
    */
-  function computeShares(amount, participantIds, people) {
+  function computeShares(amount, participantIds, people, expense) {
+    var mode = expense && expense.splitMode && expense.splitMode !== 'default' ? expense.splitMode : null;
+    var values = (expense && expense.splitValues) || {};
     var parts = participantIds.map(function (pid) {
       var p = findPerson(people, pid);
-      return { pid: pid, weight: weightFor(p) };
+      var weight;
+      if (mode === 'equal') weight = 1;
+      else if ((mode === 'shares' || mode === 'exact' || mode === 'percent') && values[pid] != null) weight = values[pid];
+      else weight = weightFor(p);
+      return { pid: pid, weight: weight };
     });
     var totalWeight = parts.reduce(function (s, x) { return s + x.weight; }, 0) || 1;
     var unit = amount / totalWeight;
@@ -89,7 +113,7 @@
     }
     expenses.forEach(function (e) {
       var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
-      var shares = computeShares(effAmount, e.participants, people);
+      var shares = computeShares(effAmount, e.participants, people, e);
       e.participants.forEach(function (pid) {
         var p = findPerson(people, pid);
         var responsible = responsibleFor(e, pid, p);
@@ -167,7 +191,7 @@
     var expenseOwed = {};
     sortedExpenses.forEach(function (e) {
       var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
-      var shares = computeShares(effAmount, e.participants, people);
+      var shares = computeShares(effAmount, e.participants, people, e);
       var owedTotal = 0;
       e.participants.forEach(function (pid) {
         var share = shares[pid];
@@ -225,7 +249,7 @@
       var effAmount = e.paidExternal != null ? e.paidExternal : e.amount;
       var dueExternal = e.amount - effAmount;
       if (dueExternal < 0.5) return;
-      var shares = computeShares(dueExternal, e.participants, people);
+      var shares = computeShares(dueExternal, e.participants, people, e);
       e.participants.forEach(function (pid) {
         var p = findPerson(people, pid);
         var responsible = responsibleFor(e, pid, p);

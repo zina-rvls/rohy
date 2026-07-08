@@ -153,5 +153,82 @@ test('simplify minimise le nombre de transactions entre créditeurs et débiteur
   txns.forEach(t => assert.strictEqual(t.to, 'c', 'tous les transferts doivent aller vers le créditeur c'));
 });
 
+// --- Modes de répartition par dépense (Splitwise-like) ---
+test('mode "equal" ignore le poids permanent (shareWeight) et divise à parts strictement égales', () => {
+  const people = [
+    { id: 'a', name: 'A' },
+    { id: 'enfant', name: 'Enfant', shareWeight: 0.5 },
+  ];
+  const expense = { splitMode: 'equal' };
+  const shares = calc.computeShares(100, ['a', 'enfant'], people, expense);
+  close(shares.a, 50, 'A (poids 0.5 habituel, ignoré en mode équitable)');
+  close(shares.enfant, 50, 'Enfant (poids 0.5 habituel, ignoré en mode équitable)');
+});
+
+test('mode "shares" applique un poids ponctuel sans toucher au poids permanent du profil', () => {
+  const people = [
+    { id: 'a', name: 'A' },
+    { id: 'b', name: 'B' },
+  ];
+  const expense = { splitMode: 'shares', splitValues: { a: 3, b: 1 } };
+  const shares = calc.computeShares(400, ['a', 'b'], people, expense);
+  close(shares.a, 300, 'A (poids ponctuel 3/4)');
+  close(shares.b, 100, 'B (poids ponctuel 1/4)');
+  // le poids permanent des profils n'a pas été modifié par cet appel
+  assert.strictEqual(people[0].shareWeight, undefined, 'le poids permanent de A reste inchangé');
+});
+
+test('mode "exact" reproduit les montants saisis quand ils sont utilisés pour le montant total', () => {
+  const people = [
+    { id: 'a', name: 'A' },
+    { id: 'b', name: 'B' },
+  ];
+  const expense = { amount: 50, splitMode: 'exact', splitValues: { a: 30, b: 20 } };
+  const shares = calc.computeShares(50, ['a', 'b'], people, expense);
+  close(shares.a, 30, 'A (montant exact saisi)');
+  close(shares.b, 20, 'B (montant exact saisi)');
+});
+
+test('mode "exact" reste proportionnellement correct sur un acompte partiel (paidExternal)', () => {
+  const people = [
+    { id: 'a', name: 'A' },
+    { id: 'b', name: 'B' },
+  ];
+  // A a saisi des montants exacts (30/20) sur les 50 totaux, mais seuls 25 ont
+  // été versés au tiers pour l'instant (paidExternal) : le reste à répartir
+  // (computePendingShare) doit rester dans le même ratio 3:2, pas les valeurs brutes.
+  const expenses = [
+    { id: 'e1', groupId: 'g', label: 'loyer', amount: 50, paidExternal: 25, paidBy: 'a', date: '2026-01-01', participants: ['a', 'b'], overrides: {}, splitMode: 'exact', splitValues: { a: 30, b: 20 } },
+  ];
+  close(calc.computePendingShare(people, expenses, 'a'), 15, 'part de A sur le solde restant dû (ratio 3/5 conservé)');
+  close(calc.computePendingShare(people, expenses, 'b'), 10, 'part de B sur le solde restant dû (ratio 2/5 conservé)');
+});
+
+test('mode "percent" répartit selon les pourcentages saisis (somme à 100)', () => {
+  const people = [
+    { id: 'a', name: 'A' },
+    { id: 'b', name: 'B' },
+    { id: 'c', name: 'C' },
+  ];
+  const expense = { splitMode: 'percent', splitValues: { a: 50, b: 30, c: 20 } };
+  const shares = calc.computeShares(300, ['a', 'b', 'c'], people, expense);
+  close(shares.a, 150, 'A (50%)');
+  close(shares.b, 90, 'B (30%)');
+  close(shares.c, 60, 'C (20%)');
+});
+
+test('sans splitMode (ou "default"), computeShares retombe sur le poids permanent — comportement inchangé', () => {
+  const people = [
+    { id: 'a', name: 'A' },
+    { id: 'part50', name: 'Part50', shareWeight: 0.5 },
+  ];
+  const sharesNoExpense = calc.computeShares(150, ['a', 'part50'], people);
+  const sharesDefaultMode = calc.computeShares(150, ['a', 'part50'], people, { splitMode: 'default' });
+  close(sharesNoExpense.a, 100, 'sans expense, poids permanent utilisé (A)');
+  close(sharesNoExpense.part50, 50, 'sans expense, poids permanent utilisé (Part50)');
+  close(sharesDefaultMode.a, sharesNoExpense.a, 'splitMode "default" identique à omettre expense (A)');
+  close(sharesDefaultMode.part50, sharesNoExpense.part50, 'splitMode "default" identique à omettre expense (Part50)');
+});
+
 console.log(`\n${passed} test(s) réussi(s), ${failed} échoué(s).`);
 process.exit(failed > 0 ? 1 : 0);

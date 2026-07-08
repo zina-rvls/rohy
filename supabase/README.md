@@ -22,9 +22,9 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 `0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`,
 PUIS `0005_households_scoped_to_group.sql`, PUIS
 `0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`,
-PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql` (ou,
-avec la CLI Supabase installée : `supabase link --project-ref <ref>` puis
-`supabase db push`).
+PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql`,
+PUIS `0010_expense_split_modes.sql` (ou, avec la CLI Supabase installée :
+`supabase link --project-ref <ref>` puis `supabase db push`).
 
 `0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
@@ -89,6 +89,15 @@ au groupe du chemin déposé (convention `{group_id}/{nom de fichier}`, les
 droits calqués sur ceux des dépenses : tout membre du groupe, pas seulement
 l'admin ni l'auteur). Rien à configurer manuellement côté dashboard, le
 bucket est créé par la migration elle-même.
+
+`0010_expense_split_modes.sql` ajoute la possibilité de choisir, pour une
+dépense précise, un mode de répartition différent du poids permanent
+(`share_weight`) — colonne `expenses.split_mode` (`'default'` par défaut,
+ou `'equal'`/`'shares'`/`'exact'`/`'percent'`) et `expense_participants.split_value`
+(le poids ponctuel, montant exact ou pourcentage selon le mode). Migration
+purement additive : toute dépense existante garde `split_mode = 'default'`
+et `split_value = null`, donc un comportement strictement inchangé (cf.
+`scripts/calc.js`, `computeShares`).
 
 ## 3. Configurer l'authentification
 

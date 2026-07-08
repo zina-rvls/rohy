@@ -80,7 +80,7 @@
       households: [],
       newHouseholdName: '',
       addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null },
-      form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
+      form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre', splitMode: 'default', splitValues: {} },
       expensesSearchQuery: '',
       expensesMineOnly: false,
       expensesCategoryFilter: null,
@@ -341,11 +341,16 @@
       var expenses = expenseRows.map(function (e) {
         var parts = participantRows.filter(function (p) { return p.expense_id === e.id; });
         var overrides = {};
-        parts.forEach(function (p) { if (p.override_responsible_id) overrides[p.user_id] = p.override_responsible_id; });
+        var splitValues = {};
+        parts.forEach(function (p) {
+          if (p.override_responsible_id) overrides[p.user_id] = p.override_responsible_id;
+          if (p.split_value != null) splitValues[p.user_id] = Number(p.split_value);
+        });
         return {
           id: e.id, groupId: e.group_id, label: e.label, icon: e.icon, amount: Number(e.amount),
           paidExternal: e.paid_external != null ? Number(e.paid_external) : null,
           paidBy: e.paid_by, date: e.expense_date, participants: parts.map(function (p) { return p.user_id; }), overrides: overrides,
+          splitMode: e.split_mode || 'default', splitValues: splitValues,
           receiptPath: e.receipt_path || null,
         };
       });
@@ -546,6 +551,7 @@
       form: {
         editingId: null, label: '', amount: '', date: new Date().toISOString().slice(0, 10), groupId: g.id, paidBy: state.currentUserId,
         participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '', category: 'autre',
+        splitMode: 'default', splitValues: {},
         receiptPath: null, receiptFile: null, receiptRemove: false,
       },
     });
@@ -562,6 +568,8 @@
     var e = state.expenses.find(function (x) { return x.id === expenseId; });
     if (!e) return;
     var fullyPaid = (e.paidExternal != null ? e.paidExternal : e.amount) >= e.amount - 0.005;
+    var splitValues = {};
+    Object.keys(e.splitValues || {}).forEach(function (pid) { splitValues[pid] = String(e.splitValues[pid]).replace('.', ','); });
     setState({
       showAddExpense: true,
       formError: null,
@@ -570,6 +578,7 @@
         participantIds: e.participants.slice(), overrides: Object.assign({}, e.overrides || {}),
         fullyPaid: fullyPaid, paidExternal: fullyPaid ? '' : String(e.paidExternal != null ? e.paidExternal : 0).replace('.', ','),
         category: categoryForIcon(e.icon),
+        splitMode: e.splitMode || 'default', splitValues: splitValues,
         receiptPath: e.receiptPath || null, receiptFile: null, receiptRemove: false,
       },
     });
@@ -601,7 +610,11 @@
     var g = group(groupId);
     var overrides = {};
     g.memberIds.forEach(function (pid) { if (person(pid).guardianId) overrides[pid] = person(pid).guardianId; });
-    setState(function (s) { return { form: Object.assign({}, s.form, { groupId: groupId, participantIds: g.memberIds.slice(), overrides: overrides }) }; });
+    // Les membres changent avec le groupe : une répartition ponctuelle
+    // (montants/pourcentages/parts) saisie pour l'ancien groupe n'a plus de
+    // sens, on repart du mode par défaut plutôt que de garder des valeurs
+    // orphelines.
+    setState(function (s) { return { form: Object.assign({}, s.form, { groupId: groupId, participantIds: g.memberIds.slice(), overrides: overrides, splitMode: 'default', splitValues: {} }) }; });
   }
   function selectPayer(pid) { setState(function (s) { return { form: Object.assign({}, s.form, { paidBy: pid }) }; }); }
   function toggleParticipant(pid) {
@@ -618,6 +631,56 @@
       var allSelected = g.memberIds.every(function (pid) { return s.form.participantIds.indexOf(pid) !== -1; });
       return { form: Object.assign({}, s.form, { participantIds: allSelected ? [] : g.memberIds.slice() }) };
     });
+  }
+  // Bascule le mode de répartition d'une dépense. Pré-remplit les valeurs
+  // ponctuelles à partir de la répartition actuellement affichée (poids
+  // habituel au premier changement, puis valeurs précédemment saisies pour
+  // les changements suivants) : l'utilisateur part d'un état cohérent plutôt
+  // que de zéro, et n'a qu'à ajuster ce qui doit vraiment différer.
+  function setSplitMode(mode) {
+    setState(function (s) {
+      var f = s.form;
+      if (mode === f.splitMode) return {};
+      var splitValues = {};
+      if (mode === 'shares' || mode === 'exact' || mode === 'percent') {
+        var amt = parseFloat((f.amount || '0').replace(',', '.')) || 0;
+        var g = f.groupId ? group(f.groupId) : null;
+        var decimals = currencyDecimalsFor(g && g.currency);
+        var numericValues = {};
+        Object.keys(f.splitValues).forEach(function (pid) {
+          var n = parseFloat((f.splitValues[pid] || '').replace(',', '.'));
+          if (!isNaN(n)) numericValues[pid] = n;
+        });
+        var baseline = calc.computeShares(amt || 1, f.participantIds, state.people, { splitMode: f.splitMode, splitValues: numericValues });
+        f.participantIds.forEach(function (pid) {
+          if (mode === 'shares') splitValues[pid] = String(calc.weightFor(person(pid))).replace('.', ',');
+          else if (mode === 'exact') splitValues[pid] = (baseline[pid] || 0).toFixed(decimals).replace('.', ',');
+          else splitValues[pid] = (amt > 0 ? (baseline[pid] || 0) / amt * 100 : 0).toFixed(1).replace('.', ',');
+        });
+      }
+      return { form: Object.assign({}, f, { splitMode: mode, splitValues: splitValues }) };
+    });
+  }
+  function setSplitValue(pid, v) {
+    setState(function (s) {
+      var splitValues = Object.assign({}, s.form.splitValues);
+      splitValues[pid] = v;
+      return { form: Object.assign({}, s.form, { splitValues: splitValues }) };
+    });
+  }
+  // Total actuellement saisi vs. cible (montant de la dépense pour "exact",
+  // 100 pour "pourcentage") ; null si le mode courant n'a pas de cible à
+  // atteindre (default/equal/shares n'ont pas besoin de sommer à une valeur
+  // précise, ce sont de simples poids relatifs).
+  function splitTarget(f) {
+    if (f.splitMode !== 'exact' && f.splitMode !== 'percent') return null;
+    var amt = parseFloat((f.amount || '0').replace(',', '.')) || 0;
+    var target = f.splitMode === 'percent' ? 100 : amt;
+    var sum = f.participantIds.reduce(function (acc, pid) {
+      var v = parseFloat((f.splitValues[pid] || '0').replace(',', '.'));
+      return acc + (isNaN(v) ? 0 : v);
+    }, 0);
+    return { sum: sum, target: target, remainder: target - sum, ok: Math.abs(target - sum) < 0.01 };
   }
   function setReceiptFile(file) {
     setState(function (s) { return { form: Object.assign({}, s.form, { receiptFile: file, receiptRemove: false }) }; });
@@ -680,6 +743,13 @@
     if (!f.date) { setState({ formError: 'Choisis une date.' }); return; }
     if (f.participantIds.length === 0) { setState({ formError: 'Sélectionne au moins un participant.' }); return; }
     var g = group(f.groupId);
+    var target = splitTarget(f);
+    if (target && !target.ok) {
+      var targetLabel = f.splitMode === 'percent' ? '100 %' : fmtIn(target.target, g && g.currency);
+      var sumLabel = f.splitMode === 'percent' ? target.sum.toFixed(1).replace('.', ',') + ' %' : fmtIn(target.sum, g && g.currency);
+      setState({ formError: 'La répartition doit sommer à ' + targetLabel + ' (actuellement ' + sumLabel + ').' });
+      return;
+    }
     var paidExternal = amt;
     if (!f.fullyPaid) {
       var pe = parseFloat((f.paidExternal || '').replace(',', '.'));
@@ -687,13 +757,21 @@
     }
     setState({ formError: null });
 
+    var splitValueFor = function (pid) {
+      if (f.splitMode !== 'shares' && f.splitMode !== 'exact' && f.splitMode !== 'percent') return null;
+      var v = parseFloat((f.splitValues[pid] || '').replace(',', '.'));
+      return isNaN(v) ? null : v;
+    };
     var participantRowsFor = function (expenseId) {
-      return f.participantIds.map(function (pid) { return { expense_id: expenseId, user_id: pid, override_responsible_id: f.overrides[pid] || null }; });
+      return f.participantIds.map(function (pid) {
+        return { expense_id: expenseId, user_id: pid, override_responsible_id: f.overrides[pid] || null, split_value: splitValueFor(pid) };
+      });
     };
 
     if (f.editingId) {
       sb.from('expenses').update({
         group_id: f.groupId, label: f.label.trim(), icon: iconForCategory(f.category), amount: amt, paid_external: paidExternal, expense_date: f.date, paid_by: f.paidBy,
+        split_mode: f.splitMode,
       }).eq('id', f.editingId).then(function (res) {
         if (res.error) { setState({ formError: res.error.message }); return; }
         sb.from('expense_participants').delete().eq('expense_id', f.editingId).then(function () {
@@ -713,6 +791,7 @@
 
     sb.from('expenses').insert({
       group_id: f.groupId, label: f.label.trim(), icon: iconForCategory(f.category), amount: amt, paid_external: paidExternal, paid_by: f.paidBy, expense_date: f.date,
+      split_mode: f.splitMode,
     }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('expense_participants').insert(participantRowsFor(res.data.id)).then(function (insRes) {
@@ -1877,22 +1956,37 @@
       return '<div class="pill' + (f.paidBy === pid ? ' active' : '') + '" data-action="selectPayer" data-id="' + pid + '">' + escapeHtml(p.name) + '</div>';
     }).join('');
     var allParticipantsSelected = !!currentGroup && currentGroup.memberIds.length > 0 && currentGroup.memberIds.every(function (pid) { return f.participantIds.indexOf(pid) !== -1; });
+    var splitModeEditable = f.splitMode === 'shares' || f.splitMode === 'exact' || f.splitMode === 'percent';
+    var splitModeChoices = seed.SPLIT_MODES.map(function (m) {
+      return '<div class="pill' + (f.splitMode === m.id ? ' active' : '') + '" data-action="setSplitMode" data-id="' + m.id + '">' + escapeHtml(m.label) + '</div>';
+    }).join('');
     var participantRows = (currentGroup ? currentGroup.memberIds : []).map(function (pid) {
       var p = person(pid);
       var included = f.participantIds.indexOf(pid) !== -1;
       var overrideOptions = [{ value: 'self', label: 'Paie sa part' }].concat(
         currentGroup.memberIds.filter(function (id2) { return id2 !== pid; }).map(function (id2) { return { value: id2, label: 'Pris en charge par ' + person(id2).name }; })
       );
+      var splitSuffix = f.splitMode === 'percent' ? '%' : (f.splitMode === 'exact' ? currencySymbolFor(currentGroup && currentGroup.currency) : '');
       return (
         '<div class="checkbox-row">' +
         '<div class="checkbox' + (included ? ' checked' : '') + '" data-action="toggleParticipant" data-id="' + pid + '">' + (included ? '<i class="ph-bold ph-check"></i>' : '') + '</div>' +
-        '<div class="col-name">' + escapeHtml(p.name) + shareBadge(p, true) + '</div>' +
+        '<div class="col-name">' + escapeHtml(p.name) + (f.splitMode === 'default' ? shareBadge(p, true) : '') + '</div>' +
+        (included && splitModeEditable ?
+          '<div style="display:flex;align-items:center;gap:4px">' +
+          '<input class="child-percent-input" data-bind="splitValue" data-id="' + pid + '" value="' + escapeHtml(f.splitValues[pid] || '') + '" inputmode="decimal" />' +
+          (splitSuffix ? '<span style="font-size:12px;color:var(--text-tertiary)">' + escapeHtml(splitSuffix) + '</span>' : '') +
+          '</div>' : '') +
         (included ? '<select class="participant-select" data-bind-change="override" data-id="' + pid + '">' +
           overrideOptions.map(function (opt) { return '<option value="' + opt.value + '"' + ((f.overrides[pid] || 'self') === opt.value ? ' selected' : '') + '>' + escapeHtml(opt.label) + '</option>'; }).join('') +
           '</select>' : '') +
         '</div>'
       );
     }).join('');
+    var target = splitTarget(f);
+    var remainderHtml = !target ? '' :
+      '<div style="font-size:12px;font-weight:700;margin:-4px 0 14px;color:' + (target.ok ? 'var(--status-positive)' : 'var(--status-danger)') + '">' +
+      (target.ok ? 'Répartition complète' : 'Reste à répartir : ' + (f.splitMode === 'percent' ? target.remainder.toFixed(1).replace('.', ',') + ' %' : fmtIn(target.remainder, currentGroup && currentGroup.currency))) +
+      '</div>';
 
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
@@ -1917,9 +2011,10 @@
         '<div class="field-label">Déjà versé au tiers (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
         '<input class="text-input" data-bind="paidExternal" placeholder="Ex : 500" inputmode="decimal" value="' + escapeHtml(f.paidExternal) + '" />' : '') +
       '<div class="field-label">Payé par</div><div class="pill-row">' + payerChoices + '</div>' +
+      '<div class="field-label">Répartition</div><div class="pill-row">' + splitModeChoices + '</div>' +
       '<div class="section-label" style="display:flex;align-items:center;justify-content:space-between">Qui participe ?' +
       '<span class="select-all-link" data-action="toggleAllParticipants">' + (allParticipantsSelected ? 'Tout désélectionner' : 'Tout sélectionner') + '</span>' +
-      '</div>' + participantRows +
+      '</div>' + participantRows + remainderHtml +
       '<div class="field-label">Reçu / pièce jointe (facultatif)</div>' +
       (f.receiptPath && !f.receiptRemove ?
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
@@ -2202,6 +2297,7 @@
         case 'toggleAllParticipants': toggleAllParticipants(); break;
         case 'toggleFullyPaid': toggleFullyPaid(); break;
         case 'setCategory': setCategory(id); break;
+        case 'setSplitMode': setSplitMode(id); break;
         case 'submitExpense': submitExpense(); break;
         case 'deleteExpense': deleteExpense(); break;
         case 'viewReceipt': viewReceipt(el.getAttribute('data-path')); break;
@@ -2251,6 +2347,7 @@
         case 'groupName': setGroupName(v); break;
         case 'settleAmount': setSettleAmount(v); break;
         case 'expensesSearch': setExpensesSearch(v); break;
+        case 'splitValue': setSplitValue(id, v); break;
         case 'inviteeName': setInviteeName(parseInt(id, 10), v); break;
         case 'inviteeEmail': setInviteeEmail(parseInt(id, 10), v); break;
         case 'inviteeShare': setInviteeShare(parseInt(id, 10), v); break;

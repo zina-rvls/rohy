@@ -62,9 +62,20 @@
     { id: 'autre', label: 'Autre', icon: 'ph-bold ph-receipt' },
   ];
 
+  // Modes de répartition d'une dépense (au-delà du poids permanent des
+  // profils) — cf. scripts/calc.js, computeShares.
+  var SPLIT_MODES = [
+    { id: 'default', label: 'Part' },
+    { id: 'equal', label: 'Équitable' },
+    { id: 'shares', label: 'Part ponctuelle' },
+    { id: 'exact', label: 'Montant exact' },
+    { id: 'percent', label: 'Pourcentage' },
+  ];
+
   var KotikotaData = {
     CURRENCIES: CURRENCIES,
     EXPENSE_CATEGORIES: EXPENSE_CATEGORIES,
+    SPLIT_MODES: SPLIT_MODES,
   };
 
   if (typeof module === 'object' && module.exports) {

@@ -46,6 +46,15 @@ node tests/calc.test.js
   sur un acompte versé à un tiers. C'est la partie identifiée comme la plus
   risquée à réécrire sans filet — elle est donc isolée et testée séparément
   de l'UI, pour pouvoir être reprise telle quelle côté serveur.
+  `computeShares` accepte en 4e argument optionnel la dépense elle-même :
+  si elle porte un `splitMode` différent de `'default'` (`'equal'`, `'shares'`,
+  `'exact'`, `'percent'`, inspirés de Splitwise), le poids utilisé pour
+  chaque participant vient de `splitValues` plutôt que de son `shareWeight`
+  permanent — une seule et même formule pondérée pour les 5 modes (un
+  montant exact ou un pourcentage n'est jamais qu'un poids exprimé
+  différemment, ce qui reste correct même réparti sur un montant partiel,
+  cf. `paidExternal`). Sans 4e argument (ou `splitMode: 'default'`),
+  comportement strictement inchangé.
 - `tests/calc.test.js` — tests unitaires (`node tests/calc.test.js`, sans
   dépendance externe) couvrant : dette croisée entre 2+ personnes, prise en
   charge permanente vs ponctuelle, parts pondérées (poids relatif)
@@ -195,6 +204,7 @@ charge, parts pondérées). Statut des points relevés :
 | Pas de moyen rapide de cocher/décocher tous les membres sous "Qui participe ?" (formulaire dépense) | ✅ fait — lien "Tout sélectionner" / "Tout désélectionner" qui s'inverse selon que tous les membres du groupe sont déjà cochés ou non |
 | Aucun moyen de filtrer la page "toutes les dépenses" pour ne voir que ce qui concerne réellement l'utilisateur (payeur ou participant) — utile pour repérer rapidement une dépense mal attribuée | ✅ fait — pastille "Me concerne uniquement" au-dessus de la recherche, cumulable avec elle |
 | Aucun moyen de filtrer par catégorie ni de trier par date/montant sur la page "toutes les dépenses" (seul le tri par date décroissante était possible, non modifiable) | ✅ fait — pastilles de catégorie (n'apparaissent que si le groupe/compte a des dépenses d'au moins 2 catégories différentes) + menu déroulant de tri (plus récentes/anciennes, montant croissant/décroissant), cumulables avec la recherche et "me concerne uniquement" |
+| Une seule façon de répartir une dépense (poids permanent du profil) — Splitwise en propose plusieurs, sur demande explicite de comparaison | ✅ fait — 4 modes ponctuels en plus du mode par défaut, choisis pour une dépense précise sans toucher au poids permanent du profil : "Équitable" (parts strictement égales), "Part ponctuelle" (poids ponctuel), "Montant exact" et "Pourcentage" (avec indicateur "reste à répartir" en direct et blocage de l'enregistrement tant que la somme ne correspond pas). Migration additive (`split_mode`/`split_value`), rétrocompatible à 100 % — toute dépense existante garde le comportement d'origine |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 
