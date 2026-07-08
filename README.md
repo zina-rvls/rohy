@@ -191,6 +191,7 @@ charge, parts pondérées). Statut des points relevés :
 | Séparateur de milliers sur tous les montants ; décimales masquées pour les devises qui n'en utilisent pas couramment (la plupart des francs africains) | ✅ fait |
 | Thème par défaut : clair (au lieu de sombre), plus adapté à un premier lancement en plein jour | ✅ fait |
 | Suggestion de profils sans compte existants en tapant un prénom dans "ajouter un membre" ET dans le formulaire d'invités à la création d'un groupe (évite de recréer un doublon d'une personne déjà membre d'un autre groupe) | ✅ fait |
+| Casse du texte de l'interface incohérente (titres de page, boutons, messages en minuscule alors que certains messages ponctuels étaient déjà en casse classique) | ✅ fait — casse classique (majuscule initiale) partout, y compris les titres de page, boutons, libellés de champ, placeholders et messages ; hérité tel quel du prototype de design d'origine, sans lien avec un design system imposant le tout-minuscule |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 

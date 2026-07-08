@@ -149,7 +149,7 @@
   function hasCustomWeight(p) { return p.shareWeight != null && Math.abs(p.shareWeight - 1) > 0.001; }
   function shareBadge(p, inline) {
     if (!hasCustomWeight(p)) return '';
-    return '<span class="badge-child' + (inline ? ' inline' : '') + '">coef. ' + String(p.shareWeight).replace('.', ',') + '</span>';
+    return '<span class="badge-child' + (inline ? ' inline' : '') + '">Coef. ' + String(p.shareWeight).replace('.', ',') + '</span>';
   }
 
   function computeDebts() { return calc.computeDebts(state.people, state.expenses, state.payments); }
@@ -240,7 +240,7 @@
       setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, households: households, dataLoading: false });
     }).catch(function (err) {
       setState({ dataLoading: false });
-      showToast('erreur de chargement : ' + (err && err.message ? err.message : 'inconnue'));
+      showToast('Erreur de chargement : ' + (err && err.message ? err.message : 'inconnue'));
     });
   }
 
@@ -288,20 +288,20 @@
 
   function submitLogin() {
     var f = state.loginForm;
-    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
-    if (!f.password || f.password.length < 4) { setState({ loginError: 'mot de passe trop court.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
+    if (!f.password || f.password.length < 4) { setState({ loginError: 'Mot de passe trop court.' }); return; }
     setState({ loginError: null });
     sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }).then(function (res) {
-      if (res.error) setState({ loginError: 'e-mail ou mot de passe incorrect.' });
+      if (res.error) setState({ loginError: 'E-mail ou mot de passe incorrect.' });
       // sinon : onAuthStateChange prend le relais (connexion + chargement des données).
     });
   }
 
   function submitSignup() {
     var f = state.loginForm;
-    if (!f.name.trim()) { setState({ loginError: 'entre ton prénom.' }); return; }
-    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
-    if (!f.password || f.password.length < 6) { setState({ loginError: 'mot de passe trop court (6 caractères min).' }); return; }
+    if (!f.name.trim()) { setState({ loginError: 'Entre ton prénom.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
+    if (!f.password || f.password.length < 6) { setState({ loginError: 'Mot de passe trop court (6 caractères min).' }); return; }
     setState({ loginError: null });
     sb.auth.signUp({
       email: f.email.trim(), password: f.password,
@@ -310,7 +310,7 @@
       if (res.error) { setState({ loginError: res.error.message }); return; }
       if (!res.data.session) {
         setState({ loginMode: 'password', loginForm: { email: '', password: '', name: '' } });
-        showToast('compte créé — vérifie ta boîte mail pour confirmer avant de te connecter.');
+        showToast('Compte créé — vérifie ta boîte mail pour confirmer avant de te connecter.');
       }
       // sinon (confirmation e-mail désactivée) : onAuthStateChange connecte directement.
     });
@@ -318,7 +318,7 @@
 
   function submitMagicLink() {
     var f = state.loginForm;
-    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
     setState({ loginError: null });
     sb.auth.signInWithOtp({
       email: f.email.trim(),
@@ -331,7 +331,7 @@
 
   function submitForgotPassword() {
     var f = state.loginForm;
-    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'entre un e-mail valide.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
     setState({ loginError: null });
     sb.auth.resetPasswordForEmail(f.email.trim(), {
       redirectTo: window.location.origin + window.location.pathname,
@@ -343,12 +343,12 @@
 
   function submitNewPassword() {
     var pw = state.newPasswordForm.password;
-    if (!pw || pw.length < 6) { setState({ loginError: 'mot de passe trop court (6 caractères min).' }); return; }
+    if (!pw || pw.length < 6) { setState({ loginError: 'Mot de passe trop court (6 caractères min).' }); return; }
     setState({ loginError: null });
     sb.auth.updateUser({ password: pw }).then(function (res) {
       if (res.error) { setState({ loginError: res.error.message }); return; }
       setState({ passwordRecovery: false, newPasswordForm: { password: '' } });
-      showToast('mot de passe mis à jour');
+      showToast('Mot de passe mis à jour');
       if (res.data && res.data.user) {
         setStateSilent({ loggedIn: true, currentUserId: res.data.user.id, dataLoading: true });
         render();
@@ -373,10 +373,10 @@
     var debts = groupId ? computeDebtsForGroup(groupId) : computeDebts();
     var rel = pairNet(state.currentUserId, personId, debts);
     var amt = rel > 0 ? rel : 0;
-    var msg = 'petit rappel à ' + p.name + ' — psst, tu me dois encore ' + (g ? fmtIn(amt, g.currency) : fmt(amt));
+    var msg = 'Petit rappel à ' + p.name + ' — psst, tu me dois encore ' + (g ? fmtIn(amt, g.currency) : fmt(amt));
     sb.from('reminders').insert({ from_user: state.currentUserId, to_user: personId, amount: amt, message: msg }).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
-      loadAppData().then(function () { showToast('rappel envoyé à ' + p.name); });
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      loadAppData().then(function () { showToast('Rappel envoyé à ' + p.name); });
     });
   }
   function openSettle(personId, groupId) {
@@ -406,16 +406,16 @@
     var amt = parseFloat((sf.amount || '').replace(',', '.'));
     if (!amt || amt <= 0) return;
     sb.from('payments').insert({ from_user: sf.from, to_user: sf.to, amount: amt, group_id: state.settleGroupId || null }).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showSettle: false, settleGroupId: null });
-      loadAppData().then(function () { showToast('paiement enregistré'); });
+      loadAppData().then(function () { showToast('Paiement enregistré'); });
     });
   }
 
   // ---------- Expenses ----------
   function openAddExpense(groupId) {
     var g = groupId ? group(groupId) : state.groups[0];
-    if (!g) { showToast('crée d\'abord un groupe pour ajouter une dépense'); return; }
+    if (!g) { showToast('Crée d\'abord un groupe pour ajouter une dépense'); return; }
     var overrides = {};
     g.memberIds.forEach(function (pid) { if (person(pid).guardianId) overrides[pid] = person(pid).guardianId; });
     setState({
@@ -456,17 +456,17 @@
     var id = state.form.editingId;
     if (!id) return;
     sb.from('expenses').delete().eq('id', id).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showAddExpense: false });
-      loadAppData().then(function () { showToast('dépense supprimée'); });
+      loadAppData().then(function () { showToast('Dépense supprimée'); });
     });
   }
   function markExpensePaidFull(expenseId) {
     var e = state.expenses.find(function (x) { return x.id === expenseId; });
     if (!e) return;
     sb.from('expenses').update({ paid_external: e.amount }).eq('id', expenseId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
-      loadAppData().then(function () { showToast('marqué comme réglé en totalité'); });
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      loadAppData().then(function () { showToast('Marqué comme réglé en totalité'); });
     });
   }
   function toggleFullyPaid() { setState(function (s) { return { form: Object.assign({}, s.form, { fullyPaid: !s.form.fullyPaid }) }; }); }
@@ -497,7 +497,7 @@
   }
   function viewReceipt(path) {
     sb.storage.from('receipts').createSignedUrl(path, 120).then(function (res) {
-      if (res.error || !res.data) { showToast('impossible d\'ouvrir le reçu'); return; }
+      if (res.error || !res.data) { showToast('Impossible d\'ouvrir le reçu'); return; }
       window.open(res.data.signedUrl, '_blank', 'noopener');
     });
   }
@@ -545,10 +545,10 @@
   function submitExpense() {
     var f = state.form;
     var amt = parseFloat((f.amount || '').replace(',', '.'));
-    if (!f.label.trim()) { setState({ formError: 'ajoute une description.' }); return; }
-    if (!amt || amt <= 0) { setState({ formError: 'montant invalide.' }); return; }
-    if (!f.date) { setState({ formError: 'choisis une date.' }); return; }
-    if (f.participantIds.length === 0) { setState({ formError: 'sélectionne au moins un participant.' }); return; }
+    if (!f.label.trim()) { setState({ formError: 'Ajoute une description.' }); return; }
+    if (!amt || amt <= 0) { setState({ formError: 'Montant invalide.' }); return; }
+    if (!f.date) { setState({ formError: 'Choisis une date.' }); return; }
+    if (f.participantIds.length === 0) { setState({ formError: 'Sélectionne au moins un participant.' }); return; }
     var g = group(f.groupId);
     var paidExternal = amt;
     if (!f.fullyPaid) {
@@ -568,11 +568,11 @@
         if (res.error) { setState({ formError: res.error.message }); return; }
         sb.from('expense_participants').delete().eq('expense_id', f.editingId).then(function () {
           sb.from('expense_participants').insert(participantRowsFor(f.editingId)).then(function (insRes) {
-            if (insRes.error) { showToast('erreur : ' + insRes.error.message); return; }
+            if (insRes.error) { showToast('Erreur : ' + insRes.error.message); return; }
             persistReceiptChange(f.editingId, f.groupId).then(function (recRes) {
               setState({ showAddExpense: false });
               loadAppData().then(function () {
-                showToast(recRes.error ? 'dépense modifiée (reçu : ' + recRes.error.message + ')' : 'dépense modifiée');
+                showToast(recRes.error ? 'Dépense modifiée (reçu : ' + recRes.error.message + ')' : 'Dépense modifiée');
               });
             });
           });
@@ -586,11 +586,11 @@
     }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('expense_participants').insert(participantRowsFor(res.data.id)).then(function (insRes) {
-        if (insRes.error) { showToast('erreur : ' + insRes.error.message); return; }
+        if (insRes.error) { showToast('Erreur : ' + insRes.error.message); return; }
         persistReceiptChange(res.data.id, f.groupId).then(function (recRes) {
           setState({ showAddExpense: false });
           loadAppData().then(function () {
-            showToast(recRes.error ? 'dépense ajoutée à ' + g.name + ' (reçu : ' + recRes.error.message + ')' : 'dépense ajoutée à ' + g.name);
+            showToast(recRes.error ? 'Dépense ajoutée à ' + g.name + ' (reçu : ' + recRes.error.message + ')' : 'Dépense ajoutée à ' + g.name);
           });
         });
       });
@@ -735,12 +735,12 @@
   function submitGroup() {
     if (state.submittingGroup) return;
     var gf = state.groupForm;
-    if (!gf.name.trim()) { setState({ formError: 'donne un nom au groupe.' }); return; }
+    if (!gf.name.trim()) { setState({ formError: 'Donne un nom au groupe.' }); return; }
     var validInvitees = gf.invitees.filter(function (inv) { return inv.name.trim() || inv.email.trim() || inv.linkExistingId; });
     for (var i = 0; i < validInvitees.length; i++) {
       var inv = validInvitees[i];
-      if (!inv.name.trim()) { setState({ formError: 'donne un prénom à chaque membre invité.' }); return; }
-      if (!inv.linkExistingId && inv.email.trim() && inv.email.indexOf('@') === -1) { setState({ formError: 'e-mail invalide pour ' + inv.name.trim() + '.' }); return; }
+      if (!inv.name.trim()) { setState({ formError: 'Donne un prénom à chaque membre invité.' }); return; }
+      if (!inv.linkExistingId && inv.email.trim() && inv.email.indexOf('@') === -1) { setState({ formError: 'E-mail invalide pour ' + inv.name.trim() + '.' }); return; }
     }
     setState({ formError: null, submittingGroup: true });
 
@@ -762,11 +762,11 @@
           var failedInvites = results[0].concat(results[1]).concat(results[2]);
           setState({ showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id });
           loadAppData().then(function () {
-            if (failedInvites.length) { showToast('erreur : ajout impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".'); return; }
+            if (failedInvites.length) { showToast('Erreur : ajout impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".'); return; }
             var msgParts = [];
             if (withEmail.length) msgParts.push('invitations envoyées par e-mail');
             if (linked.length || withoutEmail.length) msgParts.push((linked.length + withoutEmail.length) > 1 ? 'membres ajoutés' : 'membre ajouté');
-            showToast(msgParts.length ? 'groupe créé, ' + msgParts.join(' et ') : 'groupe créé');
+            showToast(msgParts.length ? 'Groupe créé, ' + msgParts.join(' et ') : 'Groupe créé');
           });
         });
       });
@@ -777,9 +777,9 @@
     var groupId = state.confirmDeleteGroupId;
     if (!groupId) return;
     sb.from('groups').delete().eq('id', groupId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ screen: 'groups', navStack: [], showConfirmDeleteGroup: false, confirmDeleteGroupId: null });
-      loadAppData().then(function () { showToast('groupe supprimé'); });
+      loadAppData().then(function () { showToast('Groupe supprimé'); });
     });
   }
   function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId }); }
@@ -830,10 +830,10 @@
     if (state.addingMember) return;
     var f = state.addMemberForm;
     var groupId = state.manageMembersGroupId;
-    if (!f.name.trim()) { setState({ formError: 'donne un prénom.' }); return; }
-    if (f.email.trim() && f.email.indexOf('@') === -1) { setState({ formError: 'e-mail invalide.' }); return; }
+    if (!f.name.trim()) { setState({ formError: 'Donne un prénom.' }); return; }
+    if (f.email.trim() && f.email.indexOf('@') === -1) { setState({ formError: 'E-mail invalide.' }); return; }
     var w = parseFloat((f.shareWeight || '1').replace(',', '.'));
-    if (isNaN(w) || w < 0) { setState({ formError: 'nombre de parts invalide.' }); return; }
+    if (isNaN(w) || w < 0) { setState({ formError: 'Nombre de parts invalide.' }); return; }
     setState({ formError: null });
 
     function finish(msg) {
@@ -846,7 +846,7 @@
       sb.from('group_members').insert({ group_id: groupId, user_id: f.linkExistingId }).then(function (memRes) {
         setState({ addingMember: false });
         if (memRes.error) { setState({ formError: memRes.error.message }); return; }
-        finish('membre ajouté');
+        finish('Membre ajouté');
       });
       return;
     }
@@ -856,13 +856,13 @@
       var color = INVITEE_COLORS[state.people.length % INVITEE_COLORS.length];
       inviteMemberToGroup(groupId, f.name.trim(), f.email.trim(), f.shareWeight, color).then(function (result) {
         setState({ addingMember: false });
-        if (!result.ok) { setState({ formError: 'invitation impossible : ' + result.failure }); return; }
+        if (!result.ok) { setState({ formError: 'Invitation impossible : ' + result.failure }); return; }
         if (f.guardianId && result.userId) {
           sb.from('profiles').update({ guardian_id: f.guardianId }).eq('id', result.userId).then(function () {
-            finish('invitation envoyée par e-mail');
+            finish('Invitation envoyée par e-mail');
           });
         } else {
-          finish('invitation envoyée par e-mail');
+          finish('Invitation envoyée par e-mail');
         }
       });
       return;
@@ -874,8 +874,8 @@
     }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('group_members').insert({ group_id: groupId, user_id: res.data.id }).then(function (memRes) {
-        if (memRes.error) { showToast('erreur : ' + memRes.error.message); return; }
-        finish('membre ajouté');
+        if (memRes.error) { showToast('Erreur : ' + memRes.error.message); return; }
+        finish('Membre ajouté');
       });
     });
   }
@@ -890,9 +890,9 @@
     var personId = state.confirmRemoveMemberId;
     if (!groupId || !personId) return;
     sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', personId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null });
-      loadAppData().then(function () { showToast('membre retiré du groupe'); });
+      loadAppData().then(function () { showToast('Membre retiré du groupe'); });
     });
   }
   function openConfirmLeaveGroup(groupId) {
@@ -905,29 +905,29 @@
     var groupId = state.confirmLeaveGroupId;
     if (!groupId) return;
     sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', state.currentUserId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showConfirmLeaveGroup: false, confirmLeaveGroupId: null, screen: 'groups', navStack: [], selectedGroupId: null });
-      loadAppData().then(function () { showToast('tu as quitté le groupe'); });
+      loadAppData().then(function () { showToast('Tu as quitté le groupe'); });
     });
   }
   function setShareWeight(personId, value) {
     var w = parseFloat(String(value).replace(',', '.'));
     if (isNaN(w) || w < 0) return;
     sb.from('profiles').update({ share_weight: w }).eq('id', personId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       loadAppData();
     });
   }
   function setGuardian(personId, guardianId) {
     if (guardianId === personId) return;
     sb.from('profiles').update({ guardian_id: guardianId || null }).eq('id', personId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       loadAppData();
     });
   }
   function setMemberHousehold(personId, householdId) {
     sb.from('profiles').update({ household_id: householdId || null }).eq('id', personId).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       loadAppData();
     });
   }
@@ -936,9 +936,9 @@
     var name = (state.newHouseholdName || '').trim();
     if (!name) return;
     sb.from('households').insert({ name: name, created_by: state.currentUserId, group_id: state.manageMembersGroupId }).then(function (res) {
-      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ newHouseholdName: '' });
-      loadAppData().then(function () { showToast('foyer créé'); });
+      loadAppData().then(function () { showToast('Foyer créé'); });
     });
   }
 
@@ -1013,7 +1013,7 @@
   }
 
   function renderLoadingScreen() {
-    return '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:14px">chargement…</div>';
+    return '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:14px">Chargement…</div>';
   }
 
   function renderLogin() {
@@ -1021,61 +1021,61 @@
     var body = '';
     if (state.loginMode === 'signup') {
       body =
-        '<div class="field-label">prénom</div>' +
+        '<div class="field-label">Prénom</div>' +
         '<input class="text-input" data-bind="loginName" placeholder="Toi" value="' + escapeHtml(f.name) + '" />' +
-        '<div class="field-label">e-mail</div>' +
+        '<div class="field-label">E-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
-        '<div class="field-label">mot de passe</div>' +
+        '<div class="field-label">Mot de passe</div>' +
         '<input class="text-input" type="password" data-bind="loginPassword" placeholder="•••••••• (6 caractères min)" value="' + escapeHtml(f.password) + '" />' +
-        '<button class="btn-primary pressable" data-action="submitSignup">créer le compte</button>' +
+        '<button class="btn-primary pressable" data-action="submitSignup">Créer le compte</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
-        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">j\'ai déjà un compte →</div>';
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">J\'ai déjà un compte →</div>';
     } else if (state.loginMode === 'password') {
       body =
-        '<div class="field-label">e-mail</div>' +
+        '<div class="field-label">E-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
-        '<div class="field-label">mot de passe</div>' +
+        '<div class="field-label">Mot de passe</div>' +
         '<input class="text-input" type="password" data-bind="loginPassword" placeholder="••••••••" value="' + escapeHtml(f.password) + '" />' +
-        '<button class="btn-primary pressable" data-action="submitLogin">se connecter</button>' +
+        '<button class="btn-primary pressable" data-action="submitLogin">Se connecter</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
-        '<div class="link-center" style="margin-top:12px" data-action="showForgotPassword">mot de passe oublié ?</div>' +
-        '<div class="divider-or">ou</div>' +
-        '<div class="link-center" data-action="toggleLoginMode">se connecter sans mot de passe →</div>' +
-        '<div class="link-center" style="margin-top:12px" data-action="showSignup">pas encore de compte ? en créer un →</div>';
+        '<div class="link-center" style="margin-top:12px" data-action="showForgotPassword">Mot de passe oublié ?</div>' +
+        '<div class="divider-or">Ou</div>' +
+        '<div class="link-center" data-action="toggleLoginMode">Se connecter sans mot de passe →</div>' +
+        '<div class="link-center" style="margin-top:12px" data-action="showSignup">Pas encore de compte ? En créer un →</div>';
     } else if (state.loginMode === 'forgotPassword') {
       body = state.resetSent ?
         '<div class="magic-confirm">' +
         '<div class="magic-icon"><i class="ph-bold ph-paper-plane-tilt"></i></div>' +
-        '<div class="login-title" style="font-size:20px">e-mail envoyé !</div>' +
-        '<div class="login-subtitle" style="line-height:1.5">clique sur le lien reçu par e-mail pour choisir un nouveau mot de passe.</div>' +
-        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">retour</div>' +
+        '<div class="login-title" style="font-size:20px">E-mail envoyé !</div>' +
+        '<div class="login-subtitle" style="line-height:1.5">Clique sur le lien reçu par e-mail pour choisir un nouveau mot de passe.</div>' +
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">Retour</div>' +
         '</div>' :
-        '<div class="field-label">e-mail</div>' +
+        '<div class="field-label">E-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
-        '<button class="btn-primary pressable" data-action="submitForgotPassword">envoyer le lien de réinitialisation</button>' +
+        '<button class="btn-primary pressable" data-action="submitForgotPassword">Envoyer le lien de réinitialisation</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
-        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">retour à la connexion →</div>';
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">Retour à la connexion →</div>';
     } else if (state.magicSent) {
       body =
         '<div class="magic-confirm">' +
         '<div class="magic-icon"><i class="ph-bold ph-paper-plane-tilt"></i></div>' +
-        '<div class="login-title" style="font-size:20px">lien envoyé !</div>' +
-        '<div class="login-subtitle" style="line-height:1.5">clique sur le lien reçu par e-mail pour continuer.</div>' +
-        '<div class="link-center" style="margin-top:20px" data-action="backToLoginForm">retour</div>' +
+        '<div class="login-title" style="font-size:20px">Lien envoyé !</div>' +
+        '<div class="login-subtitle" style="line-height:1.5">Clique sur le lien reçu par e-mail pour continuer.</div>' +
+        '<div class="link-center" style="margin-top:20px" data-action="backToLoginForm">Retour</div>' +
         '</div>';
     } else {
       body =
-        '<div class="field-label">e-mail</div>' +
+        '<div class="field-label">E-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
-        '<button class="btn-primary pressable" data-action="submitMagicLink">envoyer le lien</button>' +
+        '<button class="btn-primary pressable" data-action="submitMagicLink">Envoyer le lien</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
-        '<div class="link-center" style="margin-top:20px" data-action="toggleLoginMode">se connecter avec un mot de passe →</div>';
+        '<div class="link-center" style="margin-top:20px" data-action="toggleLoginMode">Se connecter avec un mot de passe →</div>';
     }
     return (
       '<div class="login-screen">' +
       '<div class="login-icon"><i class="ph-bold ph-piggy-bank"></i></div>' +
-      '<div class="login-title">se connecter</div>' +
-      '<div class="login-subtitle">retrouve tes groupes et vos comptes</div>' +
+      '<div class="login-title">Se connecter</div>' +
+      '<div class="login-subtitle">Retrouve tes groupes et vos comptes</div>' +
       body +
       '</div>'
     );
@@ -1085,11 +1085,11 @@
     return (
       '<div class="login-screen">' +
       '<div class="login-icon"><i class="ph-bold ph-lock-key"></i></div>' +
-      '<div class="login-title">nouveau mot de passe</div>' +
-      '<div class="login-subtitle">choisis un nouveau mot de passe pour ton compte</div>' +
-      '<div class="field-label">mot de passe</div>' +
+      '<div class="login-title">Nouveau mot de passe</div>' +
+      '<div class="login-subtitle">Choisis un nouveau mot de passe pour ton compte</div>' +
+      '<div class="field-label">Mot de passe</div>' +
       '<input class="text-input" type="password" data-bind="newPassword" placeholder="•••••••• (6 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
-      '<button class="btn-primary pressable" data-action="submitNewPassword">mettre à jour le mot de passe</button>' +
+      '<button class="btn-primary pressable" data-action="submitNewPassword">Mettre à jour le mot de passe</button>' +
       (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
       '</div>'
     );
@@ -1108,13 +1108,13 @@
   function renderTopBar() {
     var showBack = state.screen !== 'home' && state.screen !== 'groups' && state.screen !== 'history' && state.screen !== 'expenses';
     var showAddButton = state.screen === 'home' || state.screen === 'groups' || state.screen === 'expenses';
-    var titles = { home: 'mes dépenses', groups: 'groupes', history: 'historique', expenses: 'dépenses', person: 'détail' };
+    var titles = { home: 'Mes dépenses', groups: 'Groupes', history: 'Historique', expenses: 'Dépenses', person: 'Détail' };
     var title = titles[state.screen];
     var subtitle = '';
     if (state.screen === 'groupDetail') {
       var g = group(state.selectedGroupId);
       title = g ? g.name : '';
-      subtitle = g ? 'admin : ' + person(g.adminId).name : '';
+      subtitle = g ? 'Admin : ' + person(g.adminId).name : '';
     }
     return (
       '<div class="top-bar">' +
@@ -1154,7 +1154,7 @@
 
   function renderGroupFilterPills(selectedId, action) {
     if (state.groups.length < 2) return '';
-    var allPill = '<div class="pill' + (!selectedId ? ' active' : '') + '" data-action="' + action + '" data-id="">tous les groupes</div>';
+    var allPill = '<div class="pill' + (!selectedId ? ' active' : '') + '" data-action="' + action + '" data-id="">Tous les groupes</div>';
     var groupPills = state.groups.map(function (g) {
       return '<div class="pill' + (selectedId === g.id ? ' active' : '') + '" data-action="' + action + '" data-id="' + g.id + '">' + escapeHtml(g.name) + '</div>';
     }).join('');
@@ -1180,18 +1180,18 @@
       var bal = pairNet(moi, p.id, globalDebts);
       if (bal > 0) owed += bal; else owe += -bal;
       var covered = p.guardianId ? person(p.guardianId) : null;
-      var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmtC(bal) : 'tu dois ' + fmtC(-bal));
+      var amountLabel = Math.abs(bal) < 0.5 ? 'À jour' : (bal > 0 ? 'Te doit ' + fmtC(bal) : 'Tu dois ' + fmtC(-bal));
       return (
         '<button class="person-row pressable" data-action="openPerson" data-id="' + p.id + '">' +
         '<div class="avatar avatar-38" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
         '<div style="flex:1;min-width:0;text-align:left">' +
         '<div class="person-name">' + escapeHtml(p.name) + '</div>' +
         shareBadge(p, false) +
-        (covered ? '<div class="covered-note">pris en charge par ' + escapeHtml(covered.name) + '</div>' : '') +
+        (covered ? '<div class="covered-note">Pris en charge par ' + escapeHtml(covered.name) + '</div>' : '') +
         '</div>' +
         '<div style="text-align:right;flex-shrink:0">' +
         '<div class="person-amount" style="color:' + colorForBalance(bal) + '">' + escapeHtml(amountLabel) + '</div>' +
-        (bal > 0.5 ? '<span class="remind-link" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">envoyer un rappel →</span>' : '') +
+        (bal > 0.5 ? '<span class="remind-link" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">Envoyer un rappel →</span>' : '') +
         '</div></button>'
       );
     }).join('');
@@ -1217,11 +1217,11 @@
       });
       var globalTxns = calc.simplify(globalDebts, allMemberIds);
       if (globalTxns.length) {
-        globalSuggestions = '<div class="section-label" style="margin-top:18px">pour équilibrer (tous les groupes)</div>' +
+        globalSuggestions = '<div class="section-label" style="margin-top:18px">Pour équilibrer (tous les groupes)</div>' +
           globalTxns.map(function (t) {
             return '<div class="suggestion-row"><div><b>' + escapeHtml(person(t.from).name) + '</b> → <b>' + escapeHtml(person(t.to).name) + '</b></div>' +
               '<div style="display:flex;align-items:center;gap:8px"><div class="suggestion-amount">' + fmtC(t.amount) + '</div>' +
-              '<button class="btn-icon-settle pressable" title="enregistrer ce paiement" data-action="quickSettle" data-from="' + t.from + '" data-to="' + t.to + '" data-amount="' + t.amount + '" data-group-id=""><i class="ph-bold ph-check-circle"></i></button>' +
+              '<button class="btn-icon-settle pressable" title="Enregistrer ce paiement" data-action="quickSettle" data-from="' + t.from + '" data-to="' + t.to + '" data-amount="' + t.amount + '" data-group-id=""><i class="ph-bold ph-check-circle"></i></button>' +
               '</div></div>';
           }).join('');
       }
@@ -1231,24 +1231,24 @@
       renderGroupFilterPills(filterId, 'setHomeGroupFilter') +
       '<button class="current-user-row pressable" data-action="openAccount">' +
       '<div class="avatar avatar-26" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
-      '<div style="font-size:13px;color:var(--text-secondary)">connecté en tant que <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
+      '<div style="font-size:13px;color:var(--text-secondary)">Connecté en tant que <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
       '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
       '</button>' +
       (state.groups.length === 0 ?
         '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' +
-        '<button class="btn-primary pressable" data-action="openAddGroup">créer un groupe</button>' :
+        '<button class="btn-primary pressable" data-action="openAddGroup">Créer un groupe</button>' :
       mixedCurrencies ?
-        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> devises multiples</div>' +
+        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> Devises multiples</div>' +
         '<div class="warning-banner-body">Tes groupes utilisent des devises différentes — choisis un groupe ci-dessus pour voir ton solde.</div></div>' :
         '<div class="balance-card">' +
-        '<div class="balance-label">solde net total' + (filterGroup ? ' · ' + escapeHtml(filterGroup.name) : '') + '</div>' +
+        '<div class="balance-label">Solde net total' + (filterGroup ? ' · ' + escapeHtml(filterGroup.name) : '') + '</div>' +
         '<div class="balance-amount" style="color:' + colorForBalance(sum) + '">' + (sum >= 0 ? '+' : '-') + fmtC(Math.abs(sum)).replace('-', '') + '</div>' +
-        '<div class="balance-detail-row"><div class="owed">on te doit ' + fmtC(owed).replace('-', '') + '</div><div class="owe">tu dois ' + fmtC(owe).replace('-', '') + '</div></div>' +
+        '<div class="balance-detail-row"><div class="owed">On te doit ' + fmtC(owed).replace('-', '') + '</div><div class="owe">Tu dois ' + fmtC(owe).replace('-', '') + '</div></div>' +
         '</div>') +
       (!mixedCurrencies && pendingShare > 0.5 ?
-        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> à anticiper</div>' +
+        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> À anticiper</div>' +
         '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmtC(pendingShare) + '.</div></div>' : '') +
-      (!mixedCurrencies && otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '') +
+      (!mixedCurrencies && otherPeople.length > 0 ? '<div class="section-label">Par personne</div>' + rows : '') +
       globalSuggestions
     );
   }
@@ -1258,7 +1258,7 @@
     var cards = state.groups.map(function (g) {
       var bal = netBalanceFor(moi, g.id);
       var names = g.memberIds.map(function (id) { return person(id).name; }).join(', ');
-      var summary = Math.abs(bal) < 0.5 ? 'équilibré' : (bal > 0 ? '+' + fmtIn(bal, g.currency) : fmtIn(bal, g.currency));
+      var summary = Math.abs(bal) < 0.5 ? 'Équilibré' : (bal > 0 ? '+' + fmtIn(bal, g.currency) : fmtIn(bal, g.currency));
       return (
         '<button class="group-card pressable" data-action="openGroup" data-id="' + g.id + '">' +
         '<div class="group-icon"><i class="' + g.icon + '"></i></div>' +
@@ -1270,7 +1270,7 @@
         '</button>'
       );
     }).join('');
-    return cards + '<button class="dashed-btn pressable" data-action="openAddGroup">+ nouveau groupe / événement</button>';
+    return cards + '<button class="dashed-btn pressable" data-action="openAddGroup">+ Nouveau groupe / événement</button>';
   }
 
   // Regroupe les membres d'un groupe partageant un même foyer en une seule
@@ -1369,8 +1369,8 @@
     var activeUnits = hasFoyerConsolidation && state.groupUnitMode === 'membre' ? identityUnits : units;
     var groupUnitToggle = !hasFoyerConsolidation ? '' :
       '<div class="pill-row" style="margin-bottom:10px">' +
-      '<div class="pill' + (state.groupUnitMode !== 'membre' ? ' active' : '') + '" data-action="setGroupUnitMode" data-id="foyer">par foyer</div>' +
-      '<div class="pill' + (state.groupUnitMode === 'membre' ? ' active' : '') + '" data-action="setGroupUnitMode" data-id="membre">par membre</div>' +
+      '<div class="pill' + (state.groupUnitMode !== 'membre' ? ' active' : '') + '" data-action="setGroupUnitMode" data-id="foyer">Par foyer</div>' +
+      '<div class="pill' + (state.groupUnitMode === 'membre' ? ' active' : '') + '" data-action="setGroupUnitMode" data-id="membre">Par membre</div>' +
       '</div>';
 
     // En-têtes de colonnes alignées sur .col-num/.col-bal — sans elles, les
@@ -1379,9 +1379,9 @@
     var memberTableHeader =
       '<div style="display:flex;align-items:center;gap:10px;padding:0 0 6px">' +
       '<div style="width:30px;flex-shrink:0"></div><div style="flex:1"></div>' +
-      '<div class="col-num" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">payé</div>' +
-      '<div class="col-num" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">part</div>' +
-      '<div class="col-bal" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">solde</div>' +
+      '<div class="col-num" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">Payé</div>' +
+      '<div class="col-num" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">Part</div>' +
+      '<div class="col-bal" style="color:var(--text-tertiary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">Solde</div>' +
       '</div>';
 
     var memberRows = activeUnits.map(function (u) {
@@ -1408,7 +1408,7 @@
         return (
           '<div class="member-row">' +
           '<div class="avatar avatar-30" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
-          '<div class="col-name">' + escapeHtml(p.name) + (isExMember ? '<span class="badge-child inline">ex-membre</span>' : '') + shareBadge(p, true) + '</div>' +
+          '<div class="col-name">' + escapeHtml(p.name) + (isExMember ? '<span class="badge-child inline">Ex-membre</span>' : '') + shareBadge(p, true) + '</div>' +
           '<div class="col-num">' + fmtIn(paid, g.currency) + '</div>' +
           '<div class="col-num">' + fmtIn(share, g.currency) + '</div>' +
           '<div class="col-bal" style="color:' + balColor + '">' + escapeHtml(balLabel) + '</div>' +
@@ -1421,7 +1421,7 @@
       return (
         '<div class="member-row">' +
         '<div class="avatar avatar-30" style="background:var(--surface-overlay);color:var(--text-secondary)"><i class="ph-bold ph-house-line"></i></div>' +
-        '<div class="col-name">' + escapeHtml(u.label) + '<span class="badge-child inline">foyer</span>' +
+        '<div class="col-name">' + escapeHtml(u.label) + '<span class="badge-child inline">Foyer</span>' +
         '<div style="font-size:11px;font-weight:400;color:var(--text-tertiary);margin-top:2px">' + escapeHtml(memberNames) + '</div></div>' +
         '<div class="col-num">' + fmtIn(paid, g.currency) + '</div>' +
         '<div class="col-num">' + fmtIn(share, g.currency) + '</div>' +
@@ -1435,7 +1435,7 @@
       var canSettle = t.fromId && t.toId;
       return '<div class="suggestion-row"><div><b>' + escapeHtml(t.fromLabel) + '</b> → <b>' + escapeHtml(t.toLabel) + '</b></div>' +
         '<div style="display:flex;align-items:center;gap:8px"><div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div>' +
-        (canSettle ? '<button class="btn-icon-settle pressable" title="enregistrer ce paiement" data-action="quickSettle" data-from="' + t.fromId + '" data-to="' + t.toId + '" data-amount="' + t.amount + '" data-group-id="' + g.id + '"><i class="ph-bold ph-check-circle"></i></button>' : '') +
+        (canSettle ? '<button class="btn-icon-settle pressable" title="Enregistrer ce paiement" data-action="quickSettle" data-from="' + t.fromId + '" data-to="' + t.toId + '" data-amount="' + t.amount + '" data-group-id="' + g.id + '"><i class="ph-bold ph-check-circle"></i></button>' : '') +
         '</div></div>';
     }).join('');
 
@@ -1447,26 +1447,26 @@
           '<div class="expense-icon"><i class="' + e.icon + '"></i></div>' +
           '<div style="flex:1;min-width:0">' +
           '<div class="expense-label">' + escapeHtml(e.label) + (e.receiptPath ? ' <i class="ph-bold ph-paperclip" style="font-size:12px;color:var(--text-tertiary)"></i>' : '') + '</div>' +
-          '<div class="expense-subtitle">payé par ' + escapeHtml(person(e.paidBy).name) + ' · ' + fmtDate(e.date) + ' · ' + e.participants.length + ' pers.</div>' +
+          '<div class="expense-subtitle">Payé par ' + escapeHtml(person(e.paidBy).name) + ' · ' + fmtDate(e.date) + ' · ' + e.participants.length + ' pers.</div>' +
           '</div><div class="expense-amount">' + fmtIn(e.amount, g.currency) + '</div></div>'
         );
       }).join('');
 
     return (
-      '<div class="member-table"><div class="section-label">payé / part / solde</div>' + groupUnitToggle + memberTableHeader + memberRows + '</div>' +
+      '<div class="member-table"><div class="section-label">Payé / part / solde</div>' + groupUnitToggle + memberTableHeader + memberRows + '</div>' +
       (isAdmin ?
         '<div class="admin-actions">' +
-        '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> gérer les membres</button>' +
+        '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> Gérer les membres</button>' +
         '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' :
         '<div class="admin-actions">' +
-        '<button class="btn-outline pressable" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open"></i> quitter ce groupe</button>' +
+        '<button class="btn-outline pressable" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open"></i> Quitter ce groupe</button>' +
         '</div>') +
       (txns.length || hasFoyerConsolidation ?
-        '<div class="section-label">pour équilibrer</div>' +
-        (txns.length ? suggestions : '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">rien à régler pour le moment.</div>') : '') +
-      '<div class="section-label" style="margin-top:18px">dépenses</div>' + expenseRows +
-      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseForGroup">ajouter une dépense</button>'
+        '<div class="section-label">Pour équilibrer</div>' +
+        (txns.length ? suggestions : '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">Rien à régler pour le moment.</div>') : '') +
+      '<div class="section-label" style="margin-top:18px">Dépenses</div>' + expenseRows +
+      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseForGroup">Ajouter une dépense</button>'
     );
   }
 
@@ -1484,7 +1484,7 @@
       return (e.participants.indexOf(p.id) !== -1 || e.paidBy === p.id) && (!filterId || e.groupId === filterId);
     }).slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
 
-    var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmtC(bal) : 'tu dois ' + fmtC(-bal));
+    var amountLabel = Math.abs(bal) < 0.5 ? 'À jour' : (bal > 0 ? 'Te doit ' + fmtC(bal) : 'Tu dois ' + fmtC(-bal));
 
     return (
       renderGroupFilterPills(filterId, 'setPersonGroupFilter') +
@@ -1492,15 +1492,15 @@
       '<div class="avatar avatar-64" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
       '<div class="person-header-name">' + escapeHtml(p.name) + '</div>' +
       (hasCustomWeight(p) ? '<div style="margin-top:8px">' + shareBadge(p, false) + '</div>' : '') +
-      (covered ? '<div class="covered-note" style="margin-top:6px">pris en charge par ' + escapeHtml(covered.name) + '</div>' : '') +
+      (covered ? '<div class="covered-note" style="margin-top:6px">Pris en charge par ' + escapeHtml(covered.name) + '</div>' : '') +
       '<div class="person-header-amount" style="color:' + colorForBalance(bal) + '">' + escapeHtml(amountLabel) + '</div>' +
       '</div>' +
       '<div class="person-actions">' +
-      (bal > 0.5 ? '<button class="btn-danger-fill pressable" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '"><i class="ph-bold ph-bell-ringing" style="margin-right:6px"></i>envoyer un rappel</button>' : '') +
-      '<button class="btn-outline-flex pressable" data-action="openSettle" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">enregistrer un paiement</button>' +
+      (bal > 0.5 ? '<button class="btn-danger-fill pressable" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '"><i class="ph-bold ph-bell-ringing" style="margin-right:6px"></i>Envoyer un rappel</button>' : '') +
+      '<button class="btn-outline-flex pressable" data-action="openSettle" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">Enregistrer un paiement</button>' +
       '</div>' +
       (lastReminder ? '<div class="reminder-preview">' + escapeHtml(lastReminder.message) + '</div>' : '') +
-      '<div class="section-label">dépenses concernées</div>' +
+      '<div class="section-label">Dépenses concernées</div>' +
       relatedExpenses.map(function (e) {
         var eg = group(e.groupId);
         return '<div class="person-expense-row"><i class="' + e.icon + '" style="color:var(--text-secondary);font-size:15px;width:18px;text-align:center"></i>' +
@@ -1548,7 +1548,7 @@
         '</div>' +
         (dueExternal > 0.5 ?
           '<div class="due-external">acompte versé ' + fmtIn(paidExternal, cur) + ' · reste ' + fmtIn(dueExternal, cur) + ' à verser au bailleur</div>' +
-          '<button class="mark-paid-link" data-action="markPaidFull" data-id="' + e.id + '">marquer réglé en totalité →</button>' : '') +
+          '<button class="mark-paid-link" data-action="markPaidFull" data-id="' + e.id + '">Marquer réglé en totalité →</button>' : '') +
         '</div>' +
         '<div class="expense-amount">' + fmtIn(e.amount, cur) + '</div>' +
         '</div>'
@@ -1560,19 +1560,19 @@
     return (
       renderGroupFilterPills(filterId, 'setExpensesGroupFilter') +
       (mixedCurrencies ?
-        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> devises multiples</div>' +
+        '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> Devises multiples</div>' +
         '<div class="warning-banner-body">Tes groupes utilisent des devises différentes — choisis un groupe ci-dessus pour voir les totaux.</div></div>' :
         '<div class="summary-cards">' +
-        '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value" style="color:var(--text-primary)">' + fmtC(total) + '</div></div>' +
-        '<div class="summary-card"><div class="summary-card-label">remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmtC(totalOwed - totalRemaining) + '</div></div>' +
-        '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
+        '<div class="summary-card"><div class="summary-card-label">Total</div><div class="summary-card-value" style="color:var(--text-primary)">' + fmtC(total) + '</div></div>' +
+        '<div class="summary-card"><div class="summary-card-label">Remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmtC(totalOwed - totalRemaining) + '</div></div>' +
+        '<div class="summary-card"><div class="summary-card-label">Restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
         '</div>' +
         (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
       (expenses.length > 0 ?
-        '<input class="text-input" data-bind="expensesSearch" placeholder="rechercher une dépense..." value="' + escapeHtml(state.expensesSearchQuery) + '" />' : '') +
-      (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense dans ce groupe.</div>' :
-        visibleExpenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense ne correspond à « ' + escapeHtml(state.expensesSearchQuery) + ' ».</div>' : rows) +
-      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">ajouter une dépense</button>'
+        '<input class="text-input" data-bind="expensesSearch" placeholder="Rechercher une dépense..." value="' + escapeHtml(state.expensesSearchQuery) + '" />' : '') +
+      (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Aucune dépense dans ce groupe.</div>' :
+        visibleExpenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Aucune dépense ne correspond à « ' + escapeHtml(state.expensesSearchQuery) + ' ».</div>' : rows) +
+      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">Ajouter une dépense</button>'
     );
   }
 
@@ -1587,7 +1587,7 @@
       items.push({ date: p.date, icon: 'ph-bold ph-check-circle', iconBg: 'var(--status-positive-bg)', iconColor: 'var(--status-positive)', text: escapeHtml(person(p.from).name) + ' → ' + escapeHtml(person(p.to).name), amountLabel: fmtIn(p.amount, pg && pg.currency), color: 'var(--status-positive)' });
     });
     state.reminders.forEach(function (r) {
-      items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'rappel envoyé à ' + escapeHtml(person(r.toPersonId).name), amountLabel: null, color: null });
+      items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'Rappel envoyé à ' + escapeHtml(person(r.toPersonId).name), amountLabel: null, color: null });
     });
     return items.sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (h) {
       return (
@@ -1604,10 +1604,10 @@
     function color(match) { return match ? 'var(--brand-secondary)' : 'var(--text-tertiary)'; }
     return (
       '<div class="bottom-nav">' +
-      '<button class="nav-item" data-action="goHome" style="color:' + color(state.screen === 'home') + '"><i class="ph-bold ph-house" style="font-size:20px"></i><div class="nav-item-label">accueil</div></button>' +
-      '<button class="nav-item" data-action="goGroups" style="color:' + color(state.screen === 'groups' || state.screen === 'groupDetail') + '"><i class="ph-bold ph-users-three" style="font-size:20px"></i><div class="nav-item-label">groupes</div></button>' +
-      '<button class="nav-item" data-action="goExpenses" style="color:' + color(state.screen === 'expenses') + '"><i class="ph-bold ph-receipt" style="font-size:20px"></i><div class="nav-item-label">dépenses</div></button>' +
-      '<button class="nav-item" data-action="goHistory" style="color:' + color(state.screen === 'history') + '"><i class="ph-bold ph-clock-counter-clockwise" style="font-size:20px"></i><div class="nav-item-label">historique</div></button>' +
+      '<button class="nav-item" data-action="goHome" style="color:' + color(state.screen === 'home') + '"><i class="ph-bold ph-house" style="font-size:20px"></i><div class="nav-item-label">Accueil</div></button>' +
+      '<button class="nav-item" data-action="goGroups" style="color:' + color(state.screen === 'groups' || state.screen === 'groupDetail') + '"><i class="ph-bold ph-users-three" style="font-size:20px"></i><div class="nav-item-label">Groupes</div></button>' +
+      '<button class="nav-item" data-action="goExpenses" style="color:' + color(state.screen === 'expenses') + '"><i class="ph-bold ph-receipt" style="font-size:20px"></i><div class="nav-item-label">Dépenses</div></button>' +
+      '<button class="nav-item" data-action="goHistory" style="color:' + color(state.screen === 'history') + '"><i class="ph-bold ph-clock-counter-clockwise" style="font-size:20px"></i><div class="nav-item-label">Historique</div></button>' +
       '</div>'
     );
   }
@@ -1632,15 +1632,15 @@
     return (
       '<div class="modal-overlay center" data-action="closeModal">' +
       '<div class="modal-card" data-stop-click>' +
-      '<div class="modal-title" style="margin-bottom:14px">supprimer « ' + escapeHtml(g.name) + ' » ?</div>' +
+      '<div class="modal-title" style="margin-bottom:14px">Supprimer « ' + escapeHtml(g.name) + ' » ?</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
       (expenseCount > 0
         ? 'Cette action supprimera aussi ' + (expenseCount > 1 ? 'ses ' + expenseCount + ' dépenses associées.' : 'sa dépense associée.')
         : 'Cette action est définitive.') +
       '</div>' +
       '<div class="modal-footer-buttons">' +
-      '<button class="btn-cancel pressable" data-action="closeModal">annuler</button>' +
-      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmDeleteGroup">supprimer</button>' +
+      '<button class="btn-cancel pressable" data-action="closeModal">Annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmDeleteGroup">Supprimer</button>' +
       '</div></div></div>'
     );
   }
@@ -1657,7 +1657,7 @@
     return (
       '<div class="modal-overlay center" data-action="cancelRemoveMember">' +
       '<div class="modal-card" data-stop-click>' +
-      '<div class="modal-title" style="margin-bottom:14px">retirer ' + escapeHtml(p.name) + ' du groupe « ' + escapeHtml(g.name) + ' » ?</div>' +
+      '<div class="modal-title" style="margin-bottom:14px">Retirer ' + escapeHtml(p.name) + ' du groupe « ' + escapeHtml(g.name) + ' » ?</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
       (hasBalance
         ? escapeHtml(p.name) + ' a un solde non réglé de ' + fmtIn(Math.abs(bal), g.currency) + ' dans ce groupe — il restera affiché ici (marqué « ex-membre ») tant qu\'il n\'est pas soldé.'
@@ -1666,8 +1666,8 @@
           : escapeHtml(p.name) + ' n\'a aucune dépense dans ce groupe.') +
       '</div>' +
       '<div class="modal-footer-buttons">' +
-      '<button class="btn-cancel pressable" data-action="cancelRemoveMember">annuler</button>' +
-      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmRemoveMember">retirer</button>' +
+      '<button class="btn-cancel pressable" data-action="cancelRemoveMember">Annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmRemoveMember">Retirer</button>' +
       '</div></div></div>'
     );
   }
@@ -1680,15 +1680,15 @@
     return (
       '<div class="modal-overlay center" data-action="cancelLeaveGroup">' +
       '<div class="modal-card" data-stop-click>' +
-      '<div class="modal-title" style="margin-bottom:14px">quitter « ' + escapeHtml(g.name) + ' » ?</div>' +
+      '<div class="modal-title" style="margin-bottom:14px">Quitter « ' + escapeHtml(g.name) + ' » ?</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
       (hasBalance
         ? 'Tu as un solde non réglé de ' + fmtIn(Math.abs(bal), g.currency) + ' dans ce groupe — il reste dû même après ton départ. Tu ne verras plus ce groupe ; seul l\'admin pourra t\'y réintégrer.'
         : 'Tu ne verras plus ce groupe. Seul l\'admin pourra t\'y réintégrer.') +
       '</div>' +
       '<div class="modal-footer-buttons">' +
-      '<button class="btn-cancel pressable" data-action="cancelLeaveGroup">annuler</button>' +
-      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmLeaveGroup">quitter</button>' +
+      '<button class="btn-cancel pressable" data-action="cancelLeaveGroup">Annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmLeaveGroup">Quitter</button>' +
       '</div></div></div>'
     );
   }
@@ -1706,8 +1706,8 @@
     var participantRows = (currentGroup ? currentGroup.memberIds : []).map(function (pid) {
       var p = person(pid);
       var included = f.participantIds.indexOf(pid) !== -1;
-      var overrideOptions = [{ value: 'self', label: 'paie sa part' }].concat(
-        currentGroup.memberIds.filter(function (id2) { return id2 !== pid; }).map(function (id2) { return { value: id2, label: 'pris en charge par ' + person(id2).name }; })
+      var overrideOptions = [{ value: 'self', label: 'Paie sa part' }].concat(
+        currentGroup.memberIds.filter(function (id2) { return id2 !== pid; }).map(function (id2) { return { value: id2, label: 'Pris en charge par ' + person(id2).name }; })
       );
       return (
         '<div class="checkbox-row">' +
@@ -1723,38 +1723,38 @@
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
-      '<div class="modal-header"><div class="modal-title">' + (f.editingId ? 'modifier la dépense' : 'nouvelle dépense') + '</div>' +
+      '<div class="modal-header"><div class="modal-title">' + (f.editingId ? 'Modifier la dépense' : 'Nouvelle dépense') + '</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
-      '<div class="field-label">groupe</div><div class="pill-row">' + groupChoices + '</div>' +
-      '<div class="field-label">description</div>' +
-      '<input class="text-input" data-bind="expenseLabel" placeholder="courses, essence..." value="' + escapeHtml(f.label) + '" />' +
-      '<div class="field-label">catégorie</div>' +
+      '<div class="field-label">Groupe</div><div class="pill-row">' + groupChoices + '</div>' +
+      '<div class="field-label">Description</div>' +
+      '<input class="text-input" data-bind="expenseLabel" placeholder="Courses, essence..." value="' + escapeHtml(f.label) + '" />' +
+      '<div class="field-label">Catégorie</div>' +
       '<div class="pill-row">' + seed.EXPENSE_CATEGORIES.map(function (c) {
         return '<div class="pill' + (f.category === c.id ? ' active' : '') + '" data-action="setCategory" data-id="' + c.id + '"><i class="' + c.icon + '" style="margin-right:5px"></i>' + escapeHtml(c.label) + '</div>';
       }).join('') + '</div>' +
-      '<div class="field-label">montant (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
+      '<div class="field-label">Montant (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
       '<input class="text-input" data-bind="expenseAmount" placeholder="0,00" inputmode="decimal" value="' + escapeHtml(f.amount) + '" />' +
-      '<div class="field-label">date</div>' +
+      '<div class="field-label">Date</div>' +
       '<input class="text-input" type="date" data-bind="expenseDate" value="' + escapeHtml(f.date) + '" />' +
       '<div class="checkbox-row" style="border-top:none;margin-bottom:16px" data-action="toggleFullyPaid">' +
       '<div class="checkbox' + (f.fullyPaid ? ' checked' : '') + '">' + (f.fullyPaid ? '<i class="ph-bold ph-check"></i>' : '') + '</div>' +
-      '<div style="font-size:13.5px;color:var(--text-primary);font-weight:600">payée intégralement (pas d\'acompte)</div></div>' +
+      '<div style="font-size:13.5px;color:var(--text-primary);font-weight:600">Payée intégralement (pas d\'acompte)</div></div>' +
       (!f.fullyPaid ?
-        '<div class="field-label">déjà versé au tiers (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
-        '<input class="text-input" data-bind="paidExternal" placeholder="ex : 500" inputmode="decimal" value="' + escapeHtml(f.paidExternal) + '" />' : '') +
-      '<div class="field-label">payé par</div><div class="pill-row">' + payerChoices + '</div>' +
-      '<div class="section-label">qui participe ?</div>' + participantRows +
-      '<div class="field-label">reçu / pièce jointe (facultatif)</div>' +
+        '<div class="field-label">Déjà versé au tiers (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
+        '<input class="text-input" data-bind="paidExternal" placeholder="Ex : 500" inputmode="decimal" value="' + escapeHtml(f.paidExternal) + '" />' : '') +
+      '<div class="field-label">Payé par</div><div class="pill-row">' + payerChoices + '</div>' +
+      '<div class="section-label">Qui participe ?</div>' + participantRows +
+      '<div class="field-label">Reçu / pièce jointe (facultatif)</div>' +
       (f.receiptPath && !f.receiptRemove ?
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
-        '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> voir le reçu actuel</button>' +
+        '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> Voir le reçu actuel</button>' +
         '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' : '') +
       '<input class="text-input" type="file" accept="image/*,.pdf" data-bind-change="receiptFile" />' +
-      (f.receiptFile ? '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">fichier sélectionné : ' + escapeHtml(f.receiptFile.name) + '</div>' : '') +
-      '<button class="btn-primary pressable" style="margin-top:20px" data-action="submitExpense">' + (f.editingId ? 'enregistrer les modifications' : 'enregistrer la dépense') + '</button>' +
+      (f.receiptFile ? '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Fichier sélectionné : ' + escapeHtml(f.receiptFile.name) + '</div>' : '') +
+      '<button class="btn-primary pressable" style="margin-top:20px" data-action="submitExpense">' + (f.editingId ? 'Enregistrer les modifications' : 'Enregistrer la dépense') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
-      (f.editingId ? '<button class="delete-link" data-action="deleteExpense">supprimer cette dépense</button>' : '') +
+      (f.editingId ? '<button class="delete-link" data-action="deleteExpense">Supprimer cette dépense</button>' : '') +
       '</div></div>'
     );
   }
@@ -1772,7 +1772,7 @@
       return (
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
-        '<input class="text-input" style="margin-bottom:0" data-bind="inviteeName" data-id="' + i + '" placeholder="prénom" value="' + escapeHtml(inv.name) + '" />' +
+        '<input class="text-input" style="margin-bottom:0" data-bind="inviteeName" data-id="' + i + '" placeholder="Prénom" value="' + escapeHtml(inv.name) + '" />' +
         (gf.invitees.length > 1 ? '<button class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeInviteeRow" data-id="' + i + '"><i class="ph-bold ph-x"></i></button>' : '') +
         '</div>' +
         (suggestions.length ?
@@ -1784,11 +1784,11 @@
         (linkedProfile ?
           '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text-primary)">' +
           '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
-          '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + i + '">annuler</span>' +
+          '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + i + '">Annuler</span>' +
           '</div>' :
-          '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
+          '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="E-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
           '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-size:12.5px;color:var(--text-secondary)">part (1 = part entière)</span>' +
+          '<span style="font-size:12.5px;color:var(--text-secondary)">Part (1 = part entière)</span>' +
           '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
           '</div>') +
         '</div>'
@@ -1797,18 +1797,18 @@
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
-      '<div class="modal-header"><div class="modal-title">nouveau groupe</div>' +
+      '<div class="modal-header"><div class="modal-title">Nouveau groupe</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
-      '<div class="field-label">nom</div>' +
-      '<input class="text-input" data-bind="groupName" placeholder="ex : week-end à lyon" value="' + escapeHtml(gf.name) + '" />' +
-      '<div class="field-label">devise</div>' +
+      '<div class="field-label">Nom</div>' +
+      '<input class="text-input" data-bind="groupName" placeholder="Ex : week-end à Lyon" value="' + escapeHtml(gf.name) + '" />' +
+      '<div class="field-label">Devise</div>' +
       '<select class="text-input" data-bind-change="groupCurrency">' + currencyOptions + '</select>' +
-      '<div class="section-label">ajouter des membres</div>' +
+      '<div class="section-label">Ajouter des membres</div>' +
       '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-8px 0 12px">l\'e-mail est facultatif : renseigné, une invitation est envoyée pour que la personne se connecte elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
       inviteeRows +
-      '<button class="dashed-btn pressable" style="margin-bottom:6px" data-action="addInviteeRow">+ ajouter un membre</button>' +
+      '<button class="dashed-btn pressable" style="margin-bottom:6px" data-action="addInviteeRow">+ Ajouter un membre</button>' +
       '<button class="btn-primary pressable" style="margin-top:14px' + (state.submittingGroup ? ';opacity:0.6' : '') + '" data-action="submitGroup">' +
-      (state.submittingGroup ? 'création en cours…' : 'créer le groupe') + '</button>' +
+      (state.submittingGroup ? 'Création en cours…' : 'Créer le groupe') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       '</div></div>'
     );
@@ -1822,13 +1822,13 @@
     return (
       '<div class="modal-overlay center" data-action="closeModal">' +
       '<div class="modal-card" data-stop-click>' +
-      '<div class="modal-title" style="margin-bottom:14px">enregistrer un paiement</div>' +
+      '<div class="modal-title" style="margin-bottom:14px">Enregistrer un paiement</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:14px">' + escapeHtml(fromName) + ' → ' + escapeHtml(toName) + '</div>' +
-      '<div class="field-label">montant (' + currencySymbolFor(settleGroup && settleGroup.currency) + ')</div>' +
+      '<div class="field-label">Montant (' + currencySymbolFor(settleGroup && settleGroup.currency) + ')</div>' +
       '<input class="text-input" data-bind="settleAmount" inputmode="decimal" value="' + escapeHtml(sf.amount) + '" />' +
       '<div class="modal-footer-buttons">' +
-      '<button class="btn-cancel pressable" data-action="closeModal">annuler</button>' +
-      '<button class="btn-confirm pressable" data-action="submitSettle">confirmer</button>' +
+      '<button class="btn-cancel pressable" data-action="closeModal">Annuler</button>' +
+      '<button class="btn-confirm pressable" data-action="submitSettle">Confirmer</button>' +
       '</div></div></div>'
     );
   }
@@ -1838,13 +1838,13 @@
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
-      '<div class="modal-header"><div class="modal-title">mon compte</div>' +
+      '<div class="modal-header"><div class="modal-title">Mon compte</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
       '<div style="display:flex;align-items:center;gap:12px;padding:4px 0 22px">' +
       '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
       '</div>' +
-      '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>se déconnecter</button>' +
+      '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
       '</div></div>'
     );
   }
@@ -1858,7 +1858,7 @@
     var members = mg.memberIds.map(function (id) { return person(id); }).filter(Boolean);
 
     var guardianOptionsFor = function (p) {
-      var opts = '<option value=""' + (!p.guardianId ? ' selected' : '') + '>— aucun —</option>';
+      var opts = '<option value=""' + (!p.guardianId ? ' selected' : '') + '>— Aucun —</option>';
       opts += members.filter(function (x) { return x.id !== p.id; }).map(function (x) {
         return '<option value="' + x.id + '"' + (p.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>';
       }).join('');
@@ -1866,7 +1866,7 @@
     };
     var groupHouseholds = state.households.filter(function (h) { return h.groupId === mg.id; });
     var householdOptionsFor = function (p) {
-      var opts = '<option value=""' + (!p.householdId ? ' selected' : '') + '>— aucun foyer —</option>';
+      var opts = '<option value=""' + (!p.householdId ? ' selected' : '') + '>— Aucun foyer —</option>';
       opts += groupHouseholds.map(function (h) {
         return '<option value="' + h.id + '"' + (p.householdId === h.id ? ' selected' : '') + '>' + escapeHtml(h.name) + '</option>';
       }).join('');
@@ -1881,18 +1881,18 @@
         (isAdmin ? ' (admin)' : '') +
         // "à charge" est un badge calculé (responsable défini), pas une
         // catégorie à choisir séparément.
-        (p.guardianId ? '<span class="badge-child inline">à charge</span>' : '') +
+        (p.guardianId ? '<span class="badge-child inline">À charge</span>' : '') +
         '</div>' +
         (!isAdmin ?
           '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">part (1 = part entière)</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Part (1 = part entière)</div>' +
         '<input class="text-input" style="margin-bottom:0" data-bind-change="shareWeight" data-id="' + p.id + '" value="' + (p.shareWeight != null ? p.shareWeight : 1) + '" inputmode="decimal" /></div>' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">responsable (si à charge)</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Responsable (si à charge)</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select>' +
         '</div>' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">foyer</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Foyer</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="household" data-id="' + p.id + '">' + householdOptionsFor(p) + '</select></div>' +
         '</div>' +
         '</div>'
@@ -1906,8 +1906,8 @@
 
     var addMemberSection = !state.showAddMemberForm ? '' :
       '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
-      '<div class="field-label">prénom</div>' +
-      '<input class="text-input" data-bind="addMemberName" placeholder="prénom" value="' + escapeHtml(state.addMemberForm.name) + '" />' +
+      '<div class="field-label">Prénom</div>' +
+      '<input class="text-input" data-bind="addMemberName" placeholder="Prénom" value="' + escapeHtml(state.addMemberForm.name) + '" />' +
       (guestSuggestions.length ?
         '<div style="margin:-8px 0 12px">' +
         guestSuggestions.map(function (s) {
@@ -1917,36 +1917,36 @@
       (linkedGuestProfile ?
         '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--text-primary)">' +
         '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedGuestProfile.name) + ' (déjà connu·e) sera ajouté·e à ce groupe avec sa part actuelle (' + String(linkedGuestProfile.shareWeight != null ? linkedGuestProfile.shareWeight : 1).replace('.', ',') + ').' +
-        '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">annuler</span>' +
+        '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">Annuler</span>' +
         '</div>' :
-        '<div class="field-label">e-mail (facultatif)</div>' +
-        '<input class="text-input" data-bind="addMemberEmail" placeholder="pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
-        '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
-        '<div class="field-label">part (1 = part entière)</div>' +
+        '<div class="field-label">E-mail (facultatif)</div>' +
+        '<input class="text-input" data-bind="addMemberEmail" placeholder="Pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
+        '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
+        '<div class="field-label">Part (1 = part entière)</div>' +
         '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
-        '<div class="field-label">responsable (facultatif)</div>' +
+        '<div class="field-label">Responsable (facultatif)</div>' +
         '<select class="text-input" data-bind-change="addMemberGuardian">' +
-        '<option value="">— aucun —</option>' +
+        '<option value="">— Aucun —</option>' +
         members.map(function (x) { return '<option value="' + x.id + '"' + (state.addMemberForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
         '</select>') +
       '<button class="btn-primary pressable" style="margin-top:10px' + (state.addingMember ? ';opacity:0.6' : '') + '" data-action="submitAddMember">' +
-      (state.addingMember ? 'ajout en cours…' : 'ajouter') + '</button>' +
+      (state.addingMember ? 'Ajout en cours…' : 'Ajouter') + '</button>' +
       '</div>';
 
     return (
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
-      '<div class="modal-header"><div class="modal-title">membres · ' + escapeHtml(mg.name) + '</div>' +
+      '<div class="modal-header"><div class="modal-title">Membres · ' + escapeHtml(mg.name) + '</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
-      '<div class="section-label">foyers</div>' +
+      '<div class="section-label">Foyers</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:14px">' +
-      '<input class="text-input" style="margin-bottom:0;flex:1" data-bind="newHouseholdName" placeholder="nom du foyer" value="' + escapeHtml(state.newHouseholdName) + '" />' +
-      '<button class="btn-outline pressable" style="flex-shrink:0" data-action="createHousehold">+ créer</button>' +
+      '<input class="text-input" style="margin-bottom:0;flex:1" data-bind="newHouseholdName" placeholder="Nom du foyer" value="' + escapeHtml(state.newHouseholdName) + '" />' +
+      '<button class="btn-outline pressable" style="flex-shrink:0" data-action="createHousehold">+ Créer</button>' +
       '</div>' +
-      '<div class="section-label">participants</div>' +
+      '<div class="section-label">Participants</div>' +
       rows +
       addMemberSection +
-      '<button class="dashed-btn pressable" data-action="toggleAddMemberForm">' + (state.showAddMemberForm ? 'annuler' : '+ ajouter un membre') + '</button>' +
+      '<button class="dashed-btn pressable" data-action="toggleAddMemberForm">' + (state.showAddMemberForm ? 'Annuler' : '+ Ajouter un membre') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       '</div></div>'
     );
