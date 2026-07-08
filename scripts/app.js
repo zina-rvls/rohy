@@ -82,6 +82,9 @@
       addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
       expensesSearchQuery: '',
+      expensesMineOnly: false,
+      expensesCategoryFilter: null,
+      expensesSort: 'date_desc',
       lastActiveGroupId: null,
       groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1', linkExistingId: null }] },
       submittingGroup: false,
@@ -159,6 +162,117 @@
     return calc.netBalanceFor(personId, debts);
   }
   function pairNet(a, b, debts) { return calc.pairNet(a, b, debts || computeDebts()); }
+
+  // ---------- Export (CSV / Excel / PDF) ----------
+
+  function slugify(str) {
+    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'groupe';
+  }
+  function csvEscape(v) {
+    var s = v == null ? '' : String(v);
+    return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function toCsv(rows) { return rows.map(function (r) { return r.map(csvEscape).join(';'); }).join('\r\n'); }
+  function downloadBlob(filename, content, mime) {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // Rassemble les données d'export d'un groupe : dépenses détaillées, soldes
+  // nets par personne et transactions à effectuer pour équilibrer (même
+  // logique que "pour équilibrer" affiché sur la fiche groupe). Montants en
+  // valeurs numériques brutes (pas de symbole) — chaque tableau exporté
+  // partage la même devise, mentionnée dans les en-têtes.
+  function buildGroupExportTables(groupId) {
+    var g = group(groupId);
+    if (!g) return null;
+    var expenses = state.expenses.filter(function (e) { return e.groupId === groupId; })
+      .slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
+    var payments = state.payments.filter(function (p) { return p.groupId === groupId; });
+    var statuses = calc.computeExpenseStatuses(state.people, expenses, payments);
+
+    var expenseRows = expenses.map(function (e) {
+      var cat = seed.EXPENSE_CATEGORIES.find(function (c) { return c.id === categoryForIcon(e.icon); });
+      var st = statuses[e.id];
+      return [
+        fmtDate(e.date), e.label, cat ? cat.label : 'Autre', e.amount,
+        person(e.paidBy).name,
+        e.participants.map(function (pid) { return person(pid).name; }).join(', '),
+        st ? st.status : '',
+      ];
+    });
+
+    var debts = computeDebtsForGroup(groupId);
+    var balanceRows = g.memberIds.map(function (pid) { return [person(pid).name, netBalanceFor(pid, groupId)]; });
+    var settlementRows = calc.simplify(debts, g.memberIds).map(function (t) {
+      return [person(t.from).name, person(t.to).name, t.amount];
+    });
+
+    return {
+      group: g,
+      expenses: { header: ['Date', 'Libellé', 'Catégorie', 'Montant (' + g.currency + ')', 'Payé par', 'Participants', 'Statut'], rows: expenseRows },
+      balances: { header: ['Personne', 'Solde net (' + g.currency + ')'], rows: balanceRows },
+      settlements: { header: ['De', 'Vers', 'Montant (' + g.currency + ')'], rows: settlementRows },
+    };
+  }
+
+  function exportGroupCsv(groupId) {
+    var d = buildGroupExportTables(groupId);
+    if (!d) return;
+    var lines = [['Dépenses'], d.expenses.header].concat(d.expenses.rows, [
+      [], ['Soldes par personne'], d.balances.header,
+    ], d.balances.rows, [
+      [], ['Transactions à effectuer'], d.settlements.header,
+    ], d.settlements.rows);
+    downloadBlob('kotikota-' + slugify(d.group.name) + '.csv', '﻿' + toCsv(lines), 'text/csv;charset=utf-8');
+    showToast('Export CSV téléchargé');
+  }
+
+  function exportGroupExcel(groupId) {
+    if (typeof XLSX === 'undefined') { showToast('Erreur : bibliothèque Excel indisponible (hors ligne ?).'); return; }
+    var d = buildGroupExportTables(groupId);
+    if (!d) return;
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([d.expenses.header].concat(d.expenses.rows)), 'Dépenses');
+    var soldeAoa = [d.balances.header].concat(d.balances.rows, [[], ['Transactions à effectuer'], d.settlements.header], d.settlements.rows);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(soldeAoa), 'Soldes');
+    XLSX.writeFile(wb, 'kotikota-' + slugify(d.group.name) + '.xlsx');
+    showToast('Export Excel téléchargé');
+  }
+
+  function exportGroupPdf(groupId) {
+    if (typeof jspdf === 'undefined') { showToast('Erreur : bibliothèque PDF indisponible (hors ligne ?).'); return; }
+    var d = buildGroupExportTables(groupId);
+    if (!d) return;
+    var fmtRows = function (rows, amountCols) {
+      return rows.map(function (r) {
+        return r.map(function (v, i) { return amountCols.indexOf(i) !== -1 ? fmtIn(v, d.group.currency) : v; });
+      });
+    };
+    var doc = new jspdf.jsPDF();
+    doc.setFontSize(14);
+    doc.text('kotikota — ' + d.group.name, 14, 16);
+    doc.setFontSize(11);
+    doc.text('Dépenses', 14, 25);
+    doc.autoTable({ startY: 28, head: [d.expenses.header], body: fmtRows(d.expenses.rows, [3]), styles: { fontSize: 8 } });
+    var y1 = doc.lastAutoTable.finalY + 10;
+    doc.text('Soldes par personne', 14, y1);
+    doc.autoTable({ startY: y1 + 3, head: [d.balances.header], body: fmtRows(d.balances.rows, [1]), styles: { fontSize: 8 } });
+    var y2 = doc.lastAutoTable.finalY + 10;
+    doc.text('Transactions à effectuer', 14, y2);
+    doc.autoTable({
+      startY: y2 + 3, head: [d.settlements.header],
+      body: d.settlements.rows.length ? fmtRows(d.settlements.rows, [2]) : [['—', '—', 'Rien à régler']],
+      styles: { fontSize: 8 },
+    });
+    doc.save('kotikota-' + slugify(d.group.name) + '.pdf');
+    showToast('Export PDF téléchargé');
+  }
 
   function showToast(msg) {
     clearTimeout(toastTimer);
@@ -266,6 +380,9 @@
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
+  function toggleExpensesMineOnly() { setState(function (s) { return { expensesMineOnly: !s.expensesMineOnly }; }); }
+  function setExpensesCategoryFilter(id) { setState({ expensesCategoryFilter: id || null }); }
+  function setExpensesSort(v) { setState({ expensesSort: v }); }
   function setPersonGroupFilter(id) { setState({ personGroupFilter: id || null }); }
   function toggleTheme() {
     setState(function (s) {
@@ -487,6 +604,14 @@
       var has = s.form.participantIds.indexOf(pid) !== -1;
       var participantIds = has ? s.form.participantIds.filter(function (x) { return x !== pid; }) : s.form.participantIds.concat([pid]);
       return { form: Object.assign({}, s.form, { participantIds: participantIds }) };
+    });
+  }
+  function toggleAllParticipants() {
+    setState(function (s) {
+      var g = s.form.groupId ? group(s.form.groupId) : s.groups[0];
+      if (!g) return {};
+      var allSelected = g.memberIds.every(function (pid) { return s.form.participantIds.indexOf(pid) !== -1; });
+      return { form: Object.assign({}, s.form, { participantIds: allSelected ? [] : g.memberIds.slice() }) };
     });
   }
   function setReceiptFile(file) {
@@ -1161,6 +1286,17 @@
     return '<div class="pill-row" style="margin-bottom:16px">' + allPill + groupPills + '</div>';
   }
 
+  function renderCategoryFilterPills(selectedId, expensesInScope) {
+    var presentIds = {};
+    expensesInScope.forEach(function (e) { presentIds[categoryForIcon(e.icon)] = true; });
+    if (Object.keys(presentIds).length < 2) return '';
+    var allPill = '<div class="pill' + (!selectedId ? ' active' : '') + '" data-action="setExpensesCategoryFilter" data-id="">Toutes catégories</div>';
+    var catPills = seed.EXPENSE_CATEGORIES.filter(function (c) { return presentIds[c.id]; }).map(function (c) {
+      return '<div class="pill' + (selectedId === c.id ? ' active' : '') + '" data-action="setExpensesCategoryFilter" data-id="' + c.id + '"><i class="' + c.icon + '" style="margin-right:5px"></i>' + escapeHtml(c.label) + '</div>';
+    }).join('');
+    return '<div class="pill-row" style="margin-bottom:10px">' + allPill + catPills + '</div>';
+  }
+
   function renderHome() {
     var moi = state.currentUserId;
     var cu = person(moi);
@@ -1466,7 +1602,13 @@
         '<div class="section-label">Pour équilibrer</div>' +
         (txns.length ? suggestions : '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">Rien à régler pour le moment.</div>') : '') +
       '<div class="section-label" style="margin-top:18px">Dépenses</div>' + expenseRows +
-      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseForGroup">Ajouter une dépense</button>'
+      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseForGroup">Ajouter une dépense</button>' +
+      '<div class="section-label" style="margin-top:18px">Exporter (dépenses et soldes)</div>' +
+      '<div class="pill-row">' +
+      '<div class="pill" data-action="exportGroupCsv" data-id="' + g.id + '">CSV</div>' +
+      '<div class="pill" data-action="exportGroupExcel" data-id="' + g.id + '">Excel</div>' +
+      '<div class="pill" data-action="exportGroupPdf" data-id="' + g.id + '">PDF</div>' +
+      '</div>'
     );
   }
 
@@ -1523,14 +1665,26 @@
     var totalDueExternal = expenses.reduce(function (a, e) { return a + (e.amount - (e.paidExternal != null ? e.paidExternal : e.amount)); }, 0);
 
     var searchQuery = (state.expensesSearchQuery || '').trim().toLowerCase();
-    var visibleExpenses = !searchQuery ? expenses : expenses.filter(function (e) {
+    var mineOnly = !!state.expensesMineOnly;
+    var categoryFilter = state.expensesCategoryFilter || null;
+    var visibleExpenses = expenses.filter(function (e) {
+      if (mineOnly && e.paidBy !== state.currentUserId && e.participants.indexOf(state.currentUserId) === -1) return false;
+      if (categoryFilter && categoryForIcon(e.icon) !== categoryFilter) return false;
+      if (!searchQuery) return true;
       var g = group(e.groupId);
       return e.label.toLowerCase().indexOf(searchQuery) !== -1
         || person(e.paidBy).name.toLowerCase().indexOf(searchQuery) !== -1
         || (g && g.name.toLowerCase().indexOf(searchQuery) !== -1);
     });
 
-    var rows = visibleExpenses.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (e) {
+    var sortComparators = {
+      date_desc: function (a, b) { return b.date.localeCompare(a.date); },
+      date_asc: function (a, b) { return a.date.localeCompare(b.date); },
+      amount_desc: function (a, b) { return b.amount - a.amount; },
+      amount_asc: function (a, b) { return a.amount - b.amount; },
+    };
+    var sortBy = sortComparators[state.expensesSort] ? state.expensesSort : 'date_desc';
+    var rows = visibleExpenses.slice().sort(sortComparators[sortBy]).map(function (e) {
       var g = group(e.groupId);
       var cur = g && g.currency;
       var st = statuses[e.id];
@@ -1569,9 +1723,23 @@
         '</div>' +
         (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
       (expenses.length > 0 ?
-        '<input class="text-input" data-bind="expensesSearch" placeholder="Rechercher une dépense..." value="' + escapeHtml(state.expensesSearchQuery) + '" />' : '') +
+        '<div class="pill-row" style="margin-bottom:10px">' +
+        '<div class="pill' + (mineOnly ? ' active' : '') + '" data-action="toggleExpensesMineOnly"><i class="ph-bold ph-user-focus" style="margin-right:5px"></i>Me concerne uniquement</div>' +
+        '</div>' +
+        renderCategoryFilterPills(categoryFilter, expenses) +
+        '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+        '<input class="text-input" style="margin-bottom:0;flex:1" data-bind="expensesSearch" placeholder="Rechercher une dépense..." value="' + escapeHtml(state.expensesSearchQuery) + '" />' +
+        '<select class="text-input" style="margin-bottom:0;width:auto;flex-shrink:0" data-bind-change="expensesSort">' +
+        '<option value="date_desc"' + (sortBy === 'date_desc' ? ' selected' : '') + '>Plus récentes</option>' +
+        '<option value="date_asc"' + (sortBy === 'date_asc' ? ' selected' : '') + '>Plus anciennes</option>' +
+        '<option value="amount_desc"' + (sortBy === 'amount_desc' ? ' selected' : '') + '>Montant décroissant</option>' +
+        '<option value="amount_asc"' + (sortBy === 'amount_asc' ? ' selected' : '') + '>Montant croissant</option>' +
+        '</select>' +
+        '</div>' : '') +
       (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Aucune dépense dans ce groupe.</div>' :
-        visibleExpenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Aucune dépense ne correspond à « ' + escapeHtml(state.expensesSearchQuery) + ' ».</div>' : rows) +
+        visibleExpenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">' +
+          (searchQuery ? 'Aucune dépense ne correspond à « ' + escapeHtml(state.expensesSearchQuery) + ' ».' : 'Aucune dépense ne correspond à ces filtres.') +
+          '</div>' : rows) +
       '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">Ajouter une dépense</button>'
     );
   }
@@ -1703,6 +1871,7 @@
       var p = person(pid);
       return '<div class="pill' + (f.paidBy === pid ? ' active' : '') + '" data-action="selectPayer" data-id="' + pid + '">' + escapeHtml(p.name) + '</div>';
     }).join('');
+    var allParticipantsSelected = !!currentGroup && currentGroup.memberIds.length > 0 && currentGroup.memberIds.every(function (pid) { return f.participantIds.indexOf(pid) !== -1; });
     var participantRows = (currentGroup ? currentGroup.memberIds : []).map(function (pid) {
       var p = person(pid);
       var included = f.participantIds.indexOf(pid) !== -1;
@@ -1743,7 +1912,9 @@
         '<div class="field-label">Déjà versé au tiers (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
         '<input class="text-input" data-bind="paidExternal" placeholder="Ex : 500" inputmode="decimal" value="' + escapeHtml(f.paidExternal) + '" />' : '') +
       '<div class="field-label">Payé par</div><div class="pill-row">' + payerChoices + '</div>' +
-      '<div class="section-label">Qui participe ?</div>' + participantRows +
+      '<div class="section-label" style="display:flex;align-items:center;justify-content:space-between">Qui participe ?' +
+      '<span class="select-all-link" data-action="toggleAllParticipants">' + (allParticipantsSelected ? 'Tout désélectionner' : 'Tout sélectionner') + '</span>' +
+      '</div>' + participantRows +
       '<div class="field-label">Reçu / pièce jointe (facultatif)</div>' +
       (f.receiptPath && !f.receiptRemove ?
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
@@ -1999,6 +2170,8 @@
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
         case 'setExpensesGroupFilter': setExpensesGroupFilter(id); break;
+        case 'toggleExpensesMineOnly': toggleExpensesMineOnly(); break;
+        case 'setExpensesCategoryFilter': setExpensesCategoryFilter(id); break;
         case 'setPersonGroupFilter': setPersonGroupFilter(id); break;
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
         case 'openAddGroup': openAddGroup(); break;
@@ -2021,6 +2194,7 @@
         case 'selectGroupForForm': selectGroupForForm(id); break;
         case 'selectPayer': selectPayer(id); break;
         case 'toggleParticipant': toggleParticipant(id); break;
+        case 'toggleAllParticipants': toggleAllParticipants(); break;
         case 'toggleFullyPaid': toggleFullyPaid(); break;
         case 'setCategory': setCategory(id); break;
         case 'submitExpense': submitExpense(); break;
@@ -2032,6 +2206,9 @@
         case 'submitGroup': submitGroup(); break;
         case 'openSettle': openSettle(id, groupId || null); break;
         case 'quickSettle': openSettleForPair(el.getAttribute('data-from'), el.getAttribute('data-to'), parseFloat(el.getAttribute('data-amount')), groupId || null); break;
+        case 'exportGroupCsv': exportGroupCsv(id); break;
+        case 'exportGroupExcel': exportGroupExcel(id); break;
+        case 'exportGroupPdf': exportGroupPdf(id); break;
         case 'submitSettle': submitSettle(); break;
         case 'openConfirmRemoveMember': openConfirmRemoveMember(groupId, id); break;
         case 'cancelRemoveMember': cancelRemoveMember(); break;
@@ -2093,6 +2270,7 @@
         case 'household': setMemberHousehold(id, el.value); break;
         case 'addMemberGuardian': setAddMemberGuardian(el.value); break;
         case 'groupCurrency': setGroupCurrency(el.value); break;
+        case 'expensesSort': setExpensesSort(el.value); break;
         default: break;
       }
     };

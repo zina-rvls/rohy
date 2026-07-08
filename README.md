@@ -192,6 +192,9 @@ charge, parts pondérées). Statut des points relevés :
 | Thème par défaut : clair (au lieu de sombre), plus adapté à un premier lancement en plein jour | ✅ fait |
 | Suggestion de profils sans compte existants en tapant un prénom dans "ajouter un membre" ET dans le formulaire d'invités à la création d'un groupe (évite de recréer un doublon d'une personne déjà membre d'un autre groupe) | ✅ fait |
 | Casse du texte de l'interface incohérente (titres de page, boutons, messages en minuscule alors que certains messages ponctuels étaient déjà en casse classique) | ✅ fait — casse classique (majuscule initiale) partout, y compris les titres de page, boutons, libellés de champ, placeholders et messages ; hérité tel quel du prototype de design d'origine, sans lien avec un design system imposant le tout-minuscule |
+| Pas de moyen rapide de cocher/décocher tous les membres sous "Qui participe ?" (formulaire dépense) | ✅ fait — lien "Tout sélectionner" / "Tout désélectionner" qui s'inverse selon que tous les membres du groupe sont déjà cochés ou non |
+| Aucun moyen de filtrer la page "toutes les dépenses" pour ne voir que ce qui concerne réellement l'utilisateur (payeur ou participant) — utile pour repérer rapidement une dépense mal attribuée | ✅ fait — pastille "Me concerne uniquement" au-dessus de la recherche, cumulable avec elle |
+| Aucun moyen de filtrer par catégorie ni de trier par date/montant sur la page "toutes les dépenses" (seul le tri par date décroissante était possible, non modifiable) | ✅ fait — pastilles de catégorie (n'apparaissent que si le groupe/compte a des dépenses d'au moins 2 catégories différentes) + menu déroulant de tri (plus récentes/anciennes, montant croissant/décroissant), cumulables avec la recherche et "me concerne uniquement" |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 
@@ -210,6 +213,7 @@ charge, parts pondérées). Statut des points relevés :
 | Couleurs d'accent (montants positifs en vert, avertissements en doré, badges en rouge) trop claires sur fond clair (ratio de contraste ~2.5–3.8, sous le seuil WCAG AA de 4.5) | ✅ corrigé — teintes assombries en thème clair (`--status-positive`/`--status-warning`/`--status-danger`/`--brand-secondary`), même teinte conservée |
 | Sélecteur de devise à la création d'un groupe : une ligne de pastilles pour ~35 devises prend toute la page | ✅ corrigé — remplacé par un menu déroulant |
 | Le formulaire d'invités à la création d'un groupe exigeait toujours un e-mail valide (`submitGroup`), alors que "gérer les membres" avait déjà rendu l'e-mail facultatif — incohérence entre les deux points d'entrée pour ajouter un membre | ✅ corrigé — même règle partout : un invité sans e-mail est ajouté directement comme profil sans compte |
+| Export des données (CSV/Excel/PDF), initialement noté hors périmètre dans la spec de hand-off | ✅ fait, sur demande explicite — un groupe expose désormais un export CSV/Excel/PDF (fiche groupe, sous "Exporter"), contenant les dépenses détaillées et les soldes/transactions à effectuer ; généré entièrement côté client (SheetJS pour le .xlsx, jsPDF + autotable pour le .pdf), sans aucun appel serveur. Le format PPT initialement envisagé a été écarté après clarification (peu pertinent pour ce cas d'usage) |
 
 **Reste à faire / différé**
 
@@ -225,5 +229,6 @@ les policies RLS protègent l'accès aux données, mais les calculs de solde
 restent effectués dans le navigateur à partir des données Postgres chargées.
 
 Hors périmètre explicite (cf. spec de hand-off) : conversion de devises en
-temps réel, export comptable/PDF, rôles avancés au-delà de admin/membre,
-paiement intégré (l'app reste déclarative — "marquer comme payé").
+temps réel, rôles avancés au-delà de admin/membre, paiement intégré (l'app
+reste déclarative — "marquer comme payé"). L'export de données, initialement
+dans cette liste, a finalement été demandé et livré (cf. tableau ci-dessus).
