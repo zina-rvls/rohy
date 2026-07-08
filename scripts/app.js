@@ -54,6 +54,9 @@
       manageMembersGroupId: null,
       showConfirmDeleteGroup: false,
       confirmDeleteGroupId: null,
+      showConfirmRemoveMember: false,
+      confirmRemoveMemberGroupId: null,
+      confirmRemoveMemberId: null,
       selectedGroupId: null,
       selectedPersonId: null,
       homeGroupFilter: null,
@@ -571,6 +574,22 @@
       loadAppData();
     });
   }
+  function openConfirmRemoveMember(groupId, personId) {
+    var g = group(groupId);
+    if (!g || personId === g.adminId) return;
+    setState({ showConfirmRemoveMember: true, confirmRemoveMemberGroupId: groupId, confirmRemoveMemberId: personId });
+  }
+  function cancelRemoveMember() { setState({ showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null }); }
+  function confirmRemoveMember() {
+    var groupId = state.confirmRemoveMemberGroupId;
+    var personId = state.confirmRemoveMemberId;
+    if (!groupId || !personId) return;
+    sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', personId).then(function (res) {
+      if (res.error) { showToast('erreur : ' + res.error.message); return; }
+      setState({ showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null });
+      loadAppData().then(function () { showToast('membre retiré du groupe'); });
+    });
+  }
   function setShareWeight(personId, value) {
     var w = parseFloat(String(value).replace(',', '.'));
     if (isNaN(w) || w < 0) return;
@@ -650,6 +669,7 @@
     setState({
       showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null, showAddDependentForm: false,
+      showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
     });
   }
 
@@ -1105,6 +1125,7 @@
     if (state.showAccount) out += renderAccountModal();
     if (state.showManageMembers) out += renderManageMembersModal();
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
+    if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
     return out;
   }
 
@@ -1124,6 +1145,29 @@
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="closeModal">annuler</button>' +
       '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmDeleteGroup">supprimer</button>' +
+      '</div></div></div>'
+    );
+  }
+
+  function renderConfirmRemoveMemberModal() {
+    var g = group(state.confirmRemoveMemberGroupId);
+    var p = person(state.confirmRemoveMemberId);
+    if (!g || !p) return '';
+    var expenseCount = state.expenses.filter(function (e) {
+      return e.groupId === g.id && (e.paidBy === p.id || e.participants.indexOf(p.id) !== -1);
+    }).length;
+    return (
+      '<div class="modal-overlay center" data-action="cancelRemoveMember">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">retirer ' + escapeHtml(p.name) + ' du groupe « ' + escapeHtml(g.name) + ' » ?</div>' +
+      '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
+      (expenseCount > 0
+        ? escapeHtml(p.name) + ' est lié à ' + expenseCount + (expenseCount > 1 ? ' dépenses' : ' dépense') + ' de ce groupe — elles resteront dans l\'historique.'
+        : escapeHtml(p.name) + ' n\'a aucune dépense dans ce groupe.') +
+      '</div>' +
+      '<div class="modal-footer-buttons">' +
+      '<button class="btn-cancel pressable" data-action="cancelRemoveMember">annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmRemoveMember">retirer</button>' +
       '</div></div></div>'
     );
   }
@@ -1287,6 +1331,8 @@
         '<div class="checkbox-row" style="border-top:none">' +
         '<div class="checkbox' + (checked ? ' checked' : '') + '" data-action="toggleManageMember" data-group-id="' + mg.id + '" data-id="' + p.id + '">' + (checked ? '<i class="ph-bold ph-check"></i>' : '') + '</div>' +
         '<div style="flex:1;font-size:14px;color:var(--text-primary);font-weight:600">' + escapeHtml(p.name) + (isAdmin ? ' (admin)' : '') + '</div>' +
+        (checked && !isAdmin ?
+          '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">type</div>' +
@@ -1351,15 +1397,23 @@
     root.onclick = function (e) {
       var stopEl = e.target.closest('[data-stop-click]');
       var overlay = e.target.closest('.modal-overlay');
-      if (overlay && !stopEl) { closeModal(); return; }
-      if (stopEl && e.target === stopEl) return;
-
-      var el = e.target.closest('[data-action]');
-      // Un data-action trouvé en dehors du conteneur de la modale (typiquement
-      // l'overlay lui-même) ne doit pas s'appliquer à un clic sur un élément
-      // inerte (champ texte, libellé...) à l'intérieur de la modale — sinon
-      // ça la referme au moment même où l'utilisateur essaie de taper.
-      if (el && stopEl && !stopEl.contains(el)) el = null;
+      var el;
+      if (overlay && !stopEl) {
+        // Clic sur le fond de l'overlay lui-même (en dehors de la carte/feuille
+        // de la modale) : on respecte l'action que CET overlay a déclarée
+        // (généralement closeModal, mais cancelRemoveMember pour la
+        // confirmation imbriquée dans "gérer les membres", pour ne fermer
+        // que la confirmation et pas la modale en dessous).
+        el = overlay;
+      } else {
+        if (stopEl && e.target === stopEl) return;
+        el = e.target.closest('[data-action]');
+        // Un data-action trouvé en dehors du conteneur de la modale (typiquement
+        // l'overlay lui-même) ne doit pas s'appliquer à un clic sur un élément
+        // inerte (champ texte, libellé...) à l'intérieur de la modale — sinon
+        // ça la referme au moment même où l'utilisateur essaie de taper.
+        if (el && stopEl && !stopEl.contains(el)) el = null;
+      }
       if (!el) return;
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
@@ -1411,6 +1465,9 @@
         case 'openSettle': openSettle(id); break;
         case 'submitSettle': submitSettle(); break;
         case 'toggleManageMember': toggleManageMember(groupId, id); break;
+        case 'openConfirmRemoveMember': openConfirmRemoveMember(groupId, id); break;
+        case 'cancelRemoveMember': cancelRemoveMember(); break;
+        case 'confirmRemoveMember': confirmRemoveMember(); break;
         case 'createHousehold': createHousehold(); break;
         case 'toggleAddDependentForm': toggleAddDependentForm(); break;
         case 'submitDependent': submitDependent(); break;
