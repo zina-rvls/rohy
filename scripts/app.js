@@ -550,8 +550,22 @@
     return sb.functions.invoke('invite-member', {
       body: { groupId: groupId, name: name, email: email, shareWeight: shareWeight, color: color },
     }).then(function (inviteRes) {
-      var reason = inviteRes.error ? inviteRes.error.message : (inviteRes.data && inviteRes.data.error);
-      return reason ? (name + ' (' + reason + ')') : null;
+      if (!inviteRes.error && !(inviteRes.data && inviteRes.data.error)) return null;
+      if (inviteRes.data && inviteRes.data.error) return name + ' (' + inviteRes.data.error + ')';
+      // Quand la fonction répond avec un statut non-2xx, supabase-js met un
+      // message générique ("Edge Function returned a non-2xx status code")
+      // dans error.message — le vrai message renvoyé par invite-member (ex :
+      // "seul l'admin peut inviter", "e-mail invalide"...) est dans le corps
+      // JSON de la réponse, accessible via error.context.
+      var ctx = inviteRes.error && inviteRes.error.context;
+      if (ctx && typeof ctx.json === 'function') {
+        return ctx.json().then(function (body) {
+          return name + ' (' + (body && body.error ? body.error : inviteRes.error.message) + ')';
+        }).catch(function () {
+          return name + ' (' + inviteRes.error.message + ')';
+        });
+      }
+      return name + ' (' + (inviteRes.error ? inviteRes.error.message : 'erreur inconnue') + ')';
     }).catch(function (err) {
       return name + ' (' + (err && err.message ? err.message : 'erreur réseau') + ')';
     });
