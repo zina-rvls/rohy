@@ -81,11 +81,12 @@ node tests/calc.test.js
   n'y a rien à comparer entre deux profils — créer "Avana" dans un nouveau
   groupe créerait donc toujours un nouveau profil, même si un "Avana" sans
   compte existe déjà dans un autre groupe. Pour limiter ce risque de
-  doublon, "+ ajouter un membre" (depuis "gérer les membres") suggère, dès
-  2 caractères tapés dans le prénom et tant qu'aucun e-mail n'est renseigné,
-  les profils sans compte déjà créés par l'utilisateur courant dans
-  d'autres groupes (`profiles.created_by`) — un clic ajoute ce profil
-  existant au groupe (avec sa part actuelle) au lieu d'en recréer un. Ça
+  doublon, "+ ajouter un membre" (depuis "gérer les membres") ET le
+  formulaire d'invités à la création d'un groupe suggèrent tous les deux,
+  dès 2 caractères tapés dans le prénom et tant qu'aucun e-mail n'est
+  renseigné, les profils sans compte déjà créés par l'utilisateur courant
+  dans d'autres groupes (`profiles.created_by`) — un clic lie ce profil
+  existant (avec sa part actuelle) au lieu d'en recréer un. Ça
   reste un pense-bête (limité aux profils créés par l'utilisateur courant,
   pas ceux créés par un autre admin) : la solution robuste reste de
   renseigner un e-mail dès qu'une personne est amenée à apparaître dans
@@ -183,7 +184,7 @@ charge, parts pondérées). Statut des points relevés :
 | Devises africaines dans le choix de devise (public cible principal de l'app), pas seulement EUR/USD/GBP/CHF/CAD | ✅ fait |
 | Séparateur de milliers sur tous les montants ; décimales masquées pour les devises qui n'en utilisent pas couramment (la plupart des francs africains) | ✅ fait |
 | Thème par défaut : clair (au lieu de sombre), plus adapté à un premier lancement en plein jour | ✅ fait |
-| Suggestion de profils sans compte existants en tapant un prénom dans "ajouter un membre" (évite de recréer un doublon d'une personne déjà membre d'un autre groupe) | ✅ fait |
+| Suggestion de profils sans compte existants en tapant un prénom dans "ajouter un membre" ET dans le formulaire d'invités à la création d'un groupe (évite de recréer un doublon d'une personne déjà membre d'un autre groupe) | ✅ fait |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 

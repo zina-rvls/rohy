@@ -83,7 +83,7 @@
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
       expensesSearchQuery: '',
       lastActiveGroupId: null,
-      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1' }] },
+      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1', linkExistingId: null }] },
       submittingGroup: false,
       settleForm: { from: null, to: null, amount: '' },
       formError: null,
@@ -593,7 +593,7 @@
       showAddGroup: true,
       formError: null,
       submittingGroup: false,
-      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1' }] },
+      groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1', linkExistingId: null }] },
     });
   }
   function setGroupName(v) { setStateSilent(function (s) { return { groupForm: Object.assign({}, s.groupForm, { name: v }) }; }); }
@@ -607,16 +607,27 @@
       return { groupForm: Object.assign({}, s.groupForm, { invitees: invitees }) };
     });
   }
-  function setInviteeName(index, v) { updateInvitee(index, 'name', v, true); }
+  // Pas silent (contrairement aux autres champs de cette ligne) : le
+  // prénom doit re-rendre à chaque frappe pour rafraîchir la liste de
+  // suggestions de profils existants juste en dessous (cf.
+  // guestSuggestionsFor) — même compromis que setAddMemberName.
+  function setInviteeName(index, v) { updateInvitee(index, 'name', v, false); updateInvitee(index, 'linkExistingId', null, true); }
   function setInviteeEmail(index, v) { updateInvitee(index, 'email', v, true); }
   function setInviteeShare(index, v) { updateInvitee(index, 'shareWeight', v, true); }
+  function selectExistingGuestForInvitee(index, profileId) {
+    var p = person(profileId);
+    if (!p) return;
+    updateInvitee(index, 'name', p.name, true);
+    updateInvitee(index, 'linkExistingId', profileId, false);
+  }
+  function unlinkExistingGuestForInvitee(index) { updateInvitee(index, 'linkExistingId', null, false); }
   function addInviteeRow() {
-    setState(function (s) { return { groupForm: Object.assign({}, s.groupForm, { invitees: s.groupForm.invitees.concat([{ name: '', email: '', shareWeight: '1' }]) }) }; });
+    setState(function (s) { return { groupForm: Object.assign({}, s.groupForm, { invitees: s.groupForm.invitees.concat([{ name: '', email: '', shareWeight: '1', linkExistingId: null }]) }) }; });
   }
   function removeInviteeRow(index) {
     setState(function (s) {
       var invitees = s.groupForm.invitees.filter(function (_, i) { return i !== index; });
-      if (invitees.length === 0) invitees = [{ name: '', email: '', shareWeight: '1' }];
+      if (invitees.length === 0) invitees = [{ name: '', email: '', shareWeight: '1', linkExistingId: null }];
       return { groupForm: Object.assign({}, s.groupForm, { invitees: invitees }) };
     });
   }
@@ -696,20 +707,34 @@
     }, Promise.resolve()).then(function () { return failed; });
   }
 
+  // Ajoute au groupe des invités déjà liés à un profil existant (suggestion
+  // sélectionnée) : pas de création de profil, juste l'adhésion au groupe.
+  function linkExistingMembersSequentially(invitees, groupId) {
+    var failed = [];
+    return invitees.reduce(function (chain, invitee) {
+      return chain.then(function () {
+        return sb.from('group_members').insert({ group_id: groupId, user_id: invitee.linkExistingId }).then(function (res) {
+          if (res.error) failed.push(invitee.name.trim() + ' (' + res.error.message + ')');
+        });
+      });
+    }, Promise.resolve()).then(function () { return failed; });
+  }
+
   function submitGroup() {
     if (state.submittingGroup) return;
     var gf = state.groupForm;
     if (!gf.name.trim()) { setState({ formError: 'donne un nom au groupe.' }); return; }
-    var validInvitees = gf.invitees.filter(function (inv) { return inv.name.trim() || inv.email.trim(); });
+    var validInvitees = gf.invitees.filter(function (inv) { return inv.name.trim() || inv.email.trim() || inv.linkExistingId; });
     for (var i = 0; i < validInvitees.length; i++) {
       var inv = validInvitees[i];
       if (!inv.name.trim()) { setState({ formError: 'donne un prénom à chaque membre invité.' }); return; }
-      if (inv.email.trim() && inv.email.indexOf('@') === -1) { setState({ formError: 'e-mail invalide pour ' + inv.name.trim() + '.' }); return; }
+      if (!inv.linkExistingId && inv.email.trim() && inv.email.indexOf('@') === -1) { setState({ formError: 'e-mail invalide pour ' + inv.name.trim() + '.' }); return; }
     }
     setState({ formError: null, submittingGroup: true });
 
-    var withEmail = validInvitees.filter(function (inv) { return inv.email.trim(); });
-    var withoutEmail = validInvitees.filter(function (inv) { return !inv.email.trim(); });
+    var linked = validInvitees.filter(function (inv) { return inv.linkExistingId; });
+    var withEmail = validInvitees.filter(function (inv) { return !inv.linkExistingId && inv.email.trim(); });
+    var withoutEmail = validInvitees.filter(function (inv) { return !inv.linkExistingId && !inv.email.trim(); });
 
     sb.from('groups').insert({ name: gf.name.trim(), currency: gf.currency, admin_id: state.currentUserId }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message, submittingGroup: false }); return; }
@@ -718,16 +743,17 @@
         if (memRes.error) { setState({ formError: memRes.error.message, submittingGroup: false }); return; }
 
         Promise.all([
+          linkExistingMembersSequentially(linked, newGroup.id),
           inviteSequentially(withEmail, newGroup.id),
           addGuestMembersSequentially(withoutEmail, newGroup.id, withEmail.length),
         ]).then(function (results) {
-          var failedInvites = results[0].concat(results[1]);
+          var failedInvites = results[0].concat(results[1]).concat(results[2]);
           setState({ showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id });
           loadAppData().then(function () {
             if (failedInvites.length) { showToast('erreur : ajout impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".'); return; }
             var msgParts = [];
             if (withEmail.length) msgParts.push('invitations envoyées par e-mail');
-            if (withoutEmail.length) msgParts.push(withoutEmail.length > 1 ? 'membres ajoutés' : 'membre ajouté');
+            if (linked.length || withoutEmail.length) msgParts.push((linked.length + withoutEmail.length) > 1 ? 'membres ajoutés' : 'membre ajouté');
             showToast(msgParts.length ? 'groupe créé, ' + msgParts.join(' et ') : 'groupe créé');
           });
         });
@@ -1718,17 +1744,32 @@
       return '<option value="' + c.code + '"' + (gf.currency === c.code ? ' selected' : '') + '>' + c.code + ' — ' + escapeHtml(c.label) + ' (' + c.symbol + ')</option>';
     }).join('');
     var inviteeRows = gf.invitees.map(function (inv, i) {
+      var linkedProfile = inv.linkExistingId ? person(inv.linkExistingId) : null;
+      var otherLinkedIds = gf.invitees.filter(function (_, j) { return j !== i; })
+        .map(function (x) { return x.linkExistingId; }).filter(Boolean);
+      var suggestions = (!linkedProfile && !inv.email.trim()) ? guestSuggestionsFor(inv.name, otherLinkedIds) : [];
       return (
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
         '<input class="text-input" style="margin-bottom:0" data-bind="inviteeName" data-id="' + i + '" placeholder="prénom" value="' + escapeHtml(inv.name) + '" />' +
         (gf.invitees.length > 1 ? '<button class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeInviteeRow" data-id="' + i + '"><i class="ph-bold ph-x"></i></button>' : '') +
         '</div>' +
-        '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span style="font-size:12.5px;color:var(--text-secondary)">part (1 = part entière)</span>' +
-        '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
-        '</div>' +
+        (suggestions.length ?
+          '<div style="margin:-4px 0 10px">' +
+          suggestions.map(function (s) {
+            return '<div class="dashed-btn pressable" style="text-align:left;padding:8px 12px;margin-top:4px" data-action="selectExistingGuestForInvitee" data-group-id="' + i + '" data-id="' + s.id + '"><i class="ph-bold ph-user-circle" style="margin-right:6px"></i>' + escapeHtml(s.name) + ' — déjà ajouté·e dans un autre groupe, lier plutôt que recréer</div>';
+          }).join('') +
+          '</div>' : '') +
+        (linkedProfile ?
+          '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text-primary)">' +
+          '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
+          '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + i + '">annuler</span>' +
+          '</div>' :
+          '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="e-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-size:12.5px;color:var(--text-secondary)">part (1 = part entière)</span>' +
+          '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
+          '</div>') +
         '</div>'
       );
     }).join('');
@@ -1982,6 +2023,8 @@
         case 'submitAddMember': submitAddMember(); break;
         case 'selectExistingGuestForAddMember': selectExistingGuestForAddMember(id); break;
         case 'unlinkExistingGuestForAddMember': unlinkExistingGuestForAddMember(); break;
+        case 'selectExistingGuestForInvitee': selectExistingGuestForInvitee(parseInt(groupId, 10), id); break;
+        case 'unlinkExistingGuestForInvitee': unlinkExistingGuestForInvitee(parseInt(id, 10)); break;
         default: break;
       }
     };
