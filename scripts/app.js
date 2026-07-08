@@ -79,7 +79,7 @@
       addingMember: false,
       households: [],
       newHouseholdName: '',
-      addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null },
+      addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
       expensesSearchQuery: '',
       lastActiveGroupId: null,
@@ -206,6 +206,8 @@
           id: p.id, name: p.name, color: p.color, shareWeight: p.share_weight,
           guardianId: p.guardian_id || undefined,
           householdId: p.household_id || undefined,
+          createdBy: p.created_by || undefined,
+          hasAccount: !!p.auth_user_id,
         };
       });
       var households = householdRows.map(function (h) {
@@ -748,14 +750,39 @@
       return {
         showAddMemberForm: !s.showAddMemberForm,
         formError: null,
-        addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null },
+        addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null },
       };
     });
   }
-  function setAddMemberName(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { name: v }) }; }); }
+  // setState (pas setStateSilent) volontairement ici : contrairement aux
+  // autres champs de ce formulaire, le prénom doit re-rendre à chaque
+  // frappe pour rafraîchir la liste de suggestions de profils existants
+  // (cf. guestSuggestionsFor) juste en dessous du champ.
+  function setAddMemberName(v) { setState(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { name: v, linkExistingId: null }) }; }); }
   function setAddMemberEmail(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { email: v }) }; }); }
   function setAddMemberWeight(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { shareWeight: v }) }; }); }
   function setAddMemberGuardian(v) { setState(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { guardianId: v || null }) }; }); }
+  // Suggère les profils sans compte (donc sans e-mail) déjà créés par
+  // l'utilisateur courant dans d'autres groupes, pour éviter de recréer un
+  // doublon d'une personne déjà connue (ex. "Avana" déjà membre d'un autre
+  // groupe) — sans e-mail, l'app n'a sinon aucun moyen de la reconnaître.
+  function guestSuggestionsFor(query, excludeIds) {
+    var q = (query || '').trim().toLowerCase();
+    if (q.length < 2) return [];
+    return state.people.filter(function (p) {
+      if (p.hasAccount || p.createdBy !== state.currentUserId) return false;
+      if (excludeIds && excludeIds.indexOf(p.id) !== -1) return false;
+      return p.name.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 5);
+  }
+  function selectExistingGuestForAddMember(profileId) {
+    var p = person(profileId);
+    if (!p) return;
+    setState(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { name: p.name, linkExistingId: profileId }) }; });
+  }
+  function unlinkExistingGuestForAddMember() {
+    setState(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { linkExistingId: null }) }; });
+  }
   // L'e-mail est facultatif : renseigné, il déclenche un vrai e-mail
   // d'invitation (compte réel créé pour cette personne) ; laissé vide, on
   // crée juste un profil sans compte, ajouté directement au groupe (utile
@@ -772,8 +799,18 @@
     setState({ formError: null });
 
     function finish(msg) {
-      setState({ showAddMemberForm: false, addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null } });
+      setState({ showAddMemberForm: false, addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null } });
       loadAppData().then(function () { showToast(msg); });
+    }
+
+    if (f.linkExistingId) {
+      setState({ addingMember: true });
+      sb.from('group_members').insert({ group_id: groupId, user_id: f.linkExistingId }).then(function (memRes) {
+        setState({ addingMember: false });
+        if (memRes.error) { setState({ formError: memRes.error.message }); return; }
+        finish('membre ajouté');
+      });
+      return;
     }
 
     if (f.email.trim()) {
@@ -1800,20 +1837,36 @@
       );
     }).join('');
 
+    var linkedGuestProfile = state.addMemberForm.linkExistingId ? person(state.addMemberForm.linkExistingId) : null;
+    var guestSuggestions = (!linkedGuestProfile && !state.addMemberForm.email.trim())
+      ? guestSuggestionsFor(state.addMemberForm.name, members.map(function (x) { return x.id; }))
+      : [];
+
     var addMemberSection = !state.showAddMemberForm ? '' :
       '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
       '<div class="field-label">prénom</div>' +
       '<input class="text-input" data-bind="addMemberName" placeholder="prénom" value="' + escapeHtml(state.addMemberForm.name) + '" />' +
-      '<div class="field-label">e-mail (facultatif)</div>' +
-      '<input class="text-input" data-bind="addMemberEmail" placeholder="pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
-      '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
-      '<div class="field-label">part (1 = part entière)</div>' +
-      '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
-      '<div class="field-label">responsable (facultatif)</div>' +
-      '<select class="text-input" data-bind-change="addMemberGuardian">' +
-      '<option value="">— aucun —</option>' +
-      members.map(function (x) { return '<option value="' + x.id + '"' + (state.addMemberForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
-      '</select>' +
+      (guestSuggestions.length ?
+        '<div style="margin:-8px 0 12px">' +
+        guestSuggestions.map(function (s) {
+          return '<div class="dashed-btn pressable" style="text-align:left;padding:8px 12px;margin-top:4px" data-action="selectExistingGuestForAddMember" data-id="' + s.id + '"><i class="ph-bold ph-user-circle" style="margin-right:6px"></i>' + escapeHtml(s.name) + ' — déjà ajouté·e dans un autre groupe, lier plutôt que recréer</div>';
+        }).join('') +
+        '</div>' : '') +
+      (linkedGuestProfile ?
+        '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--text-primary)">' +
+        '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedGuestProfile.name) + ' (déjà connu·e) sera ajouté·e à ce groupe avec sa part actuelle (' + String(linkedGuestProfile.shareWeight != null ? linkedGuestProfile.shareWeight : 1).replace('.', ',') + ').' +
+        '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">annuler</span>' +
+        '</div>' :
+        '<div class="field-label">e-mail (facultatif)</div>' +
+        '<input class="text-input" data-bind="addMemberEmail" placeholder="pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
+        '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
+        '<div class="field-label">part (1 = part entière)</div>' +
+        '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
+        '<div class="field-label">responsable (facultatif)</div>' +
+        '<select class="text-input" data-bind-change="addMemberGuardian">' +
+        '<option value="">— aucun —</option>' +
+        members.map(function (x) { return '<option value="' + x.id + '"' + (state.addMemberForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
+        '</select>') +
       '<button class="btn-primary pressable" style="margin-top:10px' + (state.addingMember ? ';opacity:0.6' : '') + '" data-action="submitAddMember">' +
       (state.addingMember ? 'ajout en cours…' : 'ajouter') + '</button>' +
       '</div>';
@@ -1927,6 +1980,8 @@
         case 'createHousehold': createHousehold(); break;
         case 'toggleAddMemberForm': toggleAddMemberForm(); break;
         case 'submitAddMember': submitAddMember(); break;
+        case 'selectExistingGuestForAddMember': selectExistingGuestForAddMember(id); break;
+        case 'unlinkExistingGuestForAddMember': unlinkExistingGuestForAddMember(); break;
         default: break;
       }
     };
