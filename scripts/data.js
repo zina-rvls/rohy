@@ -16,8 +16,19 @@
     { code: 'XOF', label: 'Franc CFA (UEMOA)', symbol: 'FCFA' },
   ];
 
+  var EXPENSE_CATEGORIES = [
+    { id: 'courses', label: 'courses', icon: 'ph-bold ph-shopping-cart' },
+    { id: 'repas', label: 'repas', icon: 'ph-bold ph-fork-knife' },
+    { id: 'logement', label: 'logement', icon: 'ph-bold ph-house' },
+    { id: 'transport', label: 'transport', icon: 'ph-bold ph-car' },
+    { id: 'loisirs', label: 'loisirs', icon: 'ph-bold ph-confetti' },
+    { id: 'sante', label: 'santé', icon: 'ph-bold ph-heartbeat' },
+    { id: 'autre', label: 'autre', icon: 'ph-bold ph-receipt' },
+  ];
+
   var KotikotaData = {
     CURRENCIES: CURRENCIES,
+    EXPENSE_CATEGORIES: EXPENSE_CATEGORIES,
   };
 
   if (typeof module === 'object' && module.exports) {

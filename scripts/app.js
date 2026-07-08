@@ -76,7 +76,9 @@
       households: [],
       newHouseholdName: '',
       dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null },
-      form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {} },
+      form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
+      expensesSearchQuery: '',
+      lastActiveGroupId: null,
       groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1' }] },
       submittingGroup: false,
       settleForm: { from: null, to: null, amount: '' },
@@ -231,10 +233,11 @@
   function goGroups() { setState({ screen: 'groups', navStack: [] }); }
   function goHistory() { setState({ screen: 'history', navStack: [] }); }
   function goExpenses() { setState({ screen: 'expenses', navStack: [] }); }
-  function openGroup(id) { navigate('groupDetail', { selectedGroupId: id }); }
+  function openGroup(id) { navigate('groupDetail', { selectedGroupId: id, lastActiveGroupId: id }); }
   function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
+  function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
   function setPersonGroupFilter(id) { setState({ personGroupFilter: id || null }); }
   function toggleTheme() {
     setState(function (s) {
@@ -377,8 +380,16 @@
     setState({
       showAddExpense: true,
       formError: null,
-      form: { editingId: null, label: '', amount: '', date: new Date().toISOString().slice(0, 10), groupId: g.id, paidBy: state.currentUserId, participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '' },
+      form: { editingId: null, label: '', amount: '', date: new Date().toISOString().slice(0, 10), groupId: g.id, paidBy: state.currentUserId, participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '', category: 'autre' },
     });
+  }
+  function categoryForIcon(icon) {
+    var found = seed.EXPENSE_CATEGORIES.find(function (c) { return c.icon === icon; });
+    return found ? found.id : 'autre';
+  }
+  function iconForCategory(categoryId) {
+    var found = seed.EXPENSE_CATEGORIES.find(function (c) { return c.id === categoryId; });
+    return found ? found.icon : seed.EXPENSE_CATEGORIES[seed.EXPENSE_CATEGORIES.length - 1].icon;
   }
   function openEditExpense(expenseId) {
     var e = state.expenses.find(function (x) { return x.id === expenseId; });
@@ -391,6 +402,7 @@
         editingId: e.id, label: e.label, amount: String(e.amount).replace('.', ','), date: e.date, groupId: e.groupId, paidBy: e.paidBy,
         participantIds: e.participants.slice(), overrides: Object.assign({}, e.overrides || {}),
         fullyPaid: fullyPaid, paidExternal: fullyPaid ? '' : String(e.paidExternal != null ? e.paidExternal : 0).replace('.', ','),
+        category: categoryForIcon(e.icon),
       },
     });
   }
@@ -416,6 +428,7 @@
   function setLabel(v) { setStateSilent(function (s) { return { form: Object.assign({}, s.form, { label: v }) }; }); }
   function setAmount(v) { setStateSilent(function (s) { return { form: Object.assign({}, s.form, { amount: v }) }; }); }
   function setDate(v) { setStateSilent(function (s) { return { form: Object.assign({}, s.form, { date: v }) }; }); }
+  function setCategory(categoryId) { setState(function (s) { return { form: Object.assign({}, s.form, { category: categoryId }) }; }); }
   function selectGroupForForm(groupId) {
     var g = group(groupId);
     var overrides = {};
@@ -459,7 +472,7 @@
 
     if (f.editingId) {
       sb.from('expenses').update({
-        group_id: f.groupId, label: f.label.trim(), amount: amt, paid_external: paidExternal, expense_date: f.date, paid_by: f.paidBy,
+        group_id: f.groupId, label: f.label.trim(), icon: iconForCategory(f.category), amount: amt, paid_external: paidExternal, expense_date: f.date, paid_by: f.paidBy,
       }).eq('id', f.editingId).then(function (res) {
         if (res.error) { setState({ formError: res.error.message }); return; }
         sb.from('expense_participants').delete().eq('expense_id', f.editingId).then(function () {
@@ -474,7 +487,7 @@
     }
 
     sb.from('expenses').insert({
-      group_id: f.groupId, label: f.label.trim(), icon: 'ph-bold ph-receipt', amount: amt, paid_external: paidExternal, paid_by: f.paidBy, expense_date: f.date,
+      group_id: f.groupId, label: f.label.trim(), icon: iconForCategory(f.category), amount: amt, paid_external: paidExternal, paid_by: f.paidBy, expense_date: f.date,
     }).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('expense_participants').insert(participantRowsFor(res.data.id)).then(function (insRes) {
@@ -551,7 +564,7 @@
 
         Promise.all(invitePromises).then(function (results) {
           var failedInvites = results.filter(function (name) { return name; });
-          setState({ showAddGroup: false, submittingGroup: false });
+          setState({ showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id });
           loadAppData().then(function () {
             if (failedInvites.length) showToast('groupe créé — invitation impossible pour : ' + failedInvites.join(', '));
             else showToast(validInvitees.length ? 'groupe créé, invitations envoyées par e-mail' : 'groupe créé');
@@ -965,8 +978,21 @@
     var isAdmin = g.adminId === moi;
     var debts = computeDebtsForGroup(g.id);
 
-    var memberRows = g.memberIds.map(function (pid) {
+    // Un retrait de "gérer les membres" enlève l'adhésion au groupe, mais un
+    // solde non réglé doit rester visible ici (les dépenses passées restent
+    // comptées dans les calculs) : on réintègre à l'affichage toute personne
+    // qui a un solde non nul dans ce groupe même si elle n'en est plus membre.
+    var effectiveIds = g.memberIds.slice();
+    state.people.forEach(function (p) {
+      if (effectiveIds.indexOf(p.id) !== -1) return;
+      var hasExpenseHere = state.expenses.some(function (e) { return e.groupId === g.id && (e.paidBy === p.id || e.participants.indexOf(p.id) !== -1); });
+      if (!hasExpenseHere) return;
+      if (Math.abs(netBalanceFor(p.id, g.id)) > 0.5) effectiveIds.push(p.id);
+    });
+
+    var memberRows = effectiveIds.map(function (pid) {
       var p = person(pid);
+      var isExMember = g.memberIds.indexOf(pid) === -1;
       var paid = state.expenses.filter(function (e) { return e.groupId === g.id && e.paidBy === pid; })
         .reduce(function (a, e) { return a + (e.paidExternal != null ? e.paidExternal : e.amount); }, 0);
       var share = 0;
@@ -982,7 +1008,7 @@
       return (
         '<div class="member-row">' +
         '<div class="avatar avatar-30" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
-        '<div class="col-name">' + escapeHtml(p.name) + shareBadge(p, true) + '</div>' +
+        '<div class="col-name">' + escapeHtml(p.name) + (isExMember ? '<span class="badge-child inline">ex-membre</span>' : '') + shareBadge(p, true) + '</div>' +
         '<div class="col-num">' + fmtIn(paid, g.currency) + '</div>' +
         '<div class="col-num">' + fmtIn(share, g.currency) + '</div>' +
         '<div class="col-bal" style="color:' + balColor + '">' + escapeHtml(balLabel) + '</div>' +
@@ -990,7 +1016,7 @@
       );
     }).join('');
 
-    var txns = calc.simplify(debts, g.memberIds);
+    var txns = calc.simplify(debts, effectiveIds);
     var suggestions = txns.map(function (t) {
       return '<div class="suggestion-row"><div><b>' + escapeHtml(person(t.from).name) + '</b> → <b>' + escapeHtml(person(t.to).name) + '</b></div>' +
         '<div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div></div>';
@@ -1074,7 +1100,15 @@
     var totalRemaining = Object.values(statuses).reduce(function (a, st) { return a + st.remaining; }, 0);
     var totalDueExternal = expenses.reduce(function (a, e) { return a + (e.amount - (e.paidExternal != null ? e.paidExternal : e.amount)); }, 0);
 
-    var rows = expenses.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (e) {
+    var searchQuery = (state.expensesSearchQuery || '').trim().toLowerCase();
+    var visibleExpenses = !searchQuery ? expenses : expenses.filter(function (e) {
+      var g = group(e.groupId);
+      return e.label.toLowerCase().indexOf(searchQuery) !== -1
+        || person(e.paidBy).name.toLowerCase().indexOf(searchQuery) !== -1
+        || (g && g.name.toLowerCase().indexOf(searchQuery) !== -1);
+    });
+
+    var rows = visibleExpenses.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (e) {
       var g = group(e.groupId);
       var cur = g && g.currency;
       var st = statuses[e.id];
@@ -1112,7 +1146,10 @@
         '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
         '</div>' +
         (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
-      (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense dans ce groupe.</div>' : rows) +
+      (expenses.length > 0 ?
+        '<input class="text-input" data-bind="expensesSearch" placeholder="rechercher une dépense..." value="' + escapeHtml(state.expensesSearchQuery) + '" />' : '') +
+      (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense dans ce groupe.</div>' :
+        visibleExpenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense ne correspond à « ' + escapeHtml(state.expensesSearchQuery) + ' ».</div>' : rows) +
       '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">ajouter une dépense</button>'
     );
   }
@@ -1191,14 +1228,18 @@
     var expenseCount = state.expenses.filter(function (e) {
       return e.groupId === g.id && (e.paidBy === p.id || e.participants.indexOf(p.id) !== -1);
     }).length;
+    var bal = netBalanceFor(p.id, g.id);
+    var hasBalance = Math.abs(bal) > 0.5;
     return (
       '<div class="modal-overlay center" data-action="cancelRemoveMember">' +
       '<div class="modal-card" data-stop-click>' +
       '<div class="modal-title" style="margin-bottom:14px">retirer ' + escapeHtml(p.name) + ' du groupe « ' + escapeHtml(g.name) + ' » ?</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
-      (expenseCount > 0
-        ? escapeHtml(p.name) + ' est lié à ' + expenseCount + (expenseCount > 1 ? ' dépenses' : ' dépense') + ' de ce groupe — elles resteront dans l\'historique.'
-        : escapeHtml(p.name) + ' n\'a aucune dépense dans ce groupe.') +
+      (hasBalance
+        ? escapeHtml(p.name) + ' a un solde non réglé de ' + fmtIn(Math.abs(bal), g.currency) + ' dans ce groupe — il restera affiché ici (marqué « ex-membre ») tant qu\'il n\'est pas soldé.'
+        : expenseCount > 0
+          ? escapeHtml(p.name) + ' est lié à ' + expenseCount + (expenseCount > 1 ? ' dépenses' : ' dépense') + ' de ce groupe — elles resteront dans l\'historique.'
+          : escapeHtml(p.name) + ' n\'a aucune dépense dans ce groupe.') +
       '</div>' +
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="cancelRemoveMember">annuler</button>' +
@@ -1242,6 +1283,10 @@
       '<div class="field-label">groupe</div><div class="pill-row">' + groupChoices + '</div>' +
       '<div class="field-label">description</div>' +
       '<input class="text-input" data-bind="expenseLabel" placeholder="courses, essence..." value="' + escapeHtml(f.label) + '" />' +
+      '<div class="field-label">catégorie</div>' +
+      '<div class="pill-row">' + seed.EXPENSE_CATEGORIES.map(function (c) {
+        return '<div class="pill' + (f.category === c.id ? ' active' : '') + '" data-action="setCategory" data-id="' + c.id + '"><i class="' + c.icon + '" style="margin-right:5px"></i>' + escapeHtml(c.label) + '</div>';
+      }).join('') + '</div>' +
       '<div class="field-label">montant (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
       '<input class="text-input" data-bind="expenseAmount" placeholder="0,00" inputmode="decimal" value="' + escapeHtml(f.amount) + '" />' +
       '<div class="field-label">date</div>' +
@@ -1376,7 +1421,10 @@
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">coefficient</div>' +
         '<input class="text-input" style="margin-bottom:0" data-bind-change="shareWeight" data-id="' + p.id + '" value="' + (p.shareWeight != null ? p.shareWeight : 1) + '" inputmode="decimal" /></div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">responsable</div>' +
-        '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select></div>' +
+        '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select>' +
+        (p.participantType === 'personne_a_charge' && !p.guardianId ?
+          '<div style="font-size:11px;color:var(--status-danger);margin-top:3px">une personne à charge devrait avoir un responsable</div>' : '') +
+        '</div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">foyer</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="household" data-id="' + p.id + '">' + householdOptionsFor(p) + '</select></div>' +
         '</div>' +
@@ -1467,7 +1515,7 @@
         case 'remind': sendReminder(id, groupId || null); break;
         case 'openAccount': openAccount(); break;
         case 'logout': logout(); break;
-        case 'openAddExpenseGlobal': openAddExpense(id || (state.groups[0] && state.groups[0].id)); break;
+        case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
         case 'setExpensesGroupFilter': setExpensesGroupFilter(id); break;
         case 'setPersonGroupFilter': setPersonGroupFilter(id); break;
@@ -1493,6 +1541,7 @@
         case 'selectPayer': selectPayer(id); break;
         case 'toggleParticipant': toggleParticipant(id); break;
         case 'toggleFullyPaid': toggleFullyPaid(); break;
+        case 'setCategory': setCategory(id); break;
         case 'submitExpense': submitExpense(); break;
         case 'deleteExpense': deleteExpense(); break;
         case 'setGroupCurrency': setGroupCurrency(id); break;
@@ -1529,6 +1578,7 @@
         case 'paidExternal': setPaidExternal(v); break;
         case 'groupName': setGroupName(v); break;
         case 'settleAmount': setSettleAmount(v); break;
+        case 'expensesSearch': setExpensesSearch(v); break;
         case 'inviteeName': setInviteeName(parseInt(id, 10), v); break;
         case 'inviteeEmail': setInviteeEmail(parseInt(id, 10), v); break;
         case 'inviteeShare': setInviteeShare(parseInt(id, 10), v); break;

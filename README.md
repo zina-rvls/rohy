@@ -97,9 +97,17 @@ node tests/calc.test.js
   l'enregistrement d'un token device par utilisateur et un service d'envoi
   type Firebase Cloud Messaging / APNs), vues consolidées par foyer et
   optimisation avancée des remboursements, profils de répartition
-  réutilisables, dépenses partielles par foyer.
-- **P2 — confort** : recherche/filtres sur dépenses et historique, possibilité
-  pour un membre non-admin de quitter un groupe.
+  réutilisables, dépenses partielles par foyer, simplification des dettes à
+  l'échelle du compte (actuellement groupe par groupe uniquement).
+- **P2 — confort** : possibilité pour un membre non-admin de quitter un
+  groupe.
+- **Fait suite à l'audit de cohérence** : catégories de dépenses avec icônes,
+  recherche texte sur la page dépenses, mémorisation du dernier groupe
+  consulté pour "+ ajouter une dépense", solde d'un ex-membre toujours
+  affiché (marqué "ex-membre") tant qu'il n'est pas réglé, indication visuelle
+  quand une personne à charge n'a pas de responsable défini, filtre par
+  groupe sur l'accueil/dépenses/fiche personne avec message dédié si les
+  groupes du compte utilisent des devises différentes.
 
 Le moteur de calcul (`scripts/calc.js`) reste porté fidèlement et testé côté
 client ; la logique de dettes elle-même n'est pas dupliquée côté serveur —
