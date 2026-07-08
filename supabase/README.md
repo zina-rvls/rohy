@@ -20,7 +20,8 @@ tel quel (ex. GitHub Pages) ; seul Supabase héberge la base et l'auth.
 Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 `migrations/0001_init.sql`, PUIS `0002_admin_manage_share.sql`, PUIS
 `0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`,
-PUIS `0005_households_scoped_to_group.sql`
+PUIS `0005_households_scoped_to_group.sql`, PUIS
+`0006_participant_type_two_values.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -52,6 +53,13 @@ commentaires en tête du fichier pour le détail des changements.
 (`households.group_id`, obligatoire) : un foyer créé dans un groupe n'est
 plus visible ni sélectionnable depuis un autre groupe, au même titre que les
 membres.
+
+`0006_participant_type_two_values.sql` retire `personne_a_charge` des
+valeurs possibles de `participant_type` (ne reste plus que `adulte`/`enfant`)
+— la prise en charge était déjà entièrement portée par `guardian_id`,
+indépendamment de la catégorie d'âge ; la présenter comme un 3e "type" au
+même niveau qu'adulte/enfant était source de confusion. Les profils existants
+avec `personne_a_charge` sont migrés vers `enfant`.
 
 ## 3. Configurer l'authentification
 

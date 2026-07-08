@@ -77,7 +77,7 @@
       invitingMember: false,
       households: [],
       newHouseholdName: '',
-      dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null },
+      dependentForm: { name: '', participantType: 'enfant', shareWeight: '1', guardianId: null },
       inviteMemberForm: { name: '', email: '', shareWeight: '1' },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre' },
       expensesSearchQuery: '',
@@ -710,7 +710,7 @@
       return {
         showAddDependentForm: !s.showAddDependentForm,
         formError: null,
-        dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null },
+        dependentForm: { name: '', participantType: 'enfant', shareWeight: '1', guardianId: null },
       };
     });
   }
@@ -733,7 +733,7 @@
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('group_members').insert({ group_id: groupId, user_id: res.data.id }).then(function (memRes) {
         if (memRes.error) { showToast('erreur : ' + memRes.error.message); return; }
-        setState({ showAddDependentForm: false, dependentForm: { name: '', participantType: 'personne_a_charge', shareWeight: '1', guardianId: null } });
+        setState({ showAddDependentForm: false, dependentForm: { name: '', participantType: 'enfant', shareWeight: '1', guardianId: null } });
         loadAppData().then(function () { showToast('personne à charge ajoutée'); });
       });
     });
@@ -1472,8 +1472,8 @@
       return opts;
     };
     var typeOptionsFor = function (p) {
-      return ['adulte', 'enfant', 'personne_a_charge'].map(function (t) {
-        return '<option value="' + t + '"' + ((p.participantType || 'adulte') === t ? ' selected' : '') + '>' + t.replace(/_/g, ' ') + '</option>';
+      return ['adulte', 'enfant'].map(function (t) {
+        return '<option value="' + t + '"' + ((p.participantType || 'adulte') === t ? ' selected' : '') + '>' + t + '</option>';
       }).join('');
     };
 
@@ -1482,19 +1482,23 @@
       return (
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
         '<div class="checkbox-row" style="border-top:none">' +
-        '<div style="flex:1;font-size:14px;color:var(--text-primary);font-weight:600">' + escapeHtml(p.name) + (isAdmin ? ' (admin)' : '') + '</div>' +
+        '<div style="flex:1;font-size:14px;color:var(--text-primary);font-weight:600">' + escapeHtml(p.name) +
+        (isAdmin ? ' (admin)' : '') +
+        // "à charge" est un badge calculé (responsable défini), pas une
+        // catégorie au même niveau qu'adulte/enfant — ça évite de présenter
+        // la prise en charge comme un 3e choix de "type".
+        (p.guardianId ? '<span class="badge-child inline">à charge</span>' : '') +
+        '</div>' +
         (!isAdmin ?
           '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">type</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">catégorie</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="participantType" data-id="' + p.id + '">' + typeOptionsFor(p) + '</select></div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">coefficient</div>' +
         '<input class="text-input" style="margin-bottom:0" data-bind-change="shareWeight" data-id="' + p.id + '" value="' + (p.shareWeight != null ? p.shareWeight : 1) + '" inputmode="decimal" /></div>' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">responsable</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">responsable (si à charge)</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select>' +
-        (p.participantType === 'personne_a_charge' && !p.guardianId ?
-          '<div style="font-size:11px;color:var(--status-danger);margin-top:3px">une personne à charge devrait avoir un responsable</div>' : '') +
         '</div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">foyer</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="household" data-id="' + p.id + '">' + householdOptionsFor(p) + '</select></div>' +
@@ -1519,10 +1523,10 @@
       '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
       '<div class="field-label">prénom</div>' +
       '<input class="text-input" data-bind="dependentName" placeholder="ex : Léo" value="' + escapeHtml(state.dependentForm.name) + '" />' +
-      '<div class="field-label">type</div>' +
+      '<div class="field-label">catégorie</div>' +
       '<select class="text-input" data-bind-change="dependentType">' +
-      ['personne_a_charge', 'enfant', 'adulte'].map(function (t) {
-        return '<option value="' + t + '"' + (state.dependentForm.participantType === t ? ' selected' : '') + '>' + t.replace(/_/g, ' ') + '</option>';
+      ['enfant', 'adulte'].map(function (t) {
+        return '<option value="' + t + '"' + (state.dependentForm.participantType === t ? ' selected' : '') + '>' + t + '</option>';
       }).join('') +
       '</select>' +
       '<div class="field-label">coefficient</div>' +
