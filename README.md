@@ -74,10 +74,12 @@ node tests/calc.test.js
   responsable), sans e-mail ni compte Supabase Auth.
 - Chaque groupe a sa propre devise, choisie à sa création, utilisée pour son
   détail, ses suggestions d'équilibrage et ses dépenses (y compris listées
-  dans l'onglet "toutes les dépenses"). Les agrégats qui traversent plusieurs
-  groupes (solde net total de l'accueil, soldes par personne, cartes résumé)
-  utilisent une devise globale unique par simplification : un même compte
-  n'est pas censé mélanger plusieurs devises pour ses totaux consolidés.
+  dans l'onglet "toutes les dépenses"). Un filtre par groupe est disponible
+  sur l'accueil, la page dépenses et la fiche personne pour voir le détail
+  d'un seul groupe dans sa devise. En vue agrégée ("tous les groupes"), si
+  les groupes du compte n'utilisent pas tous la même devise, un message
+  invite à filtrer par groupe plutôt que d'afficher un total qui
+  additionnerait des devises différentes.
 - Le sélecteur "connecté en tant que" du prototype de design a été retiré :
   avec de vrais comptes, on ne peut plus impersonner un autre utilisateur
   côté client — chacun se connecte avec ses propres identifiants (mot de
@@ -99,13 +101,52 @@ node tests/calc.test.js
   l'échelle du compte (actuellement groupe par groupe uniquement).
 - **P2 — confort** : possibilité pour un membre non-admin de quitter un
   groupe.
-- **Fait suite à l'audit de cohérence** : catégories de dépenses avec icônes,
-  recherche texte sur la page dépenses, mémorisation du dernier groupe
-  consulté pour "+ ajouter une dépense", solde d'un ex-membre toujours
-  affiché (marqué "ex-membre") tant qu'il n'est pas réglé, indication visuelle
-  quand une personne à charge n'a pas de responsable défini, filtre par
-  groupe sur l'accueil/dépenses/fiche personne avec message dédié si les
-  groupes du compte utilisent des devises différentes.
+
+## Audit de cohérence (comparatif Splitwise / Tricount)
+
+Une analyse de cohérence de l'app a été menée en la confrontant à Splitwise
+et Tricount, en tenant compte des spécificités du brief (foyers, personnes à
+charge, parts pondérées). Statut des points relevés :
+
+**Incohérences corrigées**
+
+| Constat | Statut |
+|---|---|
+| Rappel de paiement / règlement / fiche personne ignoraient le filtre par groupe (le montant utilisé ne correspondait pas à celui affiché à l'écran) | ✅ corrigé |
+| La vue agrégée "tous les groupes" additionnait des montants de devises différentes sans conversion, sous un symbole fixe | ✅ corrigé — message dédié dès que les groupes du compte utilisent des devises différentes |
+| Retirer un membre d'un groupe faisait disparaître son solde non réglé du tableau | ✅ corrigé — reste affiché, marqué "ex-membre", tant qu'il n'est pas soldé |
+| "Personne à charge" présentée comme un 3e "type" au même niveau qu'Adulte/Enfant | ✅ corrigé — `participant_type` retiré ; la prise en charge est un badge calculé à partir du responsable, indépendant de toute catégorie |
+| "+ ajouter une dépense" ciblait toujours le premier groupe créé, pas le dernier consulté | ✅ corrigé |
+
+**Gains rapides livrés**
+
+| Amélioration | Statut |
+|---|---|
+| Catégories de dépenses avec icônes (courses, repas, logement, transport, loisirs, santé, autre) | ✅ fait |
+| Recherche texte sur la page dépenses (libellé, payeur, groupe) | ✅ fait |
+| Bouton "créer un groupe" visible directement sur l'accueil vide | ✅ fait |
+| Terminologie "coefficient" renommée en "part" (plus parlant pour un usage non technique) | ✅ fait |
+
+**Bugs supplémentaires trouvés et corrigés en creusant l'audit**
+
+| Bug | Statut |
+|---|---|
+| Montant du rappel de paiement toujours à 0,00 (inversion de signe présente depuis l'origine de la fonctionnalité) | ✅ corrigé |
+| "Gérer les membres" affichait tous les comptes existants du compte, pas seulement ceux du groupe ouvert | ✅ corrigé |
+| Perte de la position de scroll dans les modales après un rechargement de données (donnait l'impression qu'un changement n'était pas enregistré) | ✅ corrigé |
+| Message d'erreur générique de `invite-member` ("Edge Function returned a non-2xx status code") au lieu du vrai motif d'échec | ✅ corrigé |
+| Invitations envoyées en parallèle à la création d'un groupe, peu robuste | ✅ corrigé — désormais séquentielles, avec possibilité de réessayer depuis "gérer les membres" |
+| Aucun moyen d'inviter un nouveau membre après la création du groupe | ✅ corrigé — "+ inviter un membre par e-mail" dans "gérer les membres" |
+
+**Reste à faire / différé**
+
+| Piste | Statut |
+|---|---|
+| Simplification des dettes à l'échelle du compte (actuellement calculée groupe par groupe, ce qui peut suggérer des transactions redondantes entre deux mêmes personnes partageant plusieurs groupes) | ⏳ différé |
+| Montant ou pourcentage exact par personne sur une dépense, au-delà du poids relatif | ⏳ différé — recoupe la Fonctionnalité 8 du brief (dépenses partielles), prévue en Étape 3 |
+| Vues consolidées par foyer + optimisation avancée des remboursements | ⏳ différé — Fonctionnalités 6 et 9 du brief, Étape 2 |
+| Dépenses récurrentes, pièces jointes/reçus | ⏳ différé — hors brief actuel, à arbitrer |
+| Possibilité pour un membre non-admin de quitter un groupe | ⏳ différé |
 
 Le moteur de calcul (`scripts/calc.js`) reste porté fidèlement et testé côté
 client ; la logique de dettes elle-même n'est pas dupliquée côté serveur —
