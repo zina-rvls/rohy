@@ -989,7 +989,8 @@
       '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
       '</button>' +
       (state.groups.length === 0 ?
-        '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' :
+        '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' +
+        '<button class="btn-primary pressable" data-action="openAddGroup">créer un groupe</button>' :
       mixedCurrencies ?
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-coins"></i> devises multiples</div>' +
         '<div class="warning-banner-body">Tes groupes utilisent des devises différentes — choisis un groupe ci-dessus pour voir ton solde.</div></div>' :
