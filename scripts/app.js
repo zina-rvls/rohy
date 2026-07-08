@@ -249,9 +249,14 @@
     if (typeof jspdf === 'undefined') { showToast('Erreur : bibliothèque PDF indisponible (hors ligne ?).'); return; }
     var d = buildGroupExportTables(groupId);
     if (!d) return;
+    // Le séparateur de milliers de toLocaleString('fr-FR') est une espace
+    // fine insécable (U+202F) — absente de la police Helvetica intégrée à
+    // jsPDF, qui affiche alors un glyphe de remplacement (un "/") à sa place.
+    // On la remplace par une espace normale, uniquement pour ce rendu PDF.
+    var pdfAmount = function (v) { return fmtIn(v, d.group.currency).replace(/[  ]/g, ' '); };
     var fmtRows = function (rows, amountCols) {
       return rows.map(function (r) {
-        return r.map(function (v, i) { return amountCols.indexOf(i) !== -1 ? fmtIn(v, d.group.currency) : v; });
+        return r.map(function (v, i) { return amountCols.indexOf(i) !== -1 ? pdfAmount(v) : v; });
       });
     };
     var doc = new jspdf.jsPDF();

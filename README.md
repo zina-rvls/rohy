@@ -214,6 +214,7 @@ charge, parts pondérées). Statut des points relevés :
 | Sélecteur de devise à la création d'un groupe : une ligne de pastilles pour ~35 devises prend toute la page | ✅ corrigé — remplacé par un menu déroulant |
 | Le formulaire d'invités à la création d'un groupe exigeait toujours un e-mail valide (`submitGroup`), alors que "gérer les membres" avait déjà rendu l'e-mail facultatif — incohérence entre les deux points d'entrée pour ajouter un membre | ✅ corrigé — même règle partout : un invité sans e-mail est ajouté directement comme profil sans compte |
 | Export des données (CSV/Excel/PDF), initialement noté hors périmètre dans la spec de hand-off | ✅ fait, sur demande explicite — un groupe expose désormais un export CSV/Excel/PDF (fiche groupe, sous "Exporter"), contenant les dépenses détaillées et les soldes/transactions à effectuer ; généré entièrement côté client (SheetJS pour le .xlsx, jsPDF + autotable pour le .pdf), sans aucun appel serveur. Le format PPT initialement envisagé a été écarté après clarification (peu pertinent pour ce cas d'usage) |
+| Export PDF : le séparateur de milliers des montants (espace fine insécable U+202F, produite par `toLocaleString('fr-FR')`) s'affichait comme un "/" — absente de la police Helvetica intégrée à jsPDF | ✅ corrigé — remplacée par une espace normale, uniquement dans le rendu PDF (`fmtIn` reste inchangé partout ailleurs, où le rendu navigateur l'affiche correctement) |
 
 **Reste à faire / différé**
 
