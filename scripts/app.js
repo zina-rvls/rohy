@@ -56,6 +56,8 @@
       confirmDeleteGroupId: null,
       selectedGroupId: null,
       selectedPersonId: null,
+      homeGroupFilter: null,
+      expensesGroupFilter: null,
       people: [],
       groups: [],
       expenses: [],
@@ -226,6 +228,8 @@
   function goExpenses() { setState({ screen: 'expenses', navStack: [] }); }
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id }); }
   function openPerson(id) { navigate('person', { selectedPersonId: id }); }
+  function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
+  function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function toggleTheme() {
     setState(function (s) {
       var next = s.theme === 'dark' ? 'light' : 'dark';
@@ -823,19 +827,35 @@
     }
   }
 
+  function renderGroupFilterPills(selectedId, action) {
+    if (state.groups.length < 2) return '';
+    var allPill = '<div class="pill' + (!selectedId ? ' active' : '') + '" data-action="' + action + '" data-id="">tous les groupes</div>';
+    var groupPills = state.groups.map(function (g) {
+      return '<div class="pill' + (selectedId === g.id ? ' active' : '') + '" data-action="' + action + '" data-id="' + g.id + '">' + escapeHtml(g.name) + '</div>';
+    }).join('');
+    return '<div class="pill-row" style="margin-bottom:16px">' + allPill + groupPills + '</div>';
+  }
+
   function renderHome() {
     var moi = state.currentUserId;
     var cu = person(moi);
-    var globalDebts = computeDebts();
-    var otherPeople = state.people.filter(function (p) { return p.id !== moi && !p.guardianId; });
-    var pendingShare = calc.computePendingShare(state.people, state.expenses, moi);
+    var filterId = state.homeGroupFilter && group(state.homeGroupFilter) ? state.homeGroupFilter : null;
+    var filterGroup = filterId ? group(filterId) : null;
+    var fmtC = function (n) { return fmtIn(n, filterGroup ? filterGroup.currency : null); };
+    var globalDebts = filterId ? computeDebtsForGroup(filterId) : computeDebts();
+    var otherPeople = state.people.filter(function (p) {
+      if (p.id === moi || p.guardianId) return false;
+      return filterGroup ? filterGroup.memberIds.indexOf(p.id) !== -1 : true;
+    });
+    var relevantExpenses = filterId ? state.expenses.filter(function (e) { return e.groupId === filterId; }) : state.expenses;
+    var pendingShare = calc.computePendingShare(state.people, relevantExpenses, moi);
 
     var owed = 0, owe = 0;
     var rows = otherPeople.map(function (p) {
       var bal = pairNet(moi, p.id, globalDebts);
       if (bal > 0) owed += bal; else owe += -bal;
       var covered = p.guardianId ? person(p.guardianId) : null;
-      var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmt(bal) : 'tu dois ' + fmt(-bal));
+      var amountLabel = Math.abs(bal) < 0.5 ? 'à jour' : (bal > 0 ? 'te doit ' + fmtC(bal) : 'tu dois ' + fmtC(-bal));
       return (
         '<button class="person-row pressable" data-action="openPerson" data-id="' + p.id + '">' +
         '<div class="avatar avatar-38" style="background:' + p.color + '">' + initials(p.name) + '</div>' +
@@ -854,6 +874,7 @@
     var sum = owed - owe;
 
     return (
+      renderGroupFilterPills(filterId, 'setHomeGroupFilter') +
       '<button class="current-user-row pressable" data-action="openAccount">' +
       '<div class="avatar avatar-26" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:13px;color:var(--text-secondary)">connecté en tant que <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
@@ -862,13 +883,13 @@
       (state.groups.length === 0 ?
         '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' :
         '<div class="balance-card">' +
-        '<div class="balance-label">solde net total</div>' +
-        '<div class="balance-amount" style="color:' + colorForBalance(sum) + '">' + (sum >= 0 ? '+' : '-') + fmt(Math.abs(sum)).replace('-', '') + '</div>' +
-        '<div class="balance-detail-row"><div class="owed">on te doit ' + fmt(owed).replace('-', '') + '</div><div class="owe">tu dois ' + fmt(owe).replace('-', '') + '</div></div>' +
+        '<div class="balance-label">solde net total' + (filterGroup ? ' · ' + escapeHtml(filterGroup.name) : '') + '</div>' +
+        '<div class="balance-amount" style="color:' + colorForBalance(sum) + '">' + (sum >= 0 ? '+' : '-') + fmtC(Math.abs(sum)).replace('-', '') + '</div>' +
+        '<div class="balance-detail-row"><div class="owed">on te doit ' + fmtC(owed).replace('-', '') + '</div><div class="owe">tu dois ' + fmtC(owe).replace('-', '') + '</div></div>' +
         '</div>') +
       (pendingShare > 0.5 ?
         '<div class="warning-banner"><div class="warning-banner-title"><i class="ph-bold ph-clock-countdown"></i> à anticiper</div>' +
-        '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmt(pendingShare) + '.</div></div>' : '') +
+        '<div class="warning-banner-body">Un acompte n\'est pas encore payé en totalité. Ta part : ' + fmtC(pendingShare) + '.</div></div>' : '') +
       (otherPeople.length > 0 ? '<div class="section-label">par personne</div>' + rows : '')
     );
   }
@@ -992,13 +1013,18 @@
   }
 
   function renderAllExpenses() {
-    var statuses = calc.computeExpenseStatuses(state.people, state.expenses, state.payments);
-    var total = state.expenses.reduce(function (a, e) { return a + e.amount; }, 0);
+    var filterId = state.expensesGroupFilter && group(state.expensesGroupFilter) ? state.expensesGroupFilter : null;
+    var filterGroup = filterId ? group(filterId) : null;
+    var fmtC = function (n) { return fmtIn(n, filterGroup ? filterGroup.currency : null); };
+    var expenses = filterId ? state.expenses.filter(function (e) { return e.groupId === filterId; }) : state.expenses;
+    var payments = filterId ? state.payments.filter(function (p) { return p.groupId === filterId; }) : state.payments;
+    var statuses = calc.computeExpenseStatuses(state.people, expenses, payments);
+    var total = expenses.reduce(function (a, e) { return a + e.amount; }, 0);
     var totalOwed = Object.values(statuses).reduce(function (a, st) { return a + st.owed; }, 0);
     var totalRemaining = Object.values(statuses).reduce(function (a, st) { return a + st.remaining; }, 0);
-    var totalDueExternal = state.expenses.reduce(function (a, e) { return a + (e.amount - (e.paidExternal != null ? e.paidExternal : e.amount)); }, 0);
+    var totalDueExternal = expenses.reduce(function (a, e) { return a + (e.amount - (e.paidExternal != null ? e.paidExternal : e.amount)); }, 0);
 
-    var rows = state.expenses.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (e) {
+    var rows = expenses.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (e) {
       var g = group(e.groupId);
       var cur = g && g.currency;
       var st = statuses[e.id];
@@ -1024,14 +1050,15 @@
     }).join('');
 
     return (
+      renderGroupFilterPills(filterId, 'setExpensesGroupFilter') +
       '<div class="summary-cards">' +
-      '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value">' + fmt(total) + '</div></div>' +
-      '<div class="summary-card"><div class="summary-card-label">remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmt(totalOwed - totalRemaining) + '</div></div>' +
-      '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmt(totalRemaining) + '</div></div>' +
+      '<div class="summary-card"><div class="summary-card-label">total</div><div class="summary-card-value">' + fmtC(total) + '</div></div>' +
+      '<div class="summary-card"><div class="summary-card-label">remboursé</div><div class="summary-card-value" style="color:var(--status-positive)">' + fmtC(totalOwed - totalRemaining) + '</div></div>' +
+      '<div class="summary-card"><div class="summary-card-label">restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
       '</div>' +
-      (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmt(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '') +
-      rows +
-      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal">ajouter une dépense</button>'
+      (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '') +
+      (expenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">aucune dépense dans ce groupe.</div>' : rows) +
+      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">ajouter une dépense</button>'
     );
   }
 
@@ -1350,7 +1377,9 @@
         case 'remind': sendReminder(id); break;
         case 'openAccount': openAccount(); break;
         case 'logout': logout(); break;
-        case 'openAddExpenseGlobal': openAddExpense(state.groups[0] && state.groups[0].id); break;
+        case 'openAddExpenseGlobal': openAddExpense(id || (state.groups[0] && state.groups[0].id)); break;
+        case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
+        case 'setExpensesGroupFilter': setExpensesGroupFilter(id); break;
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
         case 'openAddGroup': openAddGroup(); break;
         case 'openManageMembers': openManageMembers(id); break;
