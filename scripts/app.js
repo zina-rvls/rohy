@@ -206,6 +206,7 @@
           id: e.id, groupId: e.group_id, label: e.label, icon: e.icon, amount: Number(e.amount),
           paidExternal: e.paid_external != null ? Number(e.paid_external) : null,
           paidBy: e.paid_by, date: e.expense_date, participants: parts.map(function (p) { return p.user_id; }), overrides: overrides,
+          receiptPath: e.receipt_path || null,
         };
       });
       var payments = paymentRows.map(function (p) {
@@ -386,7 +387,11 @@
     setState({
       showAddExpense: true,
       formError: null,
-      form: { editingId: null, label: '', amount: '', date: new Date().toISOString().slice(0, 10), groupId: g.id, paidBy: state.currentUserId, participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '', category: 'autre' },
+      form: {
+        editingId: null, label: '', amount: '', date: new Date().toISOString().slice(0, 10), groupId: g.id, paidBy: state.currentUserId,
+        participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '', category: 'autre',
+        receiptPath: null, receiptFile: null, receiptRemove: false,
+      },
     });
   }
   function categoryForIcon(icon) {
@@ -409,6 +414,7 @@
         participantIds: e.participants.slice(), overrides: Object.assign({}, e.overrides || {}),
         fullyPaid: fullyPaid, paidExternal: fullyPaid ? '' : String(e.paidExternal != null ? e.paidExternal : 0).replace('.', ','),
         category: categoryForIcon(e.icon),
+        receiptPath: e.receiptPath || null, receiptFile: null, receiptRemove: false,
       },
     });
   }
@@ -449,6 +455,18 @@
       return { form: Object.assign({}, s.form, { participantIds: participantIds }) };
     });
   }
+  function setReceiptFile(file) {
+    setState(function (s) { return { form: Object.assign({}, s.form, { receiptFile: file, receiptRemove: false }) }; });
+  }
+  function removeReceipt() {
+    setState(function (s) { return { form: Object.assign({}, s.form, { receiptFile: null, receiptRemove: true }) }; });
+  }
+  function viewReceipt(path) {
+    sb.storage.from('receipts').createSignedUrl(path, 120).then(function (res) {
+      if (res.error || !res.data) { showToast('impossible d\'ouvrir le reçu'); return; }
+      window.open(res.data.signedUrl, '_blank', 'noopener');
+    });
+  }
   function setOverride(pid, v) {
     setState(function (s) {
       var overrides = Object.assign({}, s.form.overrides);
@@ -457,6 +475,39 @@
       return { form: Object.assign({}, s.form, { overrides: overrides }) };
     });
   }
+  function sanitizeFilename(name) {
+    return String(name || 'fichier').replace(/[^a-zA-Z0-9._-]/g, '_');
+  }
+
+  // Dépose/retire le reçu joint après coup (a besoin de l'id de la dépense,
+  // donc appelé une fois l'INSERT/UPDATE de la dépense elle-même terminé).
+  // Chaque envoi utilise un nom de fichier unique (horodaté) : pas besoin de
+  // policy d'update sur storage.objects, l'ancien fichier est juste retiré
+  // une fois le nouveau chemin enregistré.
+  function persistReceiptChange(expenseId, groupId) {
+    var f = state.form;
+    if (f.receiptFile) {
+      var oldPath = f.receiptPath;
+      var path = groupId + '/' + expenseId + '-' + Date.now() + '-' + sanitizeFilename(f.receiptFile.name);
+      return sb.storage.from('receipts').upload(path, f.receiptFile).then(function (upRes) {
+        if (upRes.error) return { error: upRes.error };
+        return sb.from('expenses').update({ receipt_path: path }).eq('id', expenseId).then(function (res) {
+          if (res.error) return { error: res.error };
+          if (oldPath) sb.storage.from('receipts').remove([oldPath]);
+          return { error: null };
+        });
+      });
+    }
+    if (f.receiptRemove && f.receiptPath) {
+      return sb.from('expenses').update({ receipt_path: null }).eq('id', expenseId).then(function (res) {
+        if (res.error) return { error: res.error };
+        sb.storage.from('receipts').remove([f.receiptPath]);
+        return { error: null };
+      });
+    }
+    return Promise.resolve({ error: null });
+  }
+
   function submitExpense() {
     var f = state.form;
     var amt = parseFloat((f.amount || '').replace(',', '.'));
@@ -484,8 +535,12 @@
         sb.from('expense_participants').delete().eq('expense_id', f.editingId).then(function () {
           sb.from('expense_participants').insert(participantRowsFor(f.editingId)).then(function (insRes) {
             if (insRes.error) { showToast('erreur : ' + insRes.error.message); return; }
-            setState({ showAddExpense: false });
-            loadAppData().then(function () { showToast('dépense modifiée'); });
+            persistReceiptChange(f.editingId, f.groupId).then(function (recRes) {
+              setState({ showAddExpense: false });
+              loadAppData().then(function () {
+                showToast(recRes.error ? 'dépense modifiée (reçu : ' + recRes.error.message + ')' : 'dépense modifiée');
+              });
+            });
           });
         });
       });
@@ -498,8 +553,12 @@
       if (res.error) { setState({ formError: res.error.message }); return; }
       sb.from('expense_participants').insert(participantRowsFor(res.data.id)).then(function (insRes) {
         if (insRes.error) { showToast('erreur : ' + insRes.error.message); return; }
-        setState({ showAddExpense: false });
-        loadAppData().then(function () { showToast('dépense ajoutée à ' + g.name); });
+        persistReceiptChange(res.data.id, f.groupId).then(function (recRes) {
+          setState({ showAddExpense: false });
+          loadAppData().then(function () {
+            showToast(recRes.error ? 'dépense ajoutée à ' + g.name + ' (reçu : ' + recRes.error.message + ')' : 'dépense ajoutée à ' + g.name);
+          });
+        });
       });
     });
   }
@@ -1093,7 +1152,7 @@
           '<div class="expense-row pressable" data-action="editExpense" data-id="' + e.id + '">' +
           '<div class="expense-icon"><i class="' + e.icon + '"></i></div>' +
           '<div style="flex:1;min-width:0">' +
-          '<div class="expense-label">' + escapeHtml(e.label) + '</div>' +
+          '<div class="expense-label">' + escapeHtml(e.label) + (e.receiptPath ? ' <i class="ph-bold ph-paperclip" style="font-size:12px;color:var(--text-tertiary)"></i>' : '') + '</div>' +
           '<div class="expense-subtitle">payé par ' + escapeHtml(person(e.paidBy).name) + ' · ' + fmtDate(e.date) + ' · ' + e.participants.length + ' pers.</div>' +
           '</div><div class="expense-amount">' + fmtIn(e.amount, g.currency) + '</div></div>'
         );
@@ -1182,7 +1241,7 @@
         '<div class="expense-row">' +
         '<div class="expense-icon pressable" data-action="editExpense" data-id="' + e.id + '"><i class="' + e.icon + '"></i></div>' +
         '<div style="flex:1;min-width:0;cursor:pointer" data-action="editExpense" data-id="' + e.id + '">' +
-        '<div class="expense-label">' + escapeHtml(e.label) + '</div>' +
+        '<div class="expense-label">' + escapeHtml(e.label) + (e.receiptPath ? ' <i class="ph-bold ph-paperclip" style="font-size:12px;color:var(--text-tertiary)"></i>' : '') + '</div>' +
         '<div class="expense-subtitle">' + (g ? escapeHtml(g.name) + ' · ' : '') + 'payé par ' + escapeHtml(person(e.paidBy).name) + ' · ' + fmtDate(e.date) + ' · ' + e.participants.length + ' pers.</div>' +
         '<div class="expense-meta-row">' +
         '<span class="status-badge" style="color:' + st.color + ';background:' + st.bg + '">' + st.status + '</span>' +
@@ -1363,6 +1422,14 @@
         '<input class="text-input" data-bind="paidExternal" placeholder="ex : 500" inputmode="decimal" value="' + escapeHtml(f.paidExternal) + '" />' : '') +
       '<div class="field-label">payé par</div><div class="pill-row">' + payerChoices + '</div>' +
       '<div class="section-label">qui participe ?</div>' + participantRows +
+      '<div class="field-label">reçu / pièce jointe (facultatif)</div>' +
+      (f.receiptPath && !f.receiptRemove ?
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+        '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> voir le reçu actuel</button>' +
+        '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
+        '</div>' : '') +
+      '<input class="text-input" type="file" accept="image/*,.pdf" data-bind-change="receiptFile" />' +
+      (f.receiptFile ? '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">fichier sélectionné : ' + escapeHtml(f.receiptFile.name) + '</div>' : '') +
       '<button class="btn-primary pressable" style="margin-top:20px" data-action="submitExpense">' + (f.editingId ? 'enregistrer les modifications' : 'enregistrer la dépense') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       (f.editingId ? '<button class="delete-link" data-action="deleteExpense">supprimer cette dépense</button>' : '') +
@@ -1603,6 +1670,8 @@
         case 'setCategory': setCategory(id); break;
         case 'submitExpense': submitExpense(); break;
         case 'deleteExpense': deleteExpense(); break;
+        case 'viewReceipt': viewReceipt(el.getAttribute('data-path')); break;
+        case 'removeReceipt': removeReceipt(); break;
         case 'setGroupCurrency': setGroupCurrency(id); break;
         case 'addInviteeRow': addInviteeRow(); break;
         case 'removeInviteeRow': removeInviteeRow(parseInt(id, 10)); break;
@@ -1653,6 +1722,7 @@
       var bind = el.getAttribute('data-bind-change');
       if (!bind) return;
       var id = el.getAttribute('data-id');
+      if (bind === 'receiptFile') { setReceiptFile(el.files && el.files[0] ? el.files[0] : null); return; }
       switch (bind) {
         case 'override': setOverride(id, el.value); break;
         case 'shareWeight': setShareWeight(id, el.value); break;

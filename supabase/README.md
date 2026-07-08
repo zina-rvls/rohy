@@ -22,8 +22,9 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 `0003_group_admin_select.sql`, PUIS `0004_households_dependents_weights.sql`,
 PUIS `0005_households_scoped_to_group.sql`, PUIS
 `0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`,
-PUIS `0008_guest_members_no_email.sql` (ou, avec la CLI Supabase installée :
-`supabase link --project-ref <ref>` puis `supabase db push`).
+PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql` (ou,
+avec la CLI Supabase installée : `supabase link --project-ref <ref>` puis
+`supabase db push`).
 
 `0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
@@ -79,6 +80,15 @@ le nouveau profil ne partage un groupe avec son créateur) et une policy
 `profiles_insert_guest` dédiée à ce cas (l'ancienne `profiles_insert_dependent`
 de `0004_households_dependents_weights.sql` exige toujours `guardian_id`
 non nul, et reste inchangée pour le cas classique d'une personne à charge).
+
+`0009_expense_receipts.sql` ajoute la possibilité de joindre un reçu/pièce
+jointe à une dépense : colonne `expenses.receipt_path`, bucket de stockage
+privé `receipts` (pas d'URL publique — la consultation passe par des URLs
+signées à durée limitée) et policies sur `storage.objects` scoping l'accès
+au groupe du chemin déposé (convention `{group_id}/{nom de fichier}`, les
+droits calqués sur ceux des dépenses : tout membre du groupe, pas seulement
+l'admin ni l'auteur). Rien à configurer manuellement côté dashboard, le
+bucket est créé par la migration elle-même.
 
 ## 3. Configurer l'authentification
 

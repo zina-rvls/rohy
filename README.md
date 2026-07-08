@@ -89,6 +89,12 @@ node tests/calc.test.js
   avec de vrais comptes, on ne peut plus impersonner un autre utilisateur
   côté client — chacun se connecte avec ses propres identifiants (mot de
   passe ou lien magique).
+- Chaque dépense peut avoir un reçu/pièce jointe (photo ou PDF), facultatif,
+  ajouté ou remplacé depuis la même modale qu'à la création/modification.
+  Stocké dans un bucket Supabase Storage privé (pas d'URL publique) : la
+  consultation passe par une URL signée à durée limitée, dans le même esprit
+  que le reste de l'app où RLS est la vraie frontière de sécurité, pas le
+  secret d'une URL.
 
 ## Ce qui est fidèle au design, ce qui reste à faire
 
@@ -131,6 +137,7 @@ charge, parts pondérées). Statut des points relevés :
 | Recherche texte sur la page dépenses (libellé, payeur, groupe) | ✅ fait |
 | Bouton "créer un groupe" visible directement sur l'accueil vide | ✅ fait |
 | Terminologie "coefficient" renommée en "part" (plus parlant pour un usage non technique) | ✅ fait |
+| Pièce jointe/reçu par dépense (photo ou PDF, stockage privé + URL signée) | ✅ fait |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 
@@ -150,7 +157,7 @@ charge, parts pondérées). Statut des points relevés :
 | Simplification des dettes à l'échelle du compte (actuellement calculée groupe par groupe, ce qui peut suggérer des transactions redondantes entre deux mêmes personnes partageant plusieurs groupes) | ⏳ différé |
 | Montant ou pourcentage exact par personne sur une dépense, au-delà du poids relatif | ⏳ différé — recoupe la Fonctionnalité 8 du brief (dépenses partielles), prévue en Étape 3 |
 | Vues consolidées par foyer + optimisation avancée des remboursements | ⏳ différé — Fonctionnalités 6 et 9 du brief, Étape 2 |
-| Dépenses récurrentes, pièces jointes/reçus | ⏳ différé — hors brief actuel, à arbitrer |
+| Dépenses récurrentes | ⏳ différé — hors brief actuel, à arbitrer |
 | Possibilité pour un membre non-admin de quitter un groupe | ⏳ différé |
 
 Le moteur de calcul (`scripts/calc.js`) reste porté fidèlement et testé côté
