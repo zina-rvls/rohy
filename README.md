@@ -101,7 +101,11 @@ node tests/calc.test.js
   par foyer (un règlement entre deux membres d'un même foyer devient interne
   et n'est plus suggéré). Le moteur de calcul (`calc.js`) continue de
   travailler personne par personne — cette consolidation est purement un
-  regroupement d'affichage.
+  regroupement d'affichage. La section "pour équilibrer" propose un bouton
+  "par foyer / par membre" (uniquement quand au moins un foyer regroupe
+  effectivement plusieurs membres du groupe, sinon les deux vues seraient
+  identiques) pour voir les suggestions de règlement soit consolidées par
+  foyer, soit détaillées personne par personne.
 - Un membre non-admin peut quitter un groupe lui-même ("quitter ce groupe"
   dans le détail du groupe) ; comme pour un retrait par l'admin, un solde non
   réglé reste dû et affiché tant qu'il n'est pas soldé. Seul l'admin peut
