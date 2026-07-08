@@ -382,9 +382,12 @@
   function openSettle(personId, groupId) {
     var me = state.currentUserId;
     var debts = groupId ? computeDebtsForGroup(groupId) : computeDebts();
+    // bal = pairNet(me, personId) : positif si personId me doit (il/elle est
+    // débiteur·rice, donc c'est lui/elle qui paie) ; négatif si c'est moi qui
+    // dois (c'est donc moi qui paie).
     var bal = pairNet(me, personId, debts);
-    var from = bal < 0 ? personId : me;
-    var to = bal < 0 ? me : personId;
+    var from = bal < 0 ? me : personId;
+    var to = bal < 0 ? personId : me;
     var decimals = currencyDecimalsFor(groupId && group(groupId) ? group(groupId).currency : null);
     setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(decimals).replace('.', ',') } });
   }

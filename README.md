@@ -197,6 +197,7 @@ charge, parts pondérées). Statut des points relevés :
 | Bug | Statut |
 |---|---|
 | Montant du rappel de paiement toujours à 0,00 (inversion de signe présente depuis l'origine de la fonctionnalité) | ✅ corrigé |
+| "Enregistrer un paiement" (fiche personne) affichait le sens du règlement inversé (ex. "Y → moi" alors que c'est moi qui dois à Y) — le calcul de `from`/`to` dans `openSettle` était exactement inversé par rapport à `pairNet` | ✅ corrigé |
 | "Gérer les membres" affichait tous les comptes existants du compte, pas seulement ceux du groupe ouvert | ✅ corrigé |
 | Perte de la position de scroll dans les modales après un rechargement de données (donnait l'impression qu'un changement n'était pas enregistré) | ✅ corrigé |
 | Message d'erreur générique de `invite-member` ("Edge Function returned a non-2xx status code") au lieu du vrai motif d'échec | ✅ corrigé |
