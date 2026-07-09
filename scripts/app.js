@@ -76,6 +76,10 @@
       showAddExpense: false,
       showAddGroup: false,
       showSettle: false,
+      showReminderConfirm: false,
+      reminderPersonId: null,
+      reminderGroupId: null,
+      reminderEmailDraft: '',
       showAddMemberForm: false,
       addingMember: false,
       households: [],
@@ -519,14 +523,19 @@
   // (`send-reminder`) : le montant/message restent calculés ici (le moteur
   // de calcul n'est pas dupliqué côté serveur), mais l'e-mail du
   // destinataire n'est jamais chargé côté client.
-  function sendReminder(personId, groupId) {
+  function computeReminderMessage(personId, groupId) {
     var p = person(personId);
     var g = groupId ? group(groupId) : null;
     var debts = groupId ? computeDebtsForGroup(groupId) : computeDebts();
     var rel = pairNet(state.currentUserId, personId, debts);
     var amt = rel > 0 ? rel : 0;
     var msg = 'Petit rappel à ' + p.name + ' — psst, tu me dois encore ' + (g ? fmtIn(amt, g.currency) : fmt(amt));
-    sb.functions.invoke('send-reminder', { body: { toUserId: personId, amount: amt, message: msg } }).then(function (res) {
+    return { amount: amt, message: msg };
+  }
+  function sendReminder(personId, groupId) {
+    var p = person(personId);
+    var data = computeReminderMessage(personId, groupId);
+    sb.functions.invoke('send-reminder', { body: { toUserId: personId, amount: data.amount, message: data.message } }).then(function (res) {
       extractFunctionErrorMessage(res).then(function (errMsg) {
         if (errMsg) { showToast('Erreur : ' + errMsg); return; }
         var emailSent = res.data && res.data.emailSent;
@@ -537,6 +546,36 @@
     }).catch(function (err) {
       showToast('Erreur : ' + (err && err.message ? err.message : 'erreur réseau'));
     });
+  }
+  function openReminderConfirm(personId, groupId) {
+    setState({
+      showReminderConfirm: true,
+      reminderPersonId: personId,
+      reminderGroupId: groupId || null,
+      reminderEmailDraft: (person(personId).email || ''),
+    });
+  }
+  function closeReminderConfirm() { setState({ showReminderConfirm: false }); }
+  function setReminderEmailDraft(v) { setStateSilent({ reminderEmailDraft: v }); }
+  // Si un invité sans compte a saisi/modifié un e-mail dans la fenêtre de
+  // confirmation, on l'enregistre d'abord (comme depuis "gérer les
+  // membres") pour que le rappel qui suit puisse en profiter immédiatement.
+  function confirmSendReminder() {
+    var personId = state.reminderPersonId;
+    var groupId = state.reminderGroupId;
+    var p = person(personId);
+    var draft = (state.reminderEmailDraft || '').trim();
+    if (!p.hasAccount && draft && draft !== (p.email || '')) {
+      if (draft.indexOf('@') === -1) { showToast('Entre un e-mail valide.'); return; }
+      sb.from('profiles').update({ email: draft }).eq('id', personId).then(function (res) {
+        if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+        setState({ showReminderConfirm: false });
+        sendReminder(personId, groupId);
+      });
+      return;
+    }
+    setState({ showReminderConfirm: false });
+    sendReminder(personId, groupId);
   }
   function openSettle(personId, groupId) {
     var me = state.currentUserId;
@@ -1221,6 +1260,7 @@
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
       showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
+      showReminderConfirm: false,
       settleGroupId: null, showAddMemberForm: false,
     });
   }
@@ -1935,7 +1975,31 @@
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
     if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
+    if (state.showReminderConfirm) out += renderReminderConfirmModal();
     return out;
+  }
+
+  function renderReminderConfirmModal() {
+    var p = person(state.reminderPersonId);
+    if (!p) return '';
+    var data = computeReminderMessage(state.reminderPersonId, state.reminderGroupId);
+    var hasEmail = !!p.email;
+    return (
+      '<div class="modal-overlay center" data-action="closeReminderConfirm">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">Envoyer un rappel à ' + escapeHtml(p.name) + ' ?</div>' +
+      '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:14px">' + escapeHtml(data.message) + '</div>' +
+      (hasEmail ?
+        '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:18px">Un e-mail sera aussi envoyé à ' + escapeHtml(p.email) + '.</div>' :
+        p.hasAccount ?
+          '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:18px">Cette personne n\'a pas d\'e-mail connu — le rappel restera uniquement dans l\'app.</div>' :
+          '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:8px">Aucun e-mail renseigné pour cette personne — le rappel restera uniquement dans l\'app, sauf si tu en ajoutes un :</div>' +
+          '<input class="text-input" data-bind="reminderEmailDraft" placeholder="E-mail (facultatif)" value="' + escapeHtml(state.reminderEmailDraft || '') + '" />') +
+      '<div class="modal-footer-buttons">' +
+      '<button class="btn-cancel pressable" data-action="closeReminderConfirm">Annuler</button>' +
+      '<button class="btn-confirm pressable" data-action="confirmSendReminder">Envoyer le rappel</button>' +
+      '</div></div></div>'
+    );
   }
 
   function renderConfirmDeleteGroupModal() {
@@ -2343,7 +2407,9 @@
         case 'toggleTheme': toggleTheme(); break;
         case 'openPerson': openPerson(id); break;
         case 'openGroup': openGroup(id); break;
-        case 'remind': sendReminder(id, groupId || null); break;
+        case 'remind': openReminderConfirm(id, groupId || null); break;
+        case 'closeReminderConfirm': closeReminderConfirm(); break;
+        case 'confirmSendReminder': confirmSendReminder(); break;
         case 'openAccount': openAccount(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
@@ -2426,6 +2492,7 @@
         case 'groupName': setGroupName(v); break;
         case 'settleAmount': setSettleAmount(v); break;
         case 'expensesSearch': setExpensesSearch(v); break;
+        case 'reminderEmailDraft': setReminderEmailDraft(v); break;
         case 'manageMembersSearch': setManageMembersSearch(v); break;
         case 'splitValue': setSplitValue(id, v); break;
         case 'inviteeName': setInviteeName(parseInt(id, 10), v); break;
