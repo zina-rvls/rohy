@@ -330,6 +330,7 @@
           householdId: p.household_id || undefined,
           createdBy: p.created_by || undefined,
           hasAccount: !!p.auth_user_id,
+          email: p.email || undefined,
         };
       });
       var households = householdRows.map(function (h) {
@@ -1184,6 +1185,20 @@
     sb.from('profiles').update({ household_id: householdId || null }).eq('id', personId).then(function (res) {
       if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       loadAppData();
+    });
+  }
+  // Uniquement pour un profil sans compte (invité) : un membre avec un vrai
+  // compte a son e-mail lié à sa connexion Supabase Auth, pas modifiable
+  // depuis ici (cf. renderManageMembersModal, qui n'affiche ce champ en
+  // éditable que pour !hasAccount). Permet notamment d'activer après coup
+  // l'envoi d'un vrai e-mail de rappel (send-reminder) à un invité qui
+  // n'avait pas d'adresse renseignée à sa création.
+  function setMemberEmail(personId, value) {
+    var trimmed = (value || '').trim();
+    if (trimmed && trimmed.indexOf('@') === -1) { showToast('Entre un e-mail valide.'); return; }
+    sb.from('profiles').update({ email: trimmed || null }).eq('id', personId).then(function (res) {
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      loadAppData().then(function () { showToast(trimmed ? 'E-mail enregistré' : 'E-mail retiré'); });
     });
   }
   function setNewHouseholdName(v) { setStateSilent({ newHouseholdName: v }); }
@@ -2218,6 +2233,14 @@
         '</div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Foyer</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="household" data-id="' + p.id + '">' + householdOptionsFor(p) + '</select></div>' +
+        '<div style="grid-column:1 / -1">' +
+        (p.hasAccount ?
+          // Lié à la connexion Supabase Auth de cette personne : pas
+          // modifiable depuis ici pour éviter toute désynchronisation.
+          (p.email ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">E-mail</div><div style="font-size:13px;color:var(--text-secondary)">' + escapeHtml(p.email) + '</div>' : '') :
+          '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">E-mail (pour les rappels, facultatif)</div>' +
+          '<input class="text-input" style="margin-bottom:0" data-bind-change="memberEmail" data-id="' + p.id + '" placeholder="Pas d\'e-mail renseigné" value="' + escapeHtml(p.email || '') + '" />') +
+        '</div>' +
         '</div>' +
         '</div>'
       );
@@ -2427,6 +2450,7 @@
         case 'shareWeight': setShareWeight(id, el.value); break;
         case 'guardian': setGuardian(id, el.value); break;
         case 'household': setMemberHousehold(id, el.value); break;
+        case 'memberEmail': setMemberEmail(id, el.value); break;
         case 'addMemberGuardian': setAddMemberGuardian(el.value); break;
         case 'groupCurrency': setGroupCurrency(el.value); break;
         case 'expensesSort': setExpensesSort(el.value); break;
