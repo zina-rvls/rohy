@@ -96,6 +96,8 @@
 
   var state = defaultState();
   var toastTimer = null;
+  var inviteeNameDebounceTimer = null;
+  var addMemberNameDebounceTimer = null;
 
   function setState(patch) {
     var partial = typeof patch === 'function' ? patch(state) : patch;
@@ -857,11 +859,19 @@
       return { groupForm: Object.assign({}, s.groupForm, { invitees: invitees }) };
     });
   }
-  // Pas silent (contrairement aux autres champs de cette ligne) : le
-  // prénom doit re-rendre à chaque frappe pour rafraîchir la liste de
-  // suggestions de profils existants juste en dessous (cf.
-  // guestSuggestionsFor) — même compromis que setAddMemberName.
-  function setInviteeName(index, v) { updateInvitee(index, 'name', v, false); updateInvitee(index, 'linkExistingId', null, true); }
+  // Le prénom doit rafraîchir la liste de suggestions de profils existants
+  // juste en dessous (cf. guestSuggestionsFor), mais re-rendre à CHAQUE
+  // frappe reproduisait le flash visuel déjà corrigé une première fois
+  // (la transition CSS globale rejoue sur les nœuds recréés) : la saisie
+  // elle-même reste silencieuse, seul le rafraîchissement des suggestions
+  // est différé de 300ms après la dernière frappe (debounce) — même
+  // compromis que setAddMemberName.
+  function setInviteeName(index, v) {
+    updateInvitee(index, 'name', v, true);
+    updateInvitee(index, 'linkExistingId', null, true);
+    clearTimeout(inviteeNameDebounceTimer);
+    inviteeNameDebounceTimer = setTimeout(function () { setState(function (s) { return s; }); }, 300);
+  }
   function setInviteeEmail(index, v) { updateInvitee(index, 'email', v, true); }
   function setInviteeShare(index, v) { updateInvitee(index, 'shareWeight', v, true); }
   function selectExistingGuestForInvitee(index, profileId) {
@@ -1031,11 +1041,17 @@
       };
     });
   }
-  // setState (pas setStateSilent) volontairement ici : contrairement aux
-  // autres champs de ce formulaire, le prénom doit re-rendre à chaque
-  // frappe pour rafraîchir la liste de suggestions de profils existants
-  // (cf. guestSuggestionsFor) juste en dessous du champ.
-  function setAddMemberName(v) { setState(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { name: v, linkExistingId: null }) }; }); }
+  // Le prénom doit rafraîchir la liste de suggestions de profils existants
+  // juste en dessous (cf. guestSuggestionsFor), mais re-rendre à CHAQUE
+  // frappe reproduisait le flash visuel déjà corrigé une première fois : la
+  // saisie reste silencieuse, seul le rafraîchissement des suggestions est
+  // différé de 300ms après la dernière frappe (debounce) — même compromis
+  // que setInviteeName.
+  function setAddMemberName(v) {
+    setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { name: v, linkExistingId: null }) }; });
+    clearTimeout(addMemberNameDebounceTimer);
+    addMemberNameDebounceTimer = setTimeout(function () { setState(function (s) { return s; }); }, 300);
+  }
   function setAddMemberEmail(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { email: v }) }; }); }
   function setAddMemberWeight(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { shareWeight: v }) }; }); }
   function setAddMemberGuardian(v) { setState(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { guardianId: v || null }) }; }); }
