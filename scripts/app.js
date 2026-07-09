@@ -538,9 +538,16 @@
     sb.functions.invoke('send-reminder', { body: { toUserId: personId, amount: data.amount, message: data.message } }).then(function (res) {
       extractFunctionErrorMessage(res).then(function (errMsg) {
         if (errMsg) { showToast('Erreur : ' + errMsg); return; }
-        var emailSent = res.data && res.data.emailSent;
+        var d = res.data || {};
+        // Affiche directement la raison quand l'e-mail n'est pas parti
+        // (plutôt que de le passer sous silence) : permet de diagnostiquer
+        // sans avoir à aller fouiller dans les logs de la Edge Function.
+        var suffix = '';
+        if (d.emailSent) suffix = ' (e-mail envoyé)';
+        else if (d.emailSkippedReason === 'not_configured') suffix = ' (e-mail non envoyé : clé Resend absente côté serveur)';
+        else if (d.emailError) suffix = ' (e-mail refusé par Resend : ' + String(d.emailError).slice(0, 150) + ')';
         loadAppData().then(function () {
-          showToast(emailSent ? 'Rappel envoyé à ' + p.name + ' (e-mail envoyé)' : 'Rappel envoyé à ' + p.name);
+          showToast('Rappel envoyé à ' + p.name + suffix);
         });
       });
     }).catch(function (err) {
