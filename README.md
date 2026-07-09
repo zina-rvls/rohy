@@ -205,6 +205,8 @@ charge, parts pondérées). Statut des points relevés :
 | Aucun moyen de filtrer la page "toutes les dépenses" pour ne voir que ce qui concerne réellement l'utilisateur (payeur ou participant) — utile pour repérer rapidement une dépense mal attribuée | ✅ fait — pastille "Me concerne uniquement" au-dessus de la recherche, cumulable avec elle |
 | Aucun moyen de filtrer par catégorie ni de trier par date/montant sur la page "toutes les dépenses" (seul le tri par date décroissante était possible, non modifiable) | ✅ fait — pastilles de catégorie (n'apparaissent que si le groupe/compte a des dépenses d'au moins 2 catégories différentes) + menu déroulant de tri (plus récentes/anciennes, montant croissant/décroissant), cumulables avec la recherche et "me concerne uniquement" |
 | Une seule façon de répartir une dépense (poids permanent du profil) — Splitwise en propose plusieurs, sur demande explicite de comparaison | ✅ fait — 4 modes ponctuels en plus du mode par défaut, choisis pour une dépense précise sans toucher au poids permanent du profil : "Équitable" (parts strictement égales), "Part ponctuelle" (poids ponctuel), "Montant exact" et "Pourcentage" (avec indicateur "reste à répartir" en direct et blocage de l'enregistrement tant que la somme ne correspond pas). Migration additive (`split_mode`/`split_value`), rétrocompatible à 100 % — toute dépense existante garde le comportement d'origine |
+| "Envoyer un rappel" n'était que déclaratif : une ligne enregistrée dans `reminders`, sans notification réelle envoyée à la personne concernée | ✅ fait — nouvelle Edge Function `send-reminder` (cf. `supabase/README.md`) : enregistre le rappel comme avant, et tente en plus un vrai e-mail (Resend) si le destinataire a un compte avec une adresse connue. Dégrade proprement (rappel quand même enregistré) si la personne est un invité sans compte, ou si aucune clé Resend n'est configurée — comportement d'avant inchangé dans ces deux cas. Notification push explicitement écartée pour l'instant (chantier bien plus lourd : service worker, clés VAPID, autorisation navigateur) |
+| Audit UX/UI global des listes/pastilles qui risquent de prendre trop de place à mesure qu'elles grandissent (groupes, "payé par", "gérer les membres", historique...) | ⏳ audit fait (cf. section ci-dessous) — seule la recherche sur "gérer les membres" a été demandée pour l'instant : ✅ fait, une recherche par prénom filtre les cartes membres (au-delà de 5 membres), sans affecter les menus déroulants (responsable/foyer) qui continuent de lister tout le monde |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 
@@ -230,9 +232,24 @@ charge, parts pondérées). Statut des points relevés :
 
 | Piste | Statut |
 |---|---|
-| Montant ou pourcentage exact par personne sur une dépense, au-delà du poids relatif | ⏳ différé — recoupe la Fonctionnalité 8 du brief (dépenses partielles), prévue en Étape 3 |
+| Montant ou pourcentage exact par personne sur une dépense, au-delà du poids relatif | ✅ fait — cf. ligne "modes de répartition" ci-dessus (recoupait la Fonctionnalité 8 du brief) |
 | Optimisation avancée des remboursements (au-delà de la simplification gloutonne actuelle) | ⏳ différé — Fonctionnalité 9 du brief, Étape 2 |
 | Dépenses récurrentes | ⏳ différé — hors brief actuel, à arbitrer |
+| Notification push pour les rappels (en plus de l'e-mail) | ⏳ différé — chantier à part (service worker, clés VAPID, autorisation navigateur) |
+
+**Audit UX/UI — listes qui grandissent**
+
+Point de départ : l'affichage en boutons/cartes de l'écran "Groupes" fonctionne
+bien pour un petit nombre de groupes, mais prend beaucoup de place à mesure
+qu'il grandit. Même famille de problème ailleurs :
+
+| Zone | Problème | Statut |
+|---|---|---|
+| "Gérer les membres" | Une carte assez dense par membre — le plus pénalisant des listes verticales pour un grand groupe | ✅ fait — recherche par prénom (au-delà de 5 membres), ne filtre que les cartes affichées, pas les menus déroulants (responsable/foyer) qui continuent de lister tout le monde |
+| Pastilles de filtre par groupe (accueil, dépenses, fiche personne) et "payé par" (formulaire dépense) | `pill-row` en retour à la ligne — au-delà d'une poignée de groupes/membres, pousse le contenu vers le bas au lieu de rester compact | ⏳ différé |
+| Écran "Groupes" | Liste verticale de cartes riches, une par groupe, sans recherche ni tri | ⏳ différé |
+| "Qui participe ?" (formulaire dépense) et tableau payé/part/solde (fiche groupe) | Listes verticales sans recherche | ⏳ différé — moins critique, déjà contenues dans un scroll |
+| Historique | Flux unique (dépenses + paiements + rappels) sans pagination depuis le début du compte | ⏳ différé |
 
 Le moteur de calcul (`scripts/calc.js`) reste porté fidèlement et testé côté
 client ; la logique de dettes elle-même n'est pas dupliquée côté serveur —

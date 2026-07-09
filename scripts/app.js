@@ -52,6 +52,7 @@
       showAccount: false,
       showManageMembers: false,
       manageMembersGroupId: null,
+      manageMembersSearchQuery: '',
       showConfirmDeleteGroup: false,
       confirmDeleteGroupId: null,
       showConfirmRemoveMember: false,
@@ -491,9 +492,30 @@
   }
 
   // ---------- Reminders / settle ----------
+  // Les Edge Functions renvoient un statut non-2xx pour les erreurs
+  // applicatives ; supabase-js remplace alors error.message par un texte
+  // générique ("Edge Function returned a non-2xx status code") — le vrai
+  // message est dans le corps JSON de la réponse, accessible via
+  // error.context. Retourne une promesse résolue à null (pas d'erreur) ou
+  // au message d'erreur à afficher.
+  function extractFunctionErrorMessage(res) {
+    if (!res.error && !(res.data && res.data.error)) return Promise.resolve(null);
+    if (res.data && res.data.error) return Promise.resolve(res.data.error);
+    var ctx = res.error && res.error.context;
+    if (ctx && typeof ctx.json === 'function') {
+      return ctx.json().then(function (body) { return (body && body.error) ? body.error : res.error.message; })
+        .catch(function () { return res.error.message; });
+    }
+    return Promise.resolve(res.error ? res.error.message : 'erreur inconnue.');
+  }
   // groupId (optionnel) doit correspondre au filtre actif sur l'écran d'où
   // l'action est déclenchée, pour que le montant proposé corresponde à ce
   // qui est affiché à l'écran plutôt qu'au solde tous groupes confondus.
+  // L'enregistrement du rappel et la tentative d'envoi d'un vrai e-mail (si
+  // le destinataire a un compte connu) sont délégués à une Edge Function
+  // (`send-reminder`) : le montant/message restent calculés ici (le moteur
+  // de calcul n'est pas dupliqué côté serveur), mais l'e-mail du
+  // destinataire n'est jamais chargé côté client.
   function sendReminder(personId, groupId) {
     var p = person(personId);
     var g = groupId ? group(groupId) : null;
@@ -501,9 +523,16 @@
     var rel = pairNet(state.currentUserId, personId, debts);
     var amt = rel > 0 ? rel : 0;
     var msg = 'Petit rappel à ' + p.name + ' — psst, tu me dois encore ' + (g ? fmtIn(amt, g.currency) : fmt(amt));
-    sb.from('reminders').insert({ from_user: state.currentUserId, to_user: personId, amount: amt, message: msg }).then(function (res) {
-      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
-      loadAppData().then(function () { showToast('Rappel envoyé à ' + p.name); });
+    sb.functions.invoke('send-reminder', { body: { toUserId: personId, amount: amt, message: msg } }).then(function (res) {
+      extractFunctionErrorMessage(res).then(function (errMsg) {
+        if (errMsg) { showToast('Erreur : ' + errMsg); return; }
+        var emailSent = res.data && res.data.emailSent;
+        loadAppData().then(function () {
+          showToast(emailSent ? 'Rappel envoyé à ' + p.name + ' (e-mail envoyé)' : 'Rappel envoyé à ' + p.name);
+        });
+      });
+    }).catch(function (err) {
+      showToast('Erreur : ' + (err && err.message ? err.message : 'erreur réseau'));
     });
   }
   function openSettle(personId, groupId) {
@@ -991,7 +1020,8 @@
       loadAppData().then(function () { showToast('Groupe supprimé'); });
     });
   }
-  function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId }); }
+  function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId, manageMembersSearchQuery: '' }); }
+  function setManageMembersSearch(v) { setState({ manageMembersSearchQuery: v }); }
   function toggleAddMemberForm() {
     setState(function (s) {
       return {
@@ -2127,6 +2157,13 @@
     // ajouter quelqu'un d'autre, on passe par "+ inviter un membre" (par
     // e-mail) plutôt que par une liste de tous les comptes existants.
     var members = mg.memberIds.map(function (id) { return person(id); }).filter(Boolean);
+    // Recherche : ne filtre que la liste des cartes membres ci-dessous — les
+    // menus déroulants (responsable, foyer...) continuent de proposer tout
+    // le monde, cf. `members` non filtré utilisé pour eux.
+    var searchQuery = (state.manageMembersSearchQuery || '').trim().toLowerCase();
+    var visibleMembers = !searchQuery ? members : members.filter(function (p) {
+      return p.name.toLowerCase().indexOf(searchQuery) !== -1;
+    });
 
     var guardianOptionsFor = function (p) {
       var opts = '<option value=""' + (!p.guardianId ? ' selected' : '') + '>— Aucun —</option>';
@@ -2143,7 +2180,7 @@
       }).join('');
       return opts;
     };
-    var rows = members.map(function (p) {
+    var rows = visibleMembers.map(function (p) {
       var isAdmin = p.id === mg.adminId;
       return (
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
@@ -2215,7 +2252,10 @@
       '<button class="btn-outline pressable" style="flex-shrink:0" data-action="createHousehold">+ Créer</button>' +
       '</div>' +
       '<div class="section-label">Participants</div>' +
-      rows +
+      (members.length > 5 ?
+        '<input class="text-input" data-bind="manageMembersSearch" placeholder="Rechercher un membre..." value="' + escapeHtml(state.manageMembersSearchQuery) + '" />' : '') +
+      (visibleMembers.length === 0 && searchQuery ?
+        '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Aucun membre ne correspond à « ' + escapeHtml(state.manageMembersSearchQuery) + ' ».</div>' : rows) +
       addMemberSection +
       '<button class="dashed-btn pressable" data-action="toggleAddMemberForm">' + (state.showAddMemberForm ? 'Annuler' : '+ Ajouter un membre') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
@@ -2347,6 +2387,7 @@
         case 'groupName': setGroupName(v); break;
         case 'settleAmount': setSettleAmount(v); break;
         case 'expensesSearch': setExpensesSearch(v); break;
+        case 'manageMembersSearch': setManageMembersSearch(v); break;
         case 'splitValue': setSplitValue(id, v); break;
         case 'inviteeName': setInviteeName(parseInt(id, 10), v); break;
         case 'inviteeEmail': setInviteeEmail(parseInt(id, 10), v); break;

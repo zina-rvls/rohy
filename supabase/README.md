@@ -128,7 +128,29 @@ l'environnement de la fonction : rien à configurer manuellement.
 supabase functions deploy invite-member --project-ref <ref>
 ```
 
-## 5. Front-end branché
+## 5. Déployer la fonction d'envoi de rappel
+
+`functions/send-reminder/index.ts` enregistre un rappel de paiement (table
+`reminders`) et tente en plus l'envoi d'un vrai e-mail au destinataire s'il a
+un compte avec une adresse connue — via [Resend](https://resend.com) (tier
+gratuit largement suffisant). Vérifie que l'appelant est authentifié et
+partage bien un groupe avec le destinataire (même garde-fou que les
+policies RLS `profiles_select`/`reminders_insert`) avant d'agir.
+
+```
+supabase functions deploy send-reminder --project-ref <ref>
+supabase secrets set RESEND_API_KEY=<ta clé Resend> --project-ref <ref>
+```
+
+`RESEND_API_KEY` est **optionnelle** : sans elle, le rappel est quand même
+enregistré dans l'app (comportement inchangé), l'envoi d'e-mail est
+simplement sauté. `REMINDER_EMAIL_FROM` (optionnelle aussi, ex.
+`"kotikota <rappels@tondomaine.com>"`) permet de personnaliser l'expéditeur
+une fois un domaine vérifié sur Resend ; par défaut, l'adresse de test
+`onboarding@resend.dev` de Resend est utilisée (fonctionne sans domaine
+vérifié, mais uniquement en test).
+
+## 6. Front-end branché
 
 `scripts/app.js` appelle désormais Supabase directement (`scripts/supabase-client.js`
 contient l'URL du projet et la clé publiable) : vraie inscription/connexion
