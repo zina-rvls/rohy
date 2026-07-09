@@ -1243,7 +1243,13 @@
     var trimmed = (value || '').trim();
     if (trimmed && trimmed.indexOf('@') === -1) { showToast('Entre un e-mail valide.'); return; }
     sb.from('profiles').update({ email: trimmed || null }).eq('id', personId).then(function (res) {
-      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      if (res.error) {
+        // Contrainte profiles_email_unique (migration 0011) : deux profils
+        // ne peuvent pas partager la même adresse.
+        if (res.error.code === '23505') { showToast('Cet e-mail est déjà utilisé par un autre membre.'); return; }
+        showToast('Erreur : ' + res.error.message);
+        return;
+      }
       loadAppData().then(function () { showToast(trimmed ? 'E-mail enregistré' : 'E-mail retiré'); });
     });
   }

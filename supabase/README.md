@@ -23,8 +23,9 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 PUIS `0005_households_scoped_to_group.sql`, PUIS
 `0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`,
 PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql`,
-PUIS `0010_expense_split_modes.sql` (ou, avec la CLI Supabase installée :
-`supabase link --project-ref <ref>` puis `supabase db push`).
+PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`
+(ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
+puis `supabase db push`).
 
 `0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
@@ -149,6 +150,16 @@ simplement sauté. `REMINDER_EMAIL_FROM` (optionnelle aussi, ex.
 une fois un domaine vérifié sur Resend ; par défaut, l'adresse de test
 `onboarding@resend.dev` de Resend est utilisée (fonctionne sans domaine
 vérifié, mais uniquement en test).
+
+`0011_profiles_email_unique.sql` ajoute une contrainte unique sur
+`profiles.email` (les `NULL` restent autorisés en plusieurs exemplaires) :
+rien n'empêchait jusque-là deux profils sans compte de partager la même
+adresse (renseignée après coup via "gérer les membres"), ce qui aurait pu
+poser problème pour le dédoublonnage de `invite-member` et pour l'envoi de
+rappels (deux personnes différentes recevant leurs rappels à la même
+adresse). La migration nettoie d'abord les doublons déjà présents (garde
+l'e-mail sur le profil le plus ancien, le retire des autres) avant
+d'ajouter la contrainte.
 
 ## 6. Front-end branché
 
