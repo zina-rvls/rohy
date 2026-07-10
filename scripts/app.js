@@ -36,6 +36,7 @@
 
   function defaultState() {
     return {
+      showSplash: true,
       screen: 'home',
       navStack: [],
       theme: loadTheme(),
@@ -1461,6 +1462,20 @@
 
   function render() {
     var root = document.getElementById('app');
+    // Le chargement de session/données continue en arrière-plan pendant
+    // l'écran de lancement et déclenche son propre render() (setState) —
+    // sans ce garde, chaque appel recréerait le DOM de l'écran de lancement
+    // (innerHTML) et relancerait donc son animation depuis le début. Une
+    // fois affiché, on le laisse simplement jouer jusqu'au bout, quel que
+    // soit le nombre de render() déclenchés entretemps par autre chose.
+    if (state.showSplash) {
+      if (!root.querySelector('.splash-screen')) {
+        root.setAttribute('data-theme', state.theme);
+        document.documentElement.setAttribute('data-theme', state.theme);
+        root.innerHTML = renderSplashScreen();
+      }
+      return;
+    }
     var focusInfo = captureFocus(root);
     var priorModalSheet = root.querySelector('.modal-sheet');
     if (priorModalSheet) lastModalScrollTop = priorModalSheet.scrollTop;
@@ -1490,6 +1505,32 @@
     if (newModalSheet && lastModalScrollTop != null) newModalSheet.scrollTop = lastModalScrollTop;
     void root.offsetHeight;
     requestAnimationFrame(function () { root.classList.remove('no-transition'); });
+  }
+
+  // Écran de lancement : la marque se tisse bande par bande (3 verticales +
+  // 3 horizontales, chacune glissant depuis le haut ou la gauche), reprise
+  // telle quelle de l'animation "1 · Écran de lancement" fournie. Les
+  // découpes dans les bandes horizontales (fill-rule evenodd) ne varient pas
+  // dans le temps : elles reproduisent le motif tissé final (quelle bande
+  // passe au-dessus/en-dessous de quelle autre) dès leur apparition — seul
+  // l'ORDRE d'arrivée des 6 bandes (via animation-delay) donne l'impression
+  // de tissage progressif.
+  function renderSplashScreen() {
+    return (
+      '<div class="splash-screen">' +
+      '<svg viewBox="0 0 100 100" width="100" height="100" aria-hidden="true">' +
+      '<rect class="splash-v" x="16" y="0" width="18" height="100" rx="3" fill="#D6247A" stroke="#96195A" stroke-width="3" stroke-linecap="square" style="animation-delay:0s"></rect>' +
+      '<rect class="splash-v" x="42" y="0" width="18" height="100" rx="3" fill="#D6247A" stroke="#96195A" stroke-width="3" stroke-linecap="square" style="animation-delay:1.1s"></rect>' +
+      '<rect class="splash-v" x="68" y="0" width="18" height="100" rx="3" fill="#D6247A" stroke="#96195A" stroke-width="3" stroke-linecap="square" style="animation-delay:2.2s"></rect>' +
+      '<path class="splash-h" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z M42,13.5 L42,31.5 L60,31.5 L60,13.5 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:0.55s"></path>' +
+      '<path d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round"></path>' +
+      '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z M16,40 L16,58 L34,58 L34,40 Z M68,40 L68,58 L86,58 L86,40 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:1.65s"></path>' +
+      '<path d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round"></path>' +
+      '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:2.75s"></path>' +
+      '<path d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round"></path>' +
+      '</svg>' +
+      '</div>'
+    );
   }
 
   function renderLoadingScreen() {
@@ -2716,6 +2757,13 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     render();
+    // Durée de l'écran de lancement : dernière bande (sh3) démarre à 2.75s
+    // et anime pendant 1.3s, donc tissage terminé à 4.05s — marge à 4.2s.
+    // La connexion/le chargement des données se poursuit en parallèle
+    // pendant ce délai (cf. garde dans render()) ; une fois l'écran de
+    // lancement retiré, l'écran suivant (connexion ou app) reflète déjà
+    // l'état résolu à ce moment-là.
+    setTimeout(function () { setState({ showSplash: false }); }, 4200);
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });
