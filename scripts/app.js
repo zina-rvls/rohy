@@ -168,7 +168,11 @@
     var rects = LOGO_RECTS.map(function (r) {
       return '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="3" fill="' + fill + '" stroke="' + stroke + '" stroke-width="3" stroke-linecap="square" />';
     }).join('');
-    return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
+    // xmlns : indifférent en usage inline (innerHTML), mais indispensable
+    // pour rasteriser ce SVG en image autonome (cf. logoPngDataUrl, utilisé
+    // par les exports Excel/PDF) — sans lui, un SVG chargé seul via <img>
+    // ou new Image() ne se décode pas.
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
   }
   // Variante "multicolore" de la marque (une couleur par rectangle, reprise
   // telle quelle de la brand sheet) — réservée à la page d'accueil, plus
@@ -184,7 +188,26 @@
       var c = LOGO_MULTI_COLORS[i];
       return '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="3" fill="' + c[0] + '" stroke="' + c[1] + '" stroke-width="3" stroke-linecap="square" />';
     }).join('');
-    return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
+  }
+  // Rasterise la marque (fond transparent, teinte pleine) en PNG pour les
+  // usages où une image bitmap est nécessaire — jsPDF (doc.addImage) et
+  // ExcelJS (workbook.addImage) ne savent pas dessiner un SVG directement.
+  function logoPngDataUrl(size) {
+    var svg = logoMark(size, '#D6247A', '#96195A');
+    var url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        canvas.getContext('2d').drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = function (err) { URL.revokeObjectURL(url); reject(err); };
+      img.src = url;
+    });
   }
   function initials(name) { return name.slice(0, 2).toUpperCase(); }
   function colorForBalance(n) { return calc.colorForBalance(n); }
@@ -272,16 +295,67 @@
     showToast('Export CSV téléchargé');
   }
 
+  // En-tête de marque partagé par chaque feuille du classeur : logo (image
+  // intégrée, pas juste du texte) + "Rohy" en rose + sous-titre, puis une
+  // ligne d'en-tête de tableau colorée (fond rose, texte blanc) et un
+  // ombrage alterné très léger sur les lignes — cohérent avec le PDF et le
+  // reste de l'app plutôt qu'un tableau brut sans habillage.
+  function addBrandedSheet(wb, logoImageId, sheetName, subtitle, header, rows, amountCols) {
+    var ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', ySplit: 3 }] });
+    ws.addImage(logoImageId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 26, height: 26 } });
+    ws.mergeCells(1, 2, 1, Math.max(3, header.length));
+    ws.getCell(1, 2).value = 'Rohy';
+    ws.getCell(1, 2).font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFD6247A' } };
+    ws.mergeCells(2, 2, 2, Math.max(3, header.length));
+    ws.getCell(2, 2).value = subtitle;
+    ws.getCell(2, 2).font = { name: 'Calibri', size: 10.5, color: { argb: 'FF55575F' } };
+    ws.getRow(1).height = 20;
+    ws.getRow(2).height = 16;
+
+    var headerRow = ws.getRow(3);
+    header.forEach(function (h, i) {
+      var cell = headerRow.getCell(i + 1);
+      cell.value = h;
+      cell.font = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6247A' } };
+      cell.alignment = { vertical: 'middle' };
+    });
+    headerRow.height = 20;
+
+    rows.forEach(function (r, ri) {
+      var row = ws.getRow(4 + ri);
+      r.forEach(function (v, ci) {
+        var cell = row.getCell(ci + 1);
+        cell.value = v;
+        cell.font = { name: 'Calibri' };
+        if (amountCols.indexOf(ci) !== -1) cell.numFmt = '#,##0.00';
+        if (ri % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFBF6E9' } };
+      });
+    });
+
+    header.forEach(function (h, i) {
+      ws.getColumn(i + 1).width = Math.max(14, h.length + 6);
+    });
+  }
+
   function exportGroupExcel(groupId) {
-    if (typeof XLSX === 'undefined') { showToast('Erreur : bibliothèque Excel indisponible (hors ligne ?).'); return; }
+    if (typeof ExcelJS === 'undefined') { showToast('Erreur : bibliothèque Excel indisponible (hors ligne ?).'); return; }
     var d = buildGroupExportTables(groupId);
     if (!d) return;
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([d.expenses.header].concat(d.expenses.rows)), 'Dépenses');
-    var soldeAoa = [d.balances.header].concat(d.balances.rows, [[], ['Transactions à effectuer'], d.settlements.header], d.settlements.rows);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(soldeAoa), 'Soldes');
-    XLSX.writeFile(wb, 'rohy-' + slugify(d.group.name) + '.xlsx');
-    showToast('Export Excel téléchargé');
+    logoPngDataUrl(64).then(function (logoPng) {
+      var wb = new ExcelJS.Workbook();
+      wb.creator = 'Rohy';
+      var logoImageId = wb.addImage({ base64: logoPng, extension: 'png' });
+      addBrandedSheet(wb, logoImageId, 'Dépenses', d.group.name, d.expenses.header, d.expenses.rows, [3]);
+      addBrandedSheet(wb, logoImageId, 'Soldes', d.group.name + ' — soldes par personne', d.balances.header, d.balances.rows, [1]);
+      addBrandedSheet(wb, logoImageId, 'Transactions', d.group.name + ' — transactions à effectuer', d.settlements.header, d.settlements.rows, [2]);
+      return wb.xlsx.writeBuffer();
+    }).then(function (buffer) {
+      downloadBlob('rohy-' + slugify(d.group.name) + '.xlsx', buffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      showToast('Export Excel téléchargé');
+    }).catch(function () {
+      showToast('Erreur : échec de la génération du fichier Excel.');
+    });
   }
 
   function exportGroupPdf(groupId) {
@@ -298,24 +372,44 @@
         return r.map(function (v, i) { return amountCols.indexOf(i) !== -1 ? pdfAmount(v) : v; });
       });
     };
-    var doc = new jspdf.jsPDF();
-    doc.setFontSize(14);
-    doc.text('Rohy — ' + d.group.name, 14, 16);
-    doc.setFontSize(11);
-    doc.text('Dépenses', 14, 25);
-    doc.autoTable({ startY: 28, head: [d.expenses.header], body: fmtRows(d.expenses.rows, [3]), styles: { fontSize: 8 } });
-    var y1 = doc.lastAutoTable.finalY + 10;
-    doc.text('Soldes par personne', 14, y1);
-    doc.autoTable({ startY: y1 + 3, head: [d.balances.header], body: fmtRows(d.balances.rows, [1]), styles: { fontSize: 8 } });
-    var y2 = doc.lastAutoTable.finalY + 10;
-    doc.text('Transactions à effectuer', 14, y2);
-    doc.autoTable({
-      startY: y2 + 3, head: [d.settlements.header],
-      body: d.settlements.rows.length ? fmtRows(d.settlements.rows, [2]) : [['—', '—', 'Rien à régler']],
-      styles: { fontSize: 8 },
+    // Couleurs de marque (rose primaire + fond crème pour les lignes
+    // alternées) reprises telles quelles des tokens CSS --brand-primary /
+    // --surface-canvas (thème clair) — jsPDF ne sait pas lire les variables
+    // CSS, donc dupliquées ici en RGB.
+    var brandHeadStyles = { fillColor: [214, 36, 122], textColor: [255, 255, 255], fontStyle: 'bold' };
+    var brandAltRow = { fillColor: [251, 246, 233] };
+
+    logoPngDataUrl(96).then(function (logoPng) {
+      var doc = new jspdf.jsPDF();
+      doc.addImage(logoPng, 'PNG', 14, 10, 12, 12);
+      doc.setFontSize(16);
+      doc.setTextColor(214, 36, 122);
+      doc.text('Rohy', 30, 19);
+      doc.setFontSize(11);
+      doc.setTextColor(20, 22, 27);
+      doc.text(d.group.name, 30, 25);
+      doc.setDrawColor(214, 36, 122);
+      doc.setLineWidth(0.5);
+      doc.line(14, 28, 196, 28);
+
+      doc.setFontSize(11);
+      doc.text('Dépenses', 14, 36);
+      doc.autoTable({ startY: 39, head: [d.expenses.header], body: fmtRows(d.expenses.rows, [3]), styles: { fontSize: 8 }, headStyles: brandHeadStyles, alternateRowStyles: brandAltRow });
+      var y1 = doc.lastAutoTable.finalY + 10;
+      doc.text('Soldes par personne', 14, y1);
+      doc.autoTable({ startY: y1 + 3, head: [d.balances.header], body: fmtRows(d.balances.rows, [1]), styles: { fontSize: 8 }, headStyles: brandHeadStyles, alternateRowStyles: brandAltRow });
+      var y2 = doc.lastAutoTable.finalY + 10;
+      doc.text('Transactions à effectuer', 14, y2);
+      doc.autoTable({
+        startY: y2 + 3, head: [d.settlements.header],
+        body: d.settlements.rows.length ? fmtRows(d.settlements.rows, [2]) : [['—', '—', 'Rien à régler']],
+        styles: { fontSize: 8 }, headStyles: brandHeadStyles, alternateRowStyles: brandAltRow,
+      });
+      doc.save('rohy-' + slugify(d.group.name) + '.pdf');
+      showToast('Export PDF téléchargé');
+    }).catch(function () {
+      showToast('Erreur : échec de la génération du PDF.');
     });
-    doc.save('rohy-' + slugify(d.group.name) + '.pdf');
-    showToast('Export PDF téléchargé');
   }
 
   function showToast(msg) {
