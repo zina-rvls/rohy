@@ -1509,7 +1509,7 @@
         isHome ? '<div class="top-bar-wordmark">' + logoMarkMulti(26) + '<span>Rohy</span></div>' :
         '<div class="top-bar-logo">' + logoMark(20, '#D6247A', '#96195A') + '</div>') +
       '<div style="flex:1">' +
-      (isHome ? '' : '<div class="top-title">' + escapeHtml(title) + '</div>') +
+      '<div class="top-title' + (isHome ? ' home-title' : '') + '">' + escapeHtml(title) + '</div>' +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
       '</div>' +
       '<button class="icon-btn small pressable" data-action="toggleTheme">' +

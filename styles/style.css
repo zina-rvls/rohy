@@ -178,16 +178,19 @@ button { font-family: inherit; }
 .icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 20px rgba(214, 36, 122, .22); }
 .icon-btn.brand:hover { background: var(--brand-primary-hover); }
 .top-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 19px; color: var(--text-primary); letter-spacing: -0.2px; }
+/* Sur l'écran d'accueil, le titre texte ("Mes dépenses") cède la place au
+   logo + wordmark (cf. .top-bar-wordmark) — mais seulement sur mobile. Sur
+   desktop, le menu latéral affiche déjà la marque en permanence : garder
+   aussi le wordmark dans cette barre ferait apparaître le logo deux fois
+   sur le même écran (cf. media query plus bas, qui inverse ces deux règles). */
+.top-title.home-title { display: none; }
 .top-subtitle { font-size: 12.5px; color: var(--text-tertiary); margin-top: 1px; }
 /* Logo dans la barre du haut : uniquement sur les écrans de premier niveau
    (pas de bouton retour) — remplace ce bouton dans le même emplacement pour
    que le titre ne saute pas d'un écran à l'autre. */
 .top-bar-logo { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-/* Logo multicolore + wordmark, réservé à l'écran d'accueil — traitement
-   plus marquant que l'icône seule utilisée sur les autres écrans de premier
-   niveau, sur mobile comme sur desktop (ne fait pas doublon avec le menu
-   latéral desktop : variante multicolore différente de l'icône unie du
-   menu). */
+/* Logo multicolore + wordmark, réservé à l'écran d'accueil sur mobile
+   uniquement (cf. .top-title.home-title ci-dessus). */
 .top-bar-wordmark { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: var(--text-primary); }
 
 /* --- Content --- */
@@ -349,6 +352,11 @@ button { font-family: inherit; }
      (toujours visible à cette largeur) — masqué ici pour ne pas répéter la
      marque deux fois sur le même écran. */
   .top-bar-logo { display: none; }
+  /* Idem pour le wordmark de l'accueil : le menu latéral porte déjà la
+     marque en permanence, donc ici on revient au même traitement que les
+     autres écrans (titre texte simple, pas de logo dans cette barre). */
+  .top-bar-wordmark { display: none; }
+  .top-title.home-title { display: block; }
   .nav-item {
     flex: none;
     flex-direction: row;
