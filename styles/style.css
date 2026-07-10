@@ -183,6 +183,12 @@ button { font-family: inherit; }
    (pas de bouton retour) — remplace ce bouton dans le même emplacement pour
    que le titre ne saute pas d'un écran à l'autre. */
 .top-bar-logo { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+/* Logo multicolore + wordmark, réservé à l'écran d'accueil — traitement
+   plus marquant que l'icône seule utilisée sur les autres écrans de premier
+   niveau, sur mobile comme sur desktop (ne fait pas doublon avec le menu
+   latéral desktop : variante multicolore différente de l'icône unie du
+   menu). */
+.top-bar-wordmark { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: var(--text-primary); }
 
 /* --- Content --- */
 .content { flex: 1; overflow-y: auto; padding: 18px 20px 90px; }

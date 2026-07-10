@@ -170,6 +170,22 @@
     }).join('');
     return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
   }
+  // Variante "multicolore" de la marque (une couleur par rectangle, reprise
+  // telle quelle de la brand sheet) — réservée à la page d'accueil, plus
+  // marquante que la version pleine couleur unique utilisée ailleurs.
+  var LOGO_MULTI_COLORS = [
+    ['#C9A159', '#96793A'], ['#7B3F98', '#5A2C71'], ['#C9A159', '#96793A'],
+    ['#D6247A', '#96195A'], ['#D6247A', '#96195A'],
+    ['#0F8F6B', '#0A6B50'], ['#0F8F6B', '#0A6B50'], ['#0F8F6B', '#0A6B50'],
+    ['#D6247A', '#96195A'], ['#D6247A', '#96195A'],
+  ];
+  function logoMarkMulti(size) {
+    var rects = LOGO_RECTS.map(function (r, i) {
+      var c = LOGO_MULTI_COLORS[i];
+      return '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="3" fill="' + c[0] + '" stroke="' + c[1] + '" stroke-width="3" stroke-linecap="square" />';
+    }).join('');
+    return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
+  }
   function initials(name) { return name.slice(0, 2).toUpperCase(); }
   function colorForBalance(n) { return calc.colorForBalance(n); }
   function hasCustomWeight(p) { return p.shareWeight != null && Math.abs(p.shareWeight - 1) > 0.001; }
@@ -1486,12 +1502,14 @@
       title = g ? g.name : '';
       subtitle = g ? 'Admin : ' + person(g.adminId).name : '';
     }
+    var isHome = state.screen === 'home';
     return (
       '<div class="top-bar">' +
       (showBack ? '<button class="icon-btn pressable" data-action="goBack"><i class="ph-bold ph-arrow-left"></i></button>' :
+        isHome ? '<div class="top-bar-wordmark">' + logoMarkMulti(26) + '<span>Rohy</span></div>' :
         '<div class="top-bar-logo">' + logoMark(20, '#D6247A', '#96195A') + '</div>') +
       '<div style="flex:1">' +
-      '<div class="top-title">' + escapeHtml(title) + '</div>' +
+      (isHome ? '' : '<div class="top-title">' + escapeHtml(title) + '</div>') +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
       '</div>' +
       '<button class="icon-btn small pressable" data-action="toggleTheme">' +
