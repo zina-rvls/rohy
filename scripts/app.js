@@ -1320,6 +1320,16 @@
     var priorModalSheet = root.querySelector('.modal-sheet');
     if (priorModalSheet) lastModalScrollTop = priorModalSheet.scrollTop;
     root.setAttribute('data-theme', state.theme);
+    // <html> porte aussi data-theme (pas seulement .app-frame) pour que le
+    // fond de <body>, résolu hors du scope de la carte, corresponde toujours
+    // au thème actif plutôt qu'à la valeur par défaut (sombre) de :root.
+    document.documentElement.setAttribute('data-theme', state.theme);
+    // Un re-rendu reconstruit tout le sous-arbre DOM (innerHTML) : la
+    // transition CSS globale (background-color/border-color) rejoue alors
+    // sur les nœuds fraîchement créés, provoquant un flash visuel. On la
+    // désactive le temps du remplacement, puis on la réactive à la frame
+    // suivante (une fois les nouveaux nœuds en place, rien à transitionner).
+    root.classList.add('no-transition');
     if (state.passwordRecovery) {
       root.innerHTML = renderNewPasswordScreen();
     } else if (!state.loggedIn) {
@@ -1333,6 +1343,8 @@
     restoreFocus(root, focusInfo);
     var newModalSheet = root.querySelector('.modal-sheet');
     if (newModalSheet && lastModalScrollTop != null) newModalSheet.scrollTop = lastModalScrollTop;
+    void root.offsetHeight;
+    requestAnimationFrame(function () { root.classList.remove('no-transition'); });
   }
 
   function renderLoadingScreen() {

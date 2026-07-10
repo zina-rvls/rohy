@@ -57,6 +57,11 @@
 @keyframes popIn { from { opacity: 0; transform: translateY(-6px) scale(.98) } to { opacity: 1; transform: translateY(0) scale(1) } }
 
 * { box-sizing: border-box; transition: background-color .15s ease, border-color .15s ease; }
+/* Un re-rendu (innerHTML) reconstruit tout le sous-arbre : sans ça, la
+   transition ci-dessus rejoue sur les nœuds fraîchement créés à chaque
+   frappe dans un champ non "silencieux", provoquant un flash visuel.
+   Basculée par scripts/app.js autour de chaque appel à render(). */
+.no-transition, .no-transition * { transition: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--surface-sunken);
@@ -85,11 +90,31 @@ button { font-family: inherit; }
   height: 840px;
   position: relative;
   background: var(--surface-canvas);
-  /* `data-theme` (clair/sombre) est porté par cet élément, pas par <body> —
-     sans ce color explicite, tout texte sans couleur propre hérite du
-     color de <body>, résolu HORS de ce scope de thème (donc toujours celui
-     du thème sombre, quel que soit le thème réellement actif). */
+  /* `data-theme` (clair/sombre) est porté par cet élément (et par <html>,
+     cf. app.js) — sans ce color explicite, tout texte sans couleur propre
+     hérite du color de <body>, résolu HORS de ce scope de thème (donc
+     toujours celui du thème sombre, quel que soit le thème réellement actif). */
   color: var(--text-primary);
+}
+
+/* En dessous de ce seuil (mobile), la "carte" occupe tout l'écran — sans
+   quoi sa hauteur fixe (840px) ne correspond à aucun vrai viewport mobile :
+   trop court, elle laisse voir le fond de la page (toujours sombre, cf.
+   :root) sous/autour d'elle, et le menu du bas (positionné en absolute par
+   rapport à elle) ne tombe pas au bord réel de l'écran. Au-delà du seuil
+   (tablette/desktop), l'aspect "carte" centrée est conservé tel quel.
+   100dvh (hauteur de viewport "dynamique", qui suit l'affichage/masquage de
+   la barre d'adresse mobile) avec repli sur 100vh pour les navigateurs qui
+   ne le supportent pas encore. */
+@media (max-width: 640px) {
+  .app-frame-wrap { padding: 0; min-height: 100vh; min-height: 100dvh; }
+  .app-frame {
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 .pressable { cursor: pointer; }
