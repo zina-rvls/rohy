@@ -1587,14 +1587,14 @@
       '<div class="splash-screen">' +
       '<svg viewBox="0 0 100 100" width="100" height="100" aria-hidden="true">' +
       '<rect class="splash-v" x="16" y="0" width="18" height="100" rx="3" fill="#C9A159" stroke="#96793A" stroke-width="3" stroke-linecap="square" style="animation-delay:0s"></rect>' +
-      '<rect class="splash-v" x="42" y="0" width="18" height="100" rx="3" fill="#7B3F98" stroke="#5A2C71" stroke-width="3" stroke-linecap="square" style="animation-delay:1.1s"></rect>' +
-      '<rect class="splash-v" x="68" y="0" width="18" height="100" rx="3" fill="#C9A159" stroke="#96793A" stroke-width="3" stroke-linecap="square" style="animation-delay:2.2s"></rect>' +
-      '<path class="splash-h" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z M42,13.5 L42,31.5 L60,31.5 L60,13.5 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:0.55s"></path>' +
-      '<path d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round"></path>' +
-      '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z M16,40 L16,58 L34,58 L34,40 Z M68,40 L68,58 L86,58 L86,40 Z" fill-rule="evenodd" fill="#0F8F6B" stroke="none" style="animation-delay:1.65s"></path>' +
-      '<path d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z" fill="none" stroke="#0A6B50" stroke-width="3" stroke-linejoin="round"></path>' +
-      '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:2.75s"></path>' +
-      '<path d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round"></path>' +
+      '<rect class="splash-v" x="42" y="0" width="18" height="100" rx="3" fill="#7B3F98" stroke="#5A2C71" stroke-width="3" stroke-linecap="square" style="animation-delay:.09s"></rect>' +
+      '<rect class="splash-v" x="68" y="0" width="18" height="100" rx="3" fill="#C9A159" stroke="#96793A" stroke-width="3" stroke-linecap="square" style="animation-delay:.18s"></rect>' +
+      '<path class="splash-h" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z M42,13.5 L42,31.5 L60,31.5 L60,13.5 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.4s"></path>' +
+      '<path class="splash-h" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.4s"></path>' +
+      '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z M16,40 L16,58 L34,58 L34,40 Z M68,40 L68,58 L86,58 L86,40 Z" fill-rule="evenodd" fill="#0F8F6B" stroke="none" style="animation-delay:.49s"></path>' +
+      '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z" fill="none" stroke="#0A6B50" stroke-width="3" stroke-linejoin="round" style="animation-delay:.49s"></path>' +
+      '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.58s"></path>' +
+      '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.58s"></path>' +
       '</svg>' +
       '<div class="splash-wordmark">Rohy</div>' +
       '<div class="splash-tagline">Suivi des dépenses entre amis et en famille</div>' +
@@ -2905,14 +2905,14 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     render();
-    // Durée de l'écran de lancement : tissage terminé à 4.05s (dernière
-    // bande sh3 démarre à 2.75s, anime 1.3s) ; wordmark + baseline finissent
-    // leur fondu à 3.9s/4.15s (cf. styles.css) — marge à 5s pour laisser un
+    // Durée de l'écran de lancement : dernière bande installée à 1.13s
+    // (sh3 démarre à .58s, anime .55s) ; wordmark + baseline finissent leur
+    // fondu à 1.8s/1.98s (cf. styles.css) — marge à 3.2s pour laisser un
     // temps de lecture avant de retirer l'écran. La connexion/le chargement
     // des données se poursuit en parallèle pendant ce délai (cf. garde dans
     // render()) ; une fois l'écran de lancement retiré, l'écran suivant
     // (connexion ou app) reflète déjà l'état résolu à ce moment-là.
-    setTimeout(function () { setState({ showSplash: false }); }, 5000);
+    setTimeout(function () { setState({ showSplash: false }); }, 3200);
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });

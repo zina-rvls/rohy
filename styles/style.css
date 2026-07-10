@@ -164,40 +164,40 @@ button { font-family: inherit; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
 .splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
-.splash-v { animation: splashV 1.3s cubic-bezier(.16, .5, .2, 1) both; }
-.splash-h { animation: splashHL 1.3s cubic-bezier(.16, .5, .2, 1) both; }
-/* Ondulation perpendiculaire à l'axe de déplacement principal (un léger
-   va-et-vient horizontal pendant la chute pour les bandes verticales, et
-   vertical pendant le glissement pour les horizontales), amplitude qui
-   décroît jusqu'à l'arrivée — pour évoquer un fil qui serpente en tissant,
-   plutôt qu'une translation rectiligne jusqu'à la position finale. */
-@keyframes splashV {
-  0%   { transform: translate(0, -130px); }
-  30%  { transform: translate(7px, -58px); }
-  55%  { transform: translate(-6px, -18px); }
-  78%  { transform: translate(3px, 5px); }
-  100% { transform: translate(0, 0); }
+/* Chaque bande s'assemble à sa place définitive (échelle + fondu, avec un
+   léger dépassement avant de se stabiliser) plutôt que de parcourir une
+   longue distance : plus net et plus confiant qu'un glissement, et honnête
+   sur ce qu'une simple transformation 2D peut représenter (un vrai tissage
+   par-dessus/en-dessous demanderait de faire alterner l'ordre d'empilement
+   des bandes, pas juste leur position). Bandes verticales puis horizontales
+   groupées (écart de .09s au sein d'un même groupe, contre .4s entre les
+   deux groupes) : chaque étape intermédiaire montre un ensemble de couleurs
+   cohérent (le trio doré/violet, puis le motif complet), jamais une bande
+   isolée qui jure avec le reste. Contour et remplissage de chaque bande
+   horizontale partagent la même classe et le même délai (`.splash-h`) pour
+   apparaître ensemble — l'ancienne version animait seulement le
+   remplissage, laissant le contour vide visible dès le début. */
+.splash-v, .splash-h {
+  transform-box: fill-box; transform-origin: center;
+  animation: splashSettle .55s cubic-bezier(.2, .7, .3, 1) both;
 }
-@keyframes splashHL {
-  0%   { transform: translate(-130px, 0); }
-  30%  { transform: translate(-58px, 7px); }
-  55%  { transform: translate(-18px, -6px); }
-  78%  { transform: translate(5px, 3px); }
-  100% { transform: translate(0, 0); }
+@keyframes splashSettle {
+  0%   { opacity: 0; transform: scale(.7); }
+  65%  { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
 }
-/* Wordmark + baseline : apparaissent une fois le tissage bien entamé (le
-   dernier trait de tissage — sh3 — démarre à 2.75s), pour ne pas concurrencer
-   l'animation du logo, puis restent affichés le temps que l'utilisateur les
-   lise avant que l'écran de lancement ne disparaisse (cf. le délai dans
-   DOMContentLoaded, allongé en conséquence). Léger décalage entre les deux
+/* Wordmark + baseline : apparaissent une fois le motif assemblé (dernière
+   bande installée à 1.13s), puis restent affichés le temps que l'utilisateur
+   les lise avant que l'écran de lancement ne disparaisse (cf. le délai dans
+   DOMContentLoaded, ajusté en conséquence). Léger décalage entre les deux
    (wordmark puis baseline) plutôt qu'une apparition simultanée — un fondu
    enchaîné progressif plutôt qu'un bloc de texte qui surgit d'un coup. */
 .splash-wordmark {
   font-family: 'Sora', sans-serif; font-weight: 800; font-size: 30px; color: var(--brand-primary);
-  margin-top: 18px; opacity: 0; animation: splashFadeUp .6s ease both; animation-delay: 3.3s;
+  margin-top: 18px; opacity: 0; animation: splashFadeUp .5s ease both; animation-delay: 1.3s;
 }
 .splash-tagline {
-  font-size: 14px; color: var(--text-secondary); opacity: 0; animation: splashFadeUp .6s ease both; animation-delay: 3.55s;
+  font-size: 14px; color: var(--text-secondary); opacity: 0; animation: splashFadeUp .5s ease both; animation-delay: 1.48s;
 }
 @keyframes splashFadeUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 .login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
