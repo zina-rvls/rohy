@@ -78,15 +78,25 @@ button { font-family: inherit; }
    l'impression d'une vraie app plutôt qu'une maquette de téléphone flottant
    au milieu de la page. 100dvh (hauteur de viewport "dynamique", qui suit
    l'affichage/masquage de la barre d'adresse mobile) avec repli sur 100vh
-   pour les navigateurs qui ne le supportent pas encore. */
+   pour les navigateurs qui ne le supportent pas encore. --app-vh (posée par
+   scripts/app.js à partir de window.visualViewport) affine encore cette
+   valeur : sur certains navigateurs/contextes mobiles (barre d'outils du
+   navigateur ancrée en bas, barre de navigation gestuelle Android, certains
+   navigateurs intégrés comme Instagram/TikTok...), 100dvh ne retire pas
+   toujours correctement cette zone de l'écran, ce qui fait passer le menu
+   du bas derrière cette barre. --app-vh est recalculée à chaque
+   redimensionnement du "visual viewport" (chrome du navigateur qui
+   apparaît/disparaît), donnant une valeur plus fiable que dvh seul. */
 .app-frame-wrap {
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: calc(var(--app-vh, 1vh) * 100);
 }
 .app-frame {
   width: 100%;
   height: 100vh;
   height: 100dvh;
+  height: calc(var(--app-vh, 1vh) * 100);
   overflow: hidden;
   display: flex;
   flex-direction: column;
