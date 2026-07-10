@@ -2190,8 +2190,19 @@
         '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> Voir le reçu actuel</button>' +
         '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' : '') +
-      '<input class="text-input" type="file" accept="image/*,.pdf" data-bind-change="receiptFile" />' +
-      (f.receiptFile ? '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Fichier sélectionné : ' + escapeHtml(f.receiptFile.name) + '</div>' : '') +
+      (f.receiptFile ?
+        '<div class="attachment-picked">' +
+        '<i class="ph-bold ph-file-check"></i>' +
+        '<span class="attachment-picked-name">' + escapeHtml(f.receiptFile.name) + '</span>' +
+        '<button type="button" class="attachment-picked-clear pressable" data-action="clearReceiptFile" title="Choisir un autre fichier"><i class="ph-bold ph-x"></i></button>' +
+        '</div>'
+        :
+        '<label class="attachment-dropzone pressable">' +
+        '<input type="file" accept="image/*,.pdf" data-bind-change="receiptFile" />' +
+        '<i class="ph-bold ph-paperclip"></i>' +
+        '<span>Ajouter une photo ou un PDF</span>' +
+        '</label>'
+      ) +
       '<button class="btn-primary pressable" style="margin-top:20px" data-action="submitExpense">' + (f.editingId ? 'Enregistrer les modifications' : 'Enregistrer la dépense') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       (f.editingId ? '<button class="delete-link" data-action="deleteExpense">Supprimer cette dépense</button>' : '') +
@@ -2223,12 +2234,12 @@
           '</div>' : '') +
         (linkedProfile ?
           '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text-primary)">' +
-          '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
+          '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part habituelle actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
           '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + i + '">Annuler</span>' +
           '</div>' :
           '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="E-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
           '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-size:12.5px;color:var(--text-secondary)">Part (1 = part entière)</span>' +
+          '<span style="font-size:12.5px;color:var(--text-secondary)">Part habituelle (1 = part entière)</span>' +
           '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
           '</div>') +
         '</div>'
@@ -2334,7 +2345,7 @@
           '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
-        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Part (1 = part entière)</div>' +
+        '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Part habituelle (1 = part entière)</div>' +
         '<input class="text-input" style="margin-bottom:0" data-bind-change="shareWeight" data-id="' + p.id + '" value="' + (p.shareWeight != null ? p.shareWeight : 1) + '" inputmode="decimal" /></div>' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Responsable (si à charge)</div>' +
         '<select class="text-input" style="margin-bottom:0" data-bind-change="guardian" data-id="' + p.id + '">' + guardianOptionsFor(p) + '</select>' +
@@ -2371,13 +2382,13 @@
         '</div>' : '') +
       (linkedGuestProfile ?
         '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--text-primary)">' +
-        '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedGuestProfile.name) + ' (déjà connu·e) sera ajouté·e à ce groupe avec sa part actuelle (' + String(linkedGuestProfile.shareWeight != null ? linkedGuestProfile.shareWeight : 1).replace('.', ',') + ').' +
+        '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedGuestProfile.name) + ' (déjà connu·e) sera ajouté·e à ce groupe avec sa part habituelle actuelle (' + String(linkedGuestProfile.shareWeight != null ? linkedGuestProfile.shareWeight : 1).replace('.', ',') + ').' +
         '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">Annuler</span>' +
         '</div>' :
         '<div class="field-label">E-mail (facultatif)</div>' +
         '<input class="text-input" data-bind="addMemberEmail" placeholder="Pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
         '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
-        '<div class="field-label">Part (1 = part entière)</div>' +
+        '<div class="field-label">Part habituelle (1 = part entière)</div>' +
         '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
         '<div class="field-label">Responsable (facultatif)</div>' +
         '<select class="text-input" data-bind-change="addMemberGuardian">' +
@@ -2491,6 +2502,7 @@
         case 'deleteExpense': deleteExpense(); break;
         case 'viewReceipt': viewReceipt(el.getAttribute('data-path')); break;
         case 'removeReceipt': removeReceipt(); break;
+        case 'clearReceiptFile': setReceiptFile(null); break;
         case 'addInviteeRow': addInviteeRow(); break;
         case 'removeInviteeRow': removeInviteeRow(parseInt(id, 10)); break;
         case 'submitGroup': submitGroup(); break;
