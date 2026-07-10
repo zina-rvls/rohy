@@ -72,15 +72,15 @@
     { id: 'percent', label: 'Pourcentage' },
   ];
 
-  var KotikotaData = {
+  var RohyData = {
     CURRENCIES: CURRENCIES,
     EXPENSE_CATEGORIES: EXPENSE_CATEGORIES,
     SPLIT_MODES: SPLIT_MODES,
   };
 
   if (typeof module === 'object' && module.exports) {
-    module.exports = KotikotaData;
+    module.exports = RohyData;
   } else {
-    root.KotikotaData = KotikotaData;
+    root.RohyData = RohyData;
   }
 }(typeof self !== 'undefined' ? self : this));

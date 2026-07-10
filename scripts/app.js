@@ -1,5 +1,5 @@
 /**
- * kotikota — application de suivi des dépenses entre amis.
+ * Rohy — application de suivi des dépenses entre amis.
  * Port fidèle de l'UI et des interactions du prototype de design
  * (design_handoff_expense_tracker/Depenses App.dc.html) en HTML/CSS/JS
  * vanilla. Le moteur de calcul est isolé dans scripts/calc.js (testé
@@ -11,10 +11,10 @@
 (function () {
   'use strict';
 
-  var calc = window.KotikotaCalc;
-  var seed = window.KotikotaData;
+  var calc = window.RohyCalc;
+  var seed = window.RohyData;
   var sb = window.supabaseClient;
-  var THEME_KEY = 'kotikota-theme';
+  var THEME_KEY = 'rohy-theme';
 
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
@@ -236,7 +236,7 @@
     ], d.balances.rows, [
       [], ['Transactions à effectuer'], d.settlements.header,
     ], d.settlements.rows);
-    downloadBlob('kotikota-' + slugify(d.group.name) + '.csv', '﻿' + toCsv(lines), 'text/csv;charset=utf-8');
+    downloadBlob('rohy-' + slugify(d.group.name) + '.csv', '﻿' + toCsv(lines), 'text/csv;charset=utf-8');
     showToast('Export CSV téléchargé');
   }
 
@@ -248,7 +248,7 @@
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([d.expenses.header].concat(d.expenses.rows)), 'Dépenses');
     var soldeAoa = [d.balances.header].concat(d.balances.rows, [[], ['Transactions à effectuer'], d.settlements.header], d.settlements.rows);
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(soldeAoa), 'Soldes');
-    XLSX.writeFile(wb, 'kotikota-' + slugify(d.group.name) + '.xlsx');
+    XLSX.writeFile(wb, 'rohy-' + slugify(d.group.name) + '.xlsx');
     showToast('Export Excel téléchargé');
   }
 
@@ -268,7 +268,7 @@
     };
     var doc = new jspdf.jsPDF();
     doc.setFontSize(14);
-    doc.text('kotikota — ' + d.group.name, 14, 16);
+    doc.text('Rohy — ' + d.group.name, 14, 16);
     doc.setFontSize(11);
     doc.text('Dépenses', 14, 25);
     doc.autoTable({ startY: 28, head: [d.expenses.header], body: fmtRows(d.expenses.rows, [3]), styles: { fontSize: 8 } });
@@ -282,7 +282,7 @@
       body: d.settlements.rows.length ? fmtRows(d.settlements.rows, [2]) : [['—', '—', 'Rien à régler']],
       styles: { fontSize: 8 },
     });
-    doc.save('kotikota-' + slugify(d.group.name) + '.pdf');
+    doc.save('rohy-' + slugify(d.group.name) + '.pdf');
     showToast('Export PDF téléchargé');
   }
 
@@ -1367,7 +1367,7 @@
   }
 
   function renderLoadingScreen() {
-    return '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:14px">Chargement…</div>';
+    return '<div class="loading-screen">Chargement…</div>';
   }
 
   function renderLogin() {

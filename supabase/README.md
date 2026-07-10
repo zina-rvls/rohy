@@ -1,4 +1,4 @@
-# kotikota — backend Supabase (P0)
+# Rohy — backend Supabase (P0)
 
 Ce dossier contient tout ce qu'il faut pour le vrai backend (auth, base de
 données, invitations par e-mail) qui remplace le `localStorage` du
@@ -146,7 +146,7 @@ supabase secrets set RESEND_API_KEY=<ta clé Resend> --project-ref <ref>
 `RESEND_API_KEY` est **optionnelle** : sans elle, le rappel est quand même
 enregistré dans l'app (comportement inchangé), l'envoi d'e-mail est
 simplement sauté. `REMINDER_EMAIL_FROM` (optionnelle aussi, ex.
-`"kotikota <rappels@tondomaine.com>"`) permet de personnaliser l'expéditeur
+`"Rohy <rappels@tondomaine.com>"`) permet de personnaliser l'expéditeur
 une fois un domaine vérifié sur Resend ; par défaut, l'adresse de test
 `onboarding@resend.dev` de Resend est utilisée (fonctionne sans domaine
 vérifié, mais uniquement en test).

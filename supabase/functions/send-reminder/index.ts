@@ -1,4 +1,4 @@
-// kotikota — send-reminder Edge Function
+// Rohy — send-reminder Edge Function
 //
 // Enregistre un rappel de paiement (table `reminders`, comme le faisait déjà
 // directement le client) et envoie en plus un vrai e-mail au destinataire
@@ -24,7 +24,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const EMAIL_FROM = Deno.env.get('REMINDER_EMAIL_FROM') || 'kotikota <onboarding@resend.dev>';
+const EMAIL_FROM = Deno.env.get('REMINDER_EMAIL_FROM') || 'Rohy <onboarding@resend.dev>';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: EMAIL_FROM,
         to: recipient.email,
-        subject: 'Rappel de remboursement — kotikota',
+        subject: 'Rappel de remboursement — Rohy',
         text: message,
       }),
     });

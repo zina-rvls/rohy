@@ -1,5 +1,5 @@
 /**
- * kotikota — client Supabase (P0 : vrai backend d'auth + base de données).
+ * Rohy — client Supabase (P0 : vrai backend d'auth + base de données).
  * Chargé après le SDK supabase-js (CDN) et avant scripts/app.js.
  */
 (function () {

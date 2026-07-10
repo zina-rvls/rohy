@@ -1,4 +1,4 @@
-// kotikota — invite-member Edge Function
+// Rohy — invite-member Edge Function
 //
 // Invite quelqu'un à rejoindre un groupe par e-mail : crée son compte
 // (auth.users, via la clé service role — jamais exposée au client), envoie

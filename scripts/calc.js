@@ -1,5 +1,5 @@
 /**
- * Moteur de calcul kotikota — porté fidèlement depuis le prototype de design
+ * Moteur de calcul Rohy — porté fidèlement depuis le prototype de design
  * (Depenses App.dc.html, classe Component). Fonctions pures, sans dépendance
  * DOM, utilisables côté client comme côté serveur.
  *
@@ -16,7 +16,7 @@
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
   } else {
-    root.KotikotaCalc = factory();
+    root.RohyCalc = factory();
   }
 }(typeof self !== 'undefined' ? self : this, function () {
   'use strict';

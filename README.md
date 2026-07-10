@@ -1,4 +1,4 @@
-# kotikota — suivi des dépenses entre amis
+# Rohy — suivi des dépenses entre amis
 
 Application de suivi de dépenses partagées entre amis/famille : qui a payé
 quoi, la part de contribution de chacun (réglable par personne, ex. 0,5 =
@@ -7,7 +7,7 @@ automatiquement fusionnée avec le responsable), et qui doit quoi à qui après
 paiements déjà effectués. Groupes/événements multiples (avec devise et
 invitation par e-mail à la création), historique, relance de paiement.
 
-Ce dépôt implémente le hand-off de design **kotikota** (prototype HTML fourni
+Ce dépôt implémente le hand-off de design **Rohy** (prototype HTML fourni
 séparément) : les écrans ont été recréés fidèlement en HTML/CSS/JS vanilla,
 le moteur de calcul a été porté tel quel dans un module testé
 indépendamment, et le backend réel (auth, base de données, invitations par
@@ -67,7 +67,7 @@ node tests/calc.test.js
   policies RLS plutôt que par le secret).
 - `scripts/app.js` — état de l'application, rendu de tous les écrans/modales,
   délégation d'événements, auth et données via Supabase (cf. `supabase/`).
-- `styles/style.css` — design tokens kotikota (couleurs, typographie, rayons,
+- `styles/style.css` — design tokens Rohy (couleurs, typographie, rayons,
   ombres) en variables CSS, thèmes clair/sombre.
 - `supabase/` — schéma Postgres, policies RLS, fonction d'invitation par
   e-mail. Cf. `supabase/README.md` pour la mise en place complète.
@@ -216,6 +216,7 @@ charge, parts pondérées). Statut des points relevés :
 | Sur desktop, l'app donnait l'impression d'une appli mobile agrandie (carte étroite en 9:16, flottante avec ombre) plutôt que d'un vrai site pensé pour un écran large | ✅ fait — à partir de 900px de large, plus de "carte" du tout : plein écran comme sur mobile, mais navigation réorganisée en menu latéral fixe (façon Gmail/Notion) et colonne de contenu à largeur de lecture confortable (720px, centrée) plutôt qu'étirée sur tout l'écran. En dessous de ce seuil, comportement mobile inchangé (menu du bas). Les modales gardent aussi une largeur de formulaire raisonnable (plus d'étirement sur toute la largeur d'un écran large) |
 | Sur mobile, le menu du bas "suivait" le scroll en laissant un espace vide entre lui et le vrai bord de l'écran (au lieu de rester collé au bord comme sur une app native, cf. tiakaly.com) | ✅ fait — cause racine : le menu était en `position: absolute` par rapport à `.app-frame`, dont la hauteur (100dvh) se recalcule en layout à chaque apparition/disparition de la barre d'adresse du navigateur, avec un temps de retard sur l'animation de cette barre. Passé en `position: fixed` (ancré directement au viewport visuel), il colle désormais instantanément au bas réel de l'écran, sans décalage |
 | Aucune petite animation de célébration nulle part dans l'app (ex : quand une dette est soldée) | ✅ fait — petite explosion de confettis (lib `canvas-confetti`, CDN, ~3 Ko) au moment où un paiement est enregistré avec succès (`submitSettle`), aux couleurs de la marque. Respecte `prefers-reduced-motion` (désactivée automatiquement si l'utilisateur a demandé moins d'animations) et échoue silencieusement si la lib n'a pas pu se charger, sans jamais bloquer l'enregistrement du paiement lui-même |
+| Sur desktop, le contenu de la page de connexion se retrouvait plaqué à droite au lieu d'être centré | ✅ fait — cause racine : `.login-screen` (et l'écran de chargement) n'avaient pas de `grid-area` attribué dans la grille desktop (introduite pour le menu latéral), donc la grille les casait par défaut dans la première cellule libre (la colonne de 240px prévue pour le menu). Plutôt que de juste recentrer le même formulaire étroit, le formulaire de connexion est désormais présenté comme une vraie carte centrée à l'écran (largeur 400px, ombre, coins arrondis) — le classique d'une page de connexion desktop (Notion, Linear...). Comportement mobile inchangé |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 

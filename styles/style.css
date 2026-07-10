@@ -1,4 +1,4 @@
-/* kotikota — design tokens (cf. design_handoff_expense_tracker/README.md) */
+/* Rohy — design tokens (cf. design_handoff_expense_tracker/README.md) */
 :root,
 [data-theme="dark"] {
   --surface-canvas: #111318;
@@ -115,6 +115,31 @@ button { font-family: inherit; }
   }
   .top-bar { grid-area: topbar; max-width: 720px; margin: 0 auto; width: 100%; }
   .content { grid-area: content; padding-bottom: 24px; max-width: 720px; margin: 0 auto; width: 100%; }
+
+  /* .login-screen et .loading-screen n'ont pas de grid-area (pas de menu ni
+     de barre du haut tant qu'on n'est pas connecté) : sans cette règle, la
+     grille les casait par défaut dans la première cellule libre (la colonne
+     de 240px prévue pour le menu), collant tout le formulaire de connexion
+     contre le bord. On les fait plutôt occuper toute la grille et on centre
+     le formulaire dans une carte, comme une page de connexion classique
+     (Notion, Linear...) plutôt qu'un formulaire étiré sur un écran large. */
+  .app-frame > .login-screen {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    align-self: center;
+    justify-self: center;
+    flex: none;
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 36px;
+    background: var(--surface-raised);
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .16);
+  }
+  .app-frame > .loading-screen {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+  }
 }
 
 .pressable { cursor: pointer; }
@@ -122,6 +147,7 @@ button { font-family: inherit; }
 
 /* --- Login --- */
 .login-screen { flex: 1; display: flex; flex-direction: column; padding: 32px 24px; overflow-y: auto; }
+.loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 .login-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); font-size: 24px; margin-bottom: 24px; }
 .login-title { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 24px; color: var(--text-primary); margin-bottom: 6px; }
 .login-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 26px; }

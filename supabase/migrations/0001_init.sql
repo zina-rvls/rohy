@@ -1,4 +1,4 @@
--- kotikota — schéma initial (P0 : auth réelle + persistance réelle)
+-- Rohy — schéma initial (P0 : auth réelle + persistance réelle)
 -- À exécuter une fois sur le projet Supabase (SQL Editor ou `supabase db push`).
 
 create extension if not exists "pgcrypto";
