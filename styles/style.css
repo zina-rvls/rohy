@@ -73,21 +73,23 @@ input::placeholder { color: var(--text-tertiary); }
 ::-webkit-scrollbar { width: 0; height: 0; }
 button { font-family: inherit; }
 
+/* Par défaut (jusqu'à DESKTOP_BREAKPOINT ci-dessous, cf. media query) :
+   l'app occupe tout l'écran, sans "carte" ni marge — c'est ce qui donne
+   l'impression d'une vraie app plutôt qu'une maquette de téléphone flottant
+   au milieu de la page. 100dvh (hauteur de viewport "dynamique", qui suit
+   l'affichage/masquage de la barre d'adresse mobile) avec repli sur 100vh
+   pour les navigateurs qui ne le supportent pas encore. */
 .app-frame-wrap {
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 24px 12px;
+  min-height: 100dvh;
 }
 .app-frame {
   width: 100%;
-  max-width: 440px;
-  border-radius: 28px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 840px;
   position: relative;
   background: var(--surface-canvas);
   /* `data-theme` (clair/sombre) est porté par cet élément (et par <html>,
@@ -97,24 +99,22 @@ button { font-family: inherit; }
   color: var(--text-primary);
 }
 
-/* En dessous de ce seuil (mobile), la "carte" occupe tout l'écran — sans
-   quoi sa hauteur fixe (840px) ne correspond à aucun vrai viewport mobile :
-   trop court, elle laisse voir le fond de la page (toujours sombre, cf.
-   :root) sous/autour d'elle, et le menu du bas (positionné en absolute par
-   rapport à elle) ne tombe pas au bord réel de l'écran. Au-delà du seuil
-   (tablette/desktop), l'aspect "carte" centrée est conservé tel quel.
-   100dvh (hauteur de viewport "dynamique", qui suit l'affichage/masquage de
-   la barre d'adresse mobile) avec repli sur 100vh pour les navigateurs qui
-   ne le supportent pas encore. */
-@media (max-width: 640px) {
-  .app-frame-wrap { padding: 0; min-height: 100vh; min-height: 100dvh; }
+/* À partir de ce seuil (desktop), l'app garde le plein écran (pas de
+   "carte" flottante avec ombre — ça, c'est justement ce qui donnait
+   l'impression d'une appli mobile agrandie plutôt que d'un site pensé pour
+   le desktop) mais réorganise la navigation en menu latéral fixe façon
+   application web classique (Gmail, Notion...), avec une colonne de
+   contenu de largeur confortable à lire plutôt qu'étirée sur toute la
+   largeur de l'écran. */
+@media (min-width: 900px) {
   .app-frame {
-    max-width: none;
-    height: 100vh;
-    height: 100dvh;
-    border-radius: 0;
-    box-shadow: none;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "nav topbar" "nav content";
   }
+  .top-bar { grid-area: topbar; max-width: 720px; margin: 0 auto; width: 100%; }
+  .content { grid-area: content; padding-bottom: 24px; max-width: 720px; margin: 0 auto; width: 100%; }
 }
 
 .pressable { cursor: pointer; }
@@ -252,7 +252,7 @@ button { font-family: inherit; }
 .history-date { font-size: 11.5px; color: var(--text-tertiary); }
 .history-amount { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 13.5px; }
 
-/* --- Bottom nav --- */
+/* --- Bottom nav (menu latéral sur desktop, cf. media query) --- */
 .bottom-nav {
   position: absolute; bottom: 0; left: 0; right: 0; background: var(--surface-raised); backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-subtle); display: flex; padding: 10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
@@ -260,12 +260,40 @@ button { font-family: inherit; }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; background: none; border: none; }
 .nav-item-label { font-size: 10.5px; font-weight: 700; }
 
+@media (min-width: 900px) {
+  .bottom-nav {
+    grid-area: nav;
+    position: static;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 24px 14px;
+    border-top: none;
+    border-right: 1px solid var(--border-subtle);
+    backdrop-filter: none;
+  }
+  .nav-item {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 12px;
+  }
+  .nav-item:hover { background: var(--surface-overlay); }
+  .nav-item-label { font-size: 13.5px; }
+}
+
 /* --- Modals --- */
 .modal-overlay { position: absolute; inset: 0; background: rgba(10, 11, 14, .6); backdrop-filter: blur(6px); display: flex; animation: fadeIn .15s ease; z-index: 10; }
-.modal-overlay.bottom { align-items: flex-end; }
+.modal-overlay.bottom { align-items: flex-end; justify-content: center; }
 .modal-overlay.center { align-items: center; justify-content: center; }
-.modal-sheet { background: var(--surface-raised); border-radius: 28px 28px 0 0; width: 100%; max-height: 88%; overflow-y: auto; padding: 20px 20px 26px; animation: slideUp .28s cubic-bezier(.3, .7, .4, 1); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
-.modal-card { background: var(--surface-raised); border-radius: 20px; width: 85%; padding: 22px; animation: slideUp .28s cubic-bezier(.3, .7, .4, 1); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+/* max-width : sur un .app-frame plein écran (desktop large notamment), les
+   modales gardent une largeur de formulaire lisible plutôt que de s'étirer
+   sur toute la largeur disponible. */
+.modal-sheet { background: var(--surface-raised); border-radius: 28px 28px 0 0; width: 100%; max-width: 480px; max-height: 88%; overflow-y: auto; padding: 20px 20px 26px; animation: slideUp .28s cubic-bezier(.3, .7, .4, 1); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+.modal-card { background: var(--surface-raised); border-radius: 20px; width: 85%; max-width: 420px; padding: 22px; animation: slideUp .28s cubic-bezier(.3, .7, .4, 1); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; color: var(--text-primary); }
 .modal-close { color: var(--text-tertiary); cursor: pointer; font-size: 20px; background: none; border: none; }
