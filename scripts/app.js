@@ -1530,6 +1530,8 @@
       '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:2.75s"></path>' +
       '<path d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round"></path>' +
       '</svg>' +
+      '<div class="splash-wordmark">Rohy</div>' +
+      '<div class="splash-tagline">Suivi des dépenses entre amis et en famille</div>' +
       '</div>'
     );
   }
@@ -2774,13 +2776,14 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     render();
-    // Durée de l'écran de lancement : dernière bande (sh3) démarre à 2.75s
-    // et anime pendant 1.3s, donc tissage terminé à 4.05s — marge à 4.2s.
-    // La connexion/le chargement des données se poursuit en parallèle
-    // pendant ce délai (cf. garde dans render()) ; une fois l'écran de
-    // lancement retiré, l'écran suivant (connexion ou app) reflète déjà
-    // l'état résolu à ce moment-là.
-    setTimeout(function () { setState({ showSplash: false }); }, 4200);
+    // Durée de l'écran de lancement : tissage terminé à 4.05s (dernière
+    // bande sh3 démarre à 2.75s, anime 1.3s) ; wordmark + baseline finissent
+    // leur fondu à 3.9s/4.15s (cf. styles.css) — marge à 5s pour laisser un
+    // temps de lecture avant de retirer l'écran. La connexion/le chargement
+    // des données se poursuit en parallèle pendant ce délai (cf. garde dans
+    // render()) ; une fois l'écran de lancement retiré, l'écran suivant
+    // (connexion ou app) reflète déjà l'état résolu à ce moment-là.
+    setTimeout(function () { setState({ showSplash: false }); }, 5000);
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });
@@ -2796,14 +2799,19 @@
         }
       } else {
         var theme = state.theme;
-        // showSplash: false — sans cette précision, un défaut de session
-        // (déconnexion, ou tout simplement l'absence de session au tout
-        // premier chargement) réinitialiserait l'état via defaultState(),
-        // qui remet showSplash à true. L'écran de lancement n'a de sens
-        // qu'au tout premier rendu de la page ; le retimer qui le masque ne
-        // se redéclenche jamais après coup, donc le réactiver ici bloquerait
-        // l'app dessus indéfiniment après une déconnexion.
-        state = Object.assign({}, defaultState(), { theme: theme, showSplash: false });
+        // Ce même branchement (session absente) couvre deux cas bien
+        // différents : (a) le tout premier contrôle d'auth au chargement de
+        // la page, quand personne n'est encore connecté — l'écran de
+        // lancement doit continuer de jouer normalement, son minuteur le
+        // masquera en temps voulu — et (b) une vraie déconnexion depuis
+        // l'app, où l'écran de lancement a déjà fini depuis longtemps et ne
+        // doit surtout pas être remis à `true` par defaultState() (son
+        // minuteur ne se redéclenche jamais après coup, l'app resterait
+        // bloquée dessus indéfiniment). On ne force `showSplash` à `false`
+        // que dans le cas (b), identifié via `state.loggedIn` AVANT ce
+        // reset : s'il était vrai, on vient bien de se déconnecter.
+        var wasLoggedIn = state.loggedIn;
+        state = Object.assign({}, defaultState(), { theme: theme, showSplash: wasLoggedIn ? false : state.showSplash });
         render();
       }
     });

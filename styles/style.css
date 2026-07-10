@@ -153,11 +153,26 @@ button { font-family: inherit; }
 .login-screen { flex: 1; display: flex; flex-direction: column; padding: 32px 24px; overflow-y: auto; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
-.splash-screen { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--surface-canvas); }
+.splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
 .splash-v { animation: splashV 1.3s cubic-bezier(.16, .5, .2, 1) both; }
 .splash-h { animation: splashHL 1.3s cubic-bezier(.16, .5, .2, 1) both; }
 @keyframes splashV { 0% { transform: translateY(-130px); } 100% { transform: translateY(0); } }
 @keyframes splashHL { 0% { transform: translateX(-130px); } 100% { transform: translateX(0); } }
+/* Wordmark + baseline : apparaissent une fois le tissage bien entamé (le
+   dernier trait de tissage — sh3 — démarre à 2.75s), pour ne pas concurrencer
+   l'animation du logo, puis restent affichés le temps que l'utilisateur les
+   lise avant que l'écran de lancement ne disparaisse (cf. le délai dans
+   DOMContentLoaded, allongé en conséquence). Léger décalage entre les deux
+   (wordmark puis baseline) plutôt qu'une apparition simultanée — un fondu
+   enchaîné progressif plutôt qu'un bloc de texte qui surgit d'un coup. */
+.splash-wordmark {
+  font-family: 'Sora', sans-serif; font-weight: 800; font-size: 30px; color: var(--brand-primary);
+  margin-top: 18px; opacity: 0; animation: splashFadeUp .6s ease both; animation-delay: 3.3s;
+}
+.splash-tagline {
+  font-size: 14px; color: var(--text-secondary); opacity: 0; animation: splashFadeUp .6s ease both; animation-delay: 3.55s;
+}
+@keyframes splashFadeUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 .login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .login-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(214, 36, 122, .12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .login-wordmark { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; color: var(--brand-primary); }
