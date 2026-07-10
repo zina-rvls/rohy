@@ -166,8 +166,25 @@ button { font-family: inherit; }
 .splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
 .splash-v { animation: splashV 1.3s cubic-bezier(.16, .5, .2, 1) both; }
 .splash-h { animation: splashHL 1.3s cubic-bezier(.16, .5, .2, 1) both; }
-@keyframes splashV { 0% { transform: translateY(-130px); } 100% { transform: translateY(0); } }
-@keyframes splashHL { 0% { transform: translateX(-130px); } 100% { transform: translateX(0); } }
+/* Ondulation perpendiculaire à l'axe de déplacement principal (un léger
+   va-et-vient horizontal pendant la chute pour les bandes verticales, et
+   vertical pendant le glissement pour les horizontales), amplitude qui
+   décroît jusqu'à l'arrivée — pour évoquer un fil qui serpente en tissant,
+   plutôt qu'une translation rectiligne jusqu'à la position finale. */
+@keyframes splashV {
+  0%   { transform: translate(0, -130px); }
+  30%  { transform: translate(7px, -58px); }
+  55%  { transform: translate(-6px, -18px); }
+  78%  { transform: translate(3px, 5px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes splashHL {
+  0%   { transform: translate(-130px, 0); }
+  30%  { transform: translate(-58px, 7px); }
+  55%  { transform: translate(-18px, -6px); }
+  78%  { transform: translate(5px, 3px); }
+  100% { transform: translate(0, 0); }
+}
 /* Wordmark + baseline : apparaissent une fois le tissage bien entamé (le
    dernier trait de tissage — sh3 — démarre à 2.75s), pour ne pas concurrencer
    l'animation du logo, puis restent affichés le temps que l'utilisateur les
