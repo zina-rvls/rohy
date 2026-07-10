@@ -1707,6 +1707,7 @@
       subtitle = g ? 'Admin : ' + person(g.adminId).name : '';
     }
     var isHome = state.screen === 'home';
+    var cu = person(state.currentUserId);
     return (
       '<div class="top-bar">' +
       (showBack ? '<button class="icon-btn pressable" data-action="goBack"><i class="ph-bold ph-arrow-left"></i></button>' :
@@ -1716,6 +1717,11 @@
       '<div class="top-title' + (isHome ? ' home-title' : '') + '">' + escapeHtml(title) + '</div>' +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
       '</div>' +
+      // Icône de compte : seul point d'accès à "Mon compte"/déconnexion
+      // avant cette modification, elle n'était joignable que depuis
+      // l'accueil ("Connecté en tant que..."). Toujours visible ici, sur
+      // tous les écrans, façon avatar de profil dans un en-tête.
+      '<button class="avatar avatar-30 pressable account-icon-btn" data-action="openAccount" style="background:' + cu.color + ';border:none;padding:0;cursor:pointer" title="Mon compte">' + initials(cu.name) + '</button>' +
       '<button class="icon-btn small pressable" data-action="toggleTheme">' +
       '<i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i></button>' +
       (showAddButton ? '<button class="icon-btn small brand pressable" data-action="openAddExpenseGlobal"><i class="ph-bold ph-plus"></i></button>' : '') +
@@ -2252,6 +2258,7 @@
 
   function renderBottomNav() {
     function color(match) { return match ? 'var(--brand-secondary)' : 'var(--text-tertiary)'; }
+    var cu = person(state.currentUserId);
     return (
       '<div class="bottom-nav">' +
       '<div class="sidebar-brand">' + logoMark(24, '#D6247A', '#96195A') + '<span>Rohy</span></div>' +
@@ -2259,6 +2266,13 @@
       '<button class="nav-item" data-action="goGroups" style="color:' + color(state.screen === 'groups' || state.screen === 'groupDetail') + '"><i class="ph-bold ph-users-three" style="font-size:20px"></i><div class="nav-item-label">Groupes</div></button>' +
       '<button class="nav-item" data-action="goExpenses" style="color:' + color(state.screen === 'expenses') + '"><i class="ph-bold ph-receipt" style="font-size:20px"></i><div class="nav-item-label">Dépenses</div></button>' +
       '<button class="nav-item" data-action="goHistory" style="color:' + color(state.screen === 'history') + '"><i class="ph-bold ph-clock-counter-clockwise" style="font-size:20px"></i><div class="nav-item-label">Historique</div></button>' +
+      // Ancrée en bas du menu latéral desktop uniquement (cf. styles.css) —
+      // seul point d'accès permanent à "Mon compte"/déconnexion sur cette
+      // largeur, l'icône de la barre du haut étant réservée au mobile.
+      '<button class="sidebar-account pressable" data-action="openAccount">' +
+      '<div class="avatar avatar-30" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
+      '<span class="sidebar-account-name">' + escapeHtml(cu.name) + '</span>' +
+      '</button>' +
       '</div>'
     );
   }

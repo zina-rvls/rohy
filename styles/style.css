@@ -392,6 +392,10 @@ button { font-family: inherit; }
    mobile, où .bottom-nav est une barre d'onglets horizontale sans place
    pour un en-tête de marque. */
 .sidebar-brand { display: none; }
+/* Entrée de compte ancrée en bas du menu latéral desktop (cf. media query)
+   — invisible sur mobile, où l'icône de compte de la barre du haut
+   (.account-icon-btn) remplit déjà ce rôle. */
+.sidebar-account { display: none; }
 
 @media (min-width: 900px) {
   .bottom-nav {
@@ -420,6 +424,18 @@ button { font-family: inherit; }
      autres écrans (titre texte simple, pas de logo dans cette barre). */
   .top-bar-wordmark { display: none; }
   .top-title.home-title { display: block; }
+  /* Idem : l'icône de compte de la barre du haut fait doublon avec l'entrée
+     de compte ancrée en bas du menu latéral (cf. .sidebar-account) sur
+     cette largeur. */
+  .account-icon-btn { display: none; }
+  /* Ancrée en bas du menu latéral (marge automatique sur le dernier
+     nav-item avant elle la pousse vers le bas), façon Slack/Notion/Discord
+     — toujours visible, séparée des liens de navigation principaux. */
+  .sidebar-account {
+    display: flex; align-items: center; gap: 10px; margin-top: auto; padding: 12px 14px;
+    border-top: 1px solid var(--border-subtle); border-radius: 0;
+  }
+  .sidebar-account-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-item {
     flex: none;
     flex-direction: row;
