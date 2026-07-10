@@ -613,7 +613,26 @@
     sb.from('payments').insert({ from_user: sf.from, to_user: sf.to, amount: amt, group_id: state.settleGroupId || null }).then(function (res) {
       if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showSettle: false, settleGroupId: null });
+      celebrateSettlement();
       loadAppData().then(function () { showToast('Paiement enregistré'); });
+    });
+  }
+
+  // Petite explosion de confettis quand une dette est soldée — un moment
+  // gratifiant qui mérite un peu plus qu'un toast discret. `confetti` vient
+  // d'une lib CDN (cf. index.html) ; si elle n'a pas pu se charger (réseau
+  // capricieux), on l'ignore silencieusement plutôt que de bloquer l'action.
+  function celebrateSettlement() {
+    if (typeof confetti !== 'function') return;
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#7C5CFF';
+    var accent2 = getComputedStyle(document.documentElement).getPropertyValue('--brand-secondary').trim() || '#4ADE80';
+    confetti({
+      particleCount: 90,
+      spread: 70,
+      startVelocity: 38,
+      origin: { y: 0.7 },
+      colors: [accent, accent2, '#FFC94A', '#FFFFFF'],
+      disableForReducedMotion: true,
     });
   }
 
