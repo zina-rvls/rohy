@@ -10,9 +10,9 @@
   --text-tertiary: #6E7080;
   --border-subtle: #262A35;
   --border-default: #363B49;
-  --brand-primary: #7C5CFF;
-  --brand-primary-hover: #9B81FF;
-  --brand-secondary: #4ADE80;
+  --brand-primary: #E04891;
+  --brand-primary-hover: #E566A4;
+  --brand-secondary: #0F8F6B;
   --status-positive: #4ADE80;
   --status-positive-bg: rgba(74, 222, 128, .12);
   --status-warning: #F4D35E;
@@ -33,9 +33,9 @@
   --text-tertiary: #83858C;
   --border-subtle: #E7E4DC;
   --border-default: #D8D4C9;
-  --brand-primary: #6C4CF3;
-  --brand-primary-hover: #5B3FDB;
-  --brand-secondary: #1E8656;
+  --brand-primary: #D6247A;
+  --brand-primary-hover: #A61C5F;
+  --brand-secondary: #0F8F6B;
   /* Versions assombries de ces couleurs par rapport à leur teinte "brand"
      d'origine (#29B876/#C99A1E/#E1533F) : sur fond clair, ces teintes plus
      vives tombaient sous 3:1 de contraste (illisibles). Les fonds `-bg`
@@ -148,7 +148,7 @@ button { font-family: inherit; }
 /* --- Login --- */
 .login-screen { flex: 1; display: flex; flex-direction: column; padding: 32px 24px; overflow-y: auto; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
-.login-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); font-size: 24px; margin-bottom: 24px; }
+.login-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(214, 36, 122, .12); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
 .login-title { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 24px; color: var(--text-primary); margin-bottom: 6px; }
 .login-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 26px; }
 .field-label { font-size: 11px; font-weight: 800; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }

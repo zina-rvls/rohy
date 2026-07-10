@@ -154,6 +154,22 @@
     var v = Math.abs(n).toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
     return sign + v + ' ' + currencySymbolFor(currencyCode);
   }
+  // Marque Rohy (motif tissé) — géométrie fixe (10 rectangles arrondis sur
+  // un viewBox 100x100), reprise telle quelle de la brand sheet. Fill/stroke
+  // paramétrables pour couvrir les différents habillages (logo plein sur
+  // fond neutre, etc.) sans dupliquer la liste de rectangles à chaque appel.
+  var LOGO_RECTS = [
+    [16, 0, 18, 100], [42, 0, 18, 100], [68, 0, 18, 100],
+    [0, 13.5, 43.5, 18], [58, 13.5, 42, 18],
+    [0, 40, 17, 18], [32, 40, 37, 18], [85, 40, 15, 18],
+    [0, 65, 43.5, 18], [58, 65, 42, 18],
+  ];
+  function logoMark(size, fill, stroke) {
+    var rects = LOGO_RECTS.map(function (r) {
+      return '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="3" fill="' + fill + '" stroke="' + stroke + '" stroke-width="3" stroke-linecap="square" />';
+    }).join('');
+    return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + rects + '</svg>';
+  }
   function initials(name) { return name.slice(0, 2).toUpperCase(); }
   function colorForBalance(n) { return calc.colorForBalance(n); }
   function hasCustomWeight(p) { return p.shareWeight != null && Math.abs(p.shareWeight - 1) > 0.001; }
@@ -1427,7 +1443,7 @@
     }
     return (
       '<div class="login-screen">' +
-      '<div class="login-icon"><i class="ph-bold ph-piggy-bank"></i></div>' +
+      '<div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div>' +
       '<div class="login-title">Se connecter</div>' +
       '<div class="login-subtitle">Retrouve tes groupes et vos comptes</div>' +
       body +
@@ -1438,7 +1454,7 @@
   function renderNewPasswordScreen() {
     return (
       '<div class="login-screen">' +
-      '<div class="login-icon"><i class="ph-bold ph-lock-key"></i></div>' +
+      '<div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div>' +
       '<div class="login-title">Nouveau mot de passe</div>' +
       '<div class="login-subtitle">Choisis un nouveau mot de passe pour ton compte</div>' +
       '<div class="field-label">Mot de passe</div>' +
