@@ -2246,11 +2246,52 @@
   function renderAboutScreen() {
     return (
       '<div class="about-screen">' +
+      '<div class="about-hero">' +
       '<div class="about-logo">' + logoMarkMulti(56) + '</div>' +
       '<div class="about-name">Rohy</div>' +
-      '<div class="about-tagline">Suivi des dépenses entre amis et en famille</div>' +
-      '<p class="about-text">Rohy aide un groupe d\'amis, de colocataires ou de proches à savoir qui a payé quoi, combien chacun doit, et à se régler entre eux sans tableur ni calculs à la main — poids ponctuels ou permanents par personne, plusieurs groupes et devises, historique complet, et export des données à tout moment.</p>' +
+      '<div class="about-tagline">Les liens d\'abord. Les comptes ensuite.</div>' +
+      '</div>' +
+
+      '<div class="about-body">' +
+      '<p class="about-lead">Rohy est une application conçue pour simplifier la gestion des dépenses partagées entre amis, familles et groupes, afin que vous puissiez vous concentrer sur ce qui compte vraiment&nbsp;: les moments passés ensemble.</p>' +
+      '<p>Que ce soit pour un voyage, un week-end, un anniversaire, une sortie entre amis ou des vacances en famille, Rohy vous aide à suivre qui a payé quoi, à répartir les dépenses équitablement et à savoir qui doit quoi à qui, sans calculs compliqués ni discussions interminables.</p>' +
+
       '<div class="about-divider"></div>' +
+      '<h3 class="about-heading">Pensée pour la vraie vie</h3>' +
+      '<p>La plupart des applications de partage de dépenses considèrent que chaque personne est indépendante et que tout doit être divisé de manière égale.</p>' +
+      '<p>Mais dans la réalité, les choses sont souvent différentes.</p>' +
+      '<p>Un parent paie pour ses enfants. Un frère prend en charge sa mère. Un couple partage les dépenses. Certains contribuent davantage que d\'autres. Et c\'est parfaitement normal.</p>' +
+      '<p>Rohy a été conçu pour refléter ces situations du quotidien. Vous pouvez créer des foyers, définir des personnes à charge, attribuer des parts différentes à chaque participant et conserver une répartition juste, adaptée à votre groupe.</p>' +
+      '<p class="about-emphasis">Parce que l\'équité ne signifie pas toujours l\'égalité.</p>' +
+
+      '<div class="about-divider"></div>' +
+      '<h3 class="about-heading">Une application inspirée par le vivre-ensemble</h3>' +
+      '<p>Le nom <strong>Rohy</strong> signifie « lien » en malgache.</p>' +
+      '<p>Il incarne notre conviction que les bons souvenirs se construisent ensemble, et que l\'argent ne devrait jamais devenir une source de tension entre les personnes qui comptent pour nous.</p>' +
+      '<p class="about-emphasis">Notre mission est simple&nbsp;: aider les groupes à préserver leurs relations grâce à des comptes clairs, simples et équitables.</p>' +
+
+      '<div class="about-divider"></div>' +
+      '<h3 class="about-heading">Ce que vous pouvez faire avec Rohy</h3>' +
+      '<ul class="about-list">' +
+      '<li>Créer plusieurs groupes et événements</li>' +
+      '<li>Suivre les dépenses en temps réel</li>' +
+      '<li>Répartir les frais selon des parts personnalisées</li>' +
+      '<li>Gérer les foyers et les personnes à charge</li>' +
+      '<li>Suivre les remboursements effectués</li>' +
+      '<li>Voir instantanément les soldes de chacun</li>' +
+      '<li>Envoyer des rappels de paiement</li>' +
+      '<li>Conserver l\'historique de toutes vos activités</li>' +
+      '</ul>' +
+
+      '<div class="about-divider"></div>' +
+      '<h3 class="about-heading">Conçu à Madagascar, pour tous ceux qui vivent et voyagent ensemble</h3>' +
+      '<p>Rohy est né à Madagascar, mais répond à une réalité universelle&nbsp;: partout dans le monde, les familles, les amis et les communautés partagent des expériences, des voyages et des dépenses.</p>' +
+      '<p>Nous avons voulu créer une solution plus humaine, plus flexible et plus proche de la façon dont les gens vivent réellement.</p>' +
+      '<p class="about-emphasis">Parce que les meilleurs moments sont ceux que l\'on partage. Et parce que les bons comptes font les bons amis.</p>' +
+      '</div>' +
+
+      '<div class="about-divider"></div>' +
+      '<div class="about-closing">Rohy.<br>Les liens d\'abord. Les comptes ensuite.</div>' +
       '<div class="about-meta">Une application indépendante, sans lien avec un service tiers.</div>' +
       '</div>'
     );
