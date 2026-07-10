@@ -777,7 +777,7 @@
         editingId: null, label: '', amount: '', date: new Date().toISOString().slice(0, 10), groupId: g.id, paidBy: state.currentUserId,
         participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '', category: 'autre',
         splitMode: 'default', splitValues: {},
-        receiptPath: null, receiptFile: null, receiptRemove: false,
+        receiptPath: null, receiptFile: null, receiptRemove: false, scanning: false, scanError: null,
       },
     });
   }
@@ -804,7 +804,7 @@
         fullyPaid: fullyPaid, paidExternal: fullyPaid ? '' : String(e.paidExternal != null ? e.paidExternal : 0).replace('.', ','),
         category: categoryForIcon(e.icon),
         splitMode: e.splitMode || 'default', splitValues: splitValues,
-        receiptPath: e.receiptPath || null, receiptFile: null, receiptRemove: false,
+        receiptPath: e.receiptPath || null, receiptFile: null, receiptRemove: false, scanning: false, scanError: null,
       },
     });
   }
@@ -909,6 +909,50 @@
   }
   function setReceiptFile(file) {
     setState(function (s) { return { form: Object.assign({}, s.form, { receiptFile: file, receiptRemove: false }) }; });
+  }
+  function fileToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        // reader.result est une data URL ("data:image/jpeg;base64,xxx") —
+        // seule la partie après la virgule est le base64 attendu par l'API.
+        resolve(String(reader.result).split(',')[1] || '');
+      };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
+  }
+  // Photo de ticket -> Edge Function "scan-receipt" (lecture par IA vision,
+  // cf. supabase/functions/scan-receipt) -> pré-remplissage du formulaire.
+  // Le fichier devient aussi le reçu joint à la dépense (setReceiptFile),
+  // pour ne pas demander la même photo deux fois. La lecture ne fait que
+  // PRÉ-remplir des champs restant modifiables — aucune dépense n'est créée
+  // tant que "Enregistrer la dépense" n'est pas cliqué, et un échec de
+  // lecture n'empêche jamais la saisie manuelle.
+  function scanReceipt(file) {
+    if (!file) return;
+    setReceiptFile(file);
+    setStateSilent(function (s) { return { form: Object.assign({}, s.form, { scanning: true, scanError: null }) }; });
+    render();
+    fileToBase64(file).then(function (base64) {
+      return sb.functions.invoke('scan-receipt', { body: { image: base64, mimeType: file.type } });
+    }).then(function (res) {
+      return extractFunctionErrorMessage(res).then(function (errMsg) {
+        if (errMsg) throw new Error(errMsg);
+        var d = res.data || {};
+        setState(function (s) {
+          var f = Object.assign({}, s.form, { scanning: false });
+          if (d.label) f.label = d.label;
+          if (d.amount != null) f.amount = String(d.amount).replace('.', ',');
+          if (d.date) f.date = d.date;
+          return { form: f };
+        });
+        showToast('Ticket lu — vérifie les champs avant d\'enregistrer');
+      });
+    }).catch(function (err) {
+      setState(function (s) { return { form: Object.assign({}, s.form, { scanning: false, scanError: err.message }) }; });
+      showToast('Erreur : ' + (err && err.message ? err.message : 'lecture du ticket impossible'));
+    });
   }
   function removeReceipt() {
     setState(function (s) { return { form: Object.assign({}, s.form, { receiptFile: null, receiptRemove: true }) }; });
@@ -2350,6 +2394,13 @@
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">' + (f.editingId ? 'Modifier la dépense' : 'Nouvelle dépense') + '</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
+      (f.scanning ?
+        '<div class="scan-dropzone scanning"><div class="scan-spinner"></div><span>Lecture du ticket en cours...</span></div>'
+        :
+        '<label class="scan-dropzone pressable">' +
+        '<input type="file" accept="image/*" capture="environment" data-bind-change="scanFile" />' +
+        '<i class="ph-bold ph-camera"></i><span>Scanner un ticket (remplit le formulaire)</span>' +
+        '</label>') +
       '<div class="field-label">Groupe</div><div class="pill-row">' + groupChoices + '</div>' +
       '<div class="field-label">Description</div>' +
       '<input class="text-input" data-bind="expenseLabel" placeholder="Courses, essence..." value="' + escapeHtml(f.label) + '" />' +
@@ -2758,6 +2809,7 @@
       if (!bind) return;
       var id = el.getAttribute('data-id');
       if (bind === 'receiptFile') { setReceiptFile(el.files && el.files[0] ? el.files[0] : null); return; }
+      if (bind === 'scanFile') { if (el.files && el.files[0]) scanReceipt(el.files[0]); return; }
       switch (bind) {
         case 'override': setOverride(id, el.value); break;
         case 'shareWeight': setShareWeight(id, el.value); break;

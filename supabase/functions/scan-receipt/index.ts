@@ -1,0 +1,122 @@
+// Rohy — scan-receipt Edge Function
+//
+// Lit une photo de ticket de caisse via un modèle de vision (Claude,
+// Anthropic) et en extrait le libellé, le montant total et la date, pour
+// pré-remplir le formulaire d'ajout de dépense côté client — qui reste
+// toujours modifiable avant l'enregistrement. Cette fonction ne crée ni ne
+// modifie aucune dépense, elle se contente de lire l'image et de renvoyer
+// les champs devinés.
+//
+// Déploiement : coller ce fichier dans Supabase Dashboard → Edge Functions
+// → scan-receipt → Via Editor (même procédure que pour send-reminder,
+// cf. section correspondante du README de ce dossier).
+// Secret requis : ANTHROPIC_API_KEY (Dashboard → Edge Functions → Secrets,
+// ou `supabase secrets set ANTHROPIC_API_KEY=...`). Sans clé configurée,
+// la fonction renvoie une erreur claire (501) plutôt que de planter — la
+// saisie manuelle du formulaire reste toujours possible côté client.
+// Appel côté client :
+//   supabase.functions.invoke('scan-receipt', { body: { image, mimeType } })
+//   où `image` est le contenu du fichier encodé en base64 (sans le préfixe
+//   "data:...;base64,") et `mimeType` son type MIME (image/jpeg, image/png...).
+
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+// Haiku : rapide et nettement moins cher que Sonnet/Opus, largement
+// suffisant pour une extraction de champs bornée comme celle-ci. Changer
+// cette valeur (ou définir le secret ANTHROPIC_MODEL) pour 'claude-sonnet-5'
+// si la précision constatée en pratique ne suffit pas.
+const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-haiku-4-5';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+const PROMPT = `Tu regardes la photo d'un ticket de caisse. Réponds UNIQUEMENT avec un objet JSON brut (pas de texte autour, pas de balises markdown), avec exactement ces champs :
+{
+  "label": string ou null,    // nom du commerce ou description courte (ex. "Carrefour", "Restaurant Le Central") — null si illisible
+  "amount": number ou null,   // montant total payé, nombre décimal simple (point, pas de virgule, pas de symbole de devise) — null si illisible
+  "date": string ou null,     // date du ticket au format AAAA-MM-JJ — null si illisible ou absente
+  "currency": string ou null  // code devise ISO 4217 à 3 lettres si déductible du ticket (ex. "EUR", "USD") — sinon null
+}
+Prends bien le montant TOTAL final payé (pas un sous-total ni une ligne de TVA isolée). Si l'image n'est manifestement pas un ticket de caisse, renvoie null pour tous les champs.`;
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) return jsonResponse({ error: 'non authentifié.' }, 401);
+
+    if (!ANTHROPIC_API_KEY) {
+      return jsonResponse({ error: 'lecture de ticket non configurée côté serveur (clé API manquante).' }, 501);
+    }
+
+    const { image, mimeType } = await req.json();
+    if (!image || !mimeType) {
+      return jsonResponse({ error: 'image et mimeType sont requis.' }, 400);
+    }
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+      return jsonResponse({ error: 'format d\'image non pris en charge (jpeg, png, webp ou gif attendu).' }, 400);
+    }
+
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: image } },
+            { type: 'text', text: PROMPT },
+          ],
+        }],
+      }),
+    });
+
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text();
+      return jsonResponse({ error: `échec de la lecture du ticket : ${errText}` }, 502);
+    }
+
+    const anthropicData = await anthropicRes.json();
+    const textBlock = (anthropicData.content || []).find((b: { type: string }) => b.type === 'text');
+    const rawText: string = textBlock ? textBlock.text : '';
+
+    // Extraction défensive : au cas où le modèle ajoute malgré tout du texte
+    // ou des balises markdown autour du JSON attendu.
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (!match) return jsonResponse({ error: 'réponse du modèle illisible.' }, 502);
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch {
+      return jsonResponse({ error: 'réponse du modèle mal formée.' }, 502);
+    }
+
+    return jsonResponse({
+      ok: true,
+      label: typeof parsed.label === 'string' ? parsed.label : null,
+      amount: typeof parsed.amount === 'number' ? parsed.amount : null,
+      date: typeof parsed.date === 'string' ? parsed.date : null,
+      currency: typeof parsed.currency === 'string' ? parsed.currency : null,
+    });
+  } catch (err) {
+    return jsonResponse({ error: err instanceof Error ? err.message : 'erreur inconnue.' }, 500);
+  }
+});

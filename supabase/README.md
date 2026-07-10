@@ -161,7 +161,30 @@ adresse). La migration nettoie d'abord les doublons déjà présents (garde
 l'e-mail sur le profil le plus ancien, le retire des autres) avant
 d'ajouter la contrainte.
 
-## 6. Front-end branché
+## 6. Déployer la fonction de lecture de ticket (scan-receipt)
+
+`functions/scan-receipt/index.ts` lit une photo de ticket de caisse via un
+modèle de vision (Claude, Anthropic) et renvoie le libellé, le montant total,
+la date et la devise devinés — utilisés pour pré-remplir le formulaire
+d'ajout de dépense côté client (qui reste toujours modifiable avant
+l'enregistrement). Vérifie seulement que l'appelant est authentifié, aucune
+autre donnée n'est lue ou modifiée.
+
+```
+supabase functions deploy scan-receipt --project-ref <ref>
+supabase secrets set ANTHROPIC_API_KEY=<ta clé Anthropic> --project-ref <ref>
+```
+
+`ANTHROPIC_API_KEY` est **requise** pour que la lecture fonctionne : clé
+créée sur [console.anthropic.com](https://console.anthropic.com) (Settings →
+API Keys). Sans elle, la fonction renvoie une erreur claire au clic sur
+"Scanner un ticket", mais la saisie manuelle du formulaire reste toujours
+possible — rien d'autre dans l'app n'est affecté. `ANTHROPIC_MODEL`
+(optionnelle, défaut `claude-haiku-4-5`) permet de passer sur un modèle plus
+précis (ex. `claude-sonnet-5`) si la lecture s'avère peu fiable en pratique,
+au prix d'un coût par appel plus élevé.
+
+## 7. Front-end branché
 
 `scripts/app.js` appelle désormais Supabase directement (`scripts/supabase-client.js`
 contient l'URL du projet et la clé publiable) : vraie inscription/connexion
