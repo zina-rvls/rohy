@@ -161,7 +161,7 @@ button { font-family: inherit; }
 .btn-primary {
   text-align: center; padding: 14px; background: var(--brand-primary); color: #fff; border-radius: 14px;
   font-weight: 700; font-size: 15px; cursor: pointer; border: none; width: 100%;
-  box-shadow: 0 0 0 1px rgba(124, 92, 255, .4), 0 8px 24px rgba(124, 92, 255, .25);
+  box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 24px rgba(214, 36, 122, .25);
 }
 .btn-primary:hover { background: var(--brand-primary-hover); }
 .form-error { text-align: center; color: var(--status-danger); font-size: 12.5px; margin-top: 10px; }
@@ -175,10 +175,14 @@ button { font-family: inherit; }
 .top-bar { padding: 18px 20px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
 .icon-btn { width: 34px; height: 34px; border-radius: 14px; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 16px; flex-shrink: 0; border: none; }
 .icon-btn.small { width: 36px; height: 36px; }
-.icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(124, 92, 255, .4), 0 8px 20px rgba(124, 92, 255, .22); }
+.icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 20px rgba(214, 36, 122, .22); }
 .icon-btn.brand:hover { background: var(--brand-primary-hover); }
 .top-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 19px; color: var(--text-primary); letter-spacing: -0.2px; }
 .top-subtitle { font-size: 12.5px; color: var(--text-tertiary); margin-top: 1px; }
+/* Logo dans la barre du haut : uniquement sur les écrans de premier niveau
+   (pas de bouton retour) — remplace ce bouton dans le même emplacement pour
+   que le titre ne saute pas d'un écran à l'autre. */
+.top-bar-logo { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 
 /* --- Content --- */
 .content { flex: 1; overflow-y: auto; padding: 18px 20px 90px; }
@@ -312,6 +316,10 @@ button { font-family: inherit; }
 }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; background: none; border: none; }
 .nav-item-label { font-size: 10.5px; font-weight: 700; }
+/* Logo en tête du menu latéral desktop (cf. media query) — invisible sur
+   mobile, où .bottom-nav est une barre d'onglets horizontale sans place
+   pour un en-tête de marque. */
+.sidebar-brand { display: none; }
 
 @media (min-width: 900px) {
   .bottom-nav {
@@ -326,6 +334,15 @@ button { font-family: inherit; }
     border-right: 1px solid var(--border-subtle);
     backdrop-filter: none;
   }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 10px; padding: 0 14px 20px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-family: 'Sora', sans-serif; font-weight: 800; font-size: 16px; color: var(--text-primary);
+  }
+  /* Le logo de la barre du haut fait doublon avec celui du menu latéral
+     (toujours visible à cette largeur) — masqué ici pour ne pas répéter la
+     marque deux fois sur le même écran. */
+  .top-bar-logo { display: none; }
   .nav-item {
     flex: none;
     flex-direction: row;

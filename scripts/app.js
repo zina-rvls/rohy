@@ -1488,7 +1488,8 @@
     }
     return (
       '<div class="top-bar">' +
-      (showBack ? '<button class="icon-btn pressable" data-action="goBack"><i class="ph-bold ph-arrow-left"></i></button>' : '') +
+      (showBack ? '<button class="icon-btn pressable" data-action="goBack"><i class="ph-bold ph-arrow-left"></i></button>' :
+        '<div class="top-bar-logo">' + logoMark(20, '#D6247A', '#96195A') + '</div>') +
       '<div style="flex:1">' +
       '<div class="top-title">' + escapeHtml(title) + '</div>' +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
@@ -2017,6 +2018,7 @@
     function color(match) { return match ? 'var(--brand-secondary)' : 'var(--text-tertiary)'; }
     return (
       '<div class="bottom-nav">' +
+      '<div class="sidebar-brand">' + logoMark(24, '#D6247A', '#96195A') + '<span>Rohy</span></div>' +
       '<button class="nav-item" data-action="goHome" style="color:' + color(state.screen === 'home') + '"><i class="ph-bold ph-house" style="font-size:20px"></i><div class="nav-item-label">Accueil</div></button>' +
       '<button class="nav-item" data-action="goGroups" style="color:' + color(state.screen === 'groups' || state.screen === 'groupDetail') + '"><i class="ph-bold ph-users-three" style="font-size:20px"></i><div class="nav-item-label">Groupes</div></button>' +
       '<button class="nav-item" data-action="goExpenses" style="color:' + color(state.screen === 'expenses') + '"><i class="ph-bold ph-receipt" style="font-size:20px"></i><div class="nav-item-label">Dépenses</div></button>' +
