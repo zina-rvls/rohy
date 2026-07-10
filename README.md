@@ -214,6 +214,7 @@ charge, parts pondérées). Statut des points relevés :
 | Sur mobile, fond noir visible autour/derrière l'app, et menu du bas qui ne reste pas au bord réel de l'écran | ✅ fait — cause racine commune : `.app-frame` avait une hauteur fixe (840px, pensée comme une "carte" desktop) qui ne correspond à aucun vrai viewport mobile. L'app occupe désormais tout l'écran par défaut (100dvh, avec repli 100vh), sans marge ni carte flottante. `data-theme` est aussi désormais porté par `<html>` (pas seulement `.app-frame`), pour que le fond de `<body>` corresponde toujours au thème actif |
 | Effet de flash lors de la saisie réapparu une 3e fois (après le correctif initial, puis le debounce sur les champs prénom) sur d'autres champs | ✅ fait — corrigé cette fois à la cause racine plutôt qu'au cas par cas : la transition CSS globale (`background-color`/`border-color`) rejouait sur les nœuds recréés à chaque re-rendu complet ; elle est désormais désactivée le temps du remplacement du DOM puis réactivée à la frame suivante, quel que soit le champ ou le type de mise à jour d'état utilisé |
 | Sur desktop, l'app donnait l'impression d'une appli mobile agrandie (carte étroite en 9:16, flottante avec ombre) plutôt que d'un vrai site pensé pour un écran large | ✅ fait — à partir de 900px de large, plus de "carte" du tout : plein écran comme sur mobile, mais navigation réorganisée en menu latéral fixe (façon Gmail/Notion) et colonne de contenu à largeur de lecture confortable (720px, centrée) plutôt qu'étirée sur tout l'écran. En dessous de ce seuil, comportement mobile inchangé (menu du bas). Les modales gardent aussi une largeur de formulaire raisonnable (plus d'étirement sur toute la largeur d'un écran large) |
+| Sur mobile, le menu du bas "suivait" le scroll en laissant un espace vide entre lui et le vrai bord de l'écran (au lieu de rester collé au bord comme sur une app native, cf. tiakaly.com) | ✅ fait — cause racine : le menu était en `position: absolute` par rapport à `.app-frame`, dont la hauteur (100dvh) se recalcule en layout à chaque apparition/disparition de la barre d'adresse du navigateur, avec un temps de retard sur l'animation de cette barre. Passé en `position: fixed` (ancré directement au viewport visuel), il colle désormais instantanément au bas réel de l'écran, sans décalage |
 
 **Bugs supplémentaires trouvés et corrigés en creusant l'audit**
 
@@ -243,6 +244,7 @@ charge, parts pondérées). Statut des points relevés :
 | Optimisation avancée des remboursements (au-delà de la simplification gloutonne actuelle) | ⏳ différé — Fonctionnalité 9 du brief, Étape 2 |
 | Dépenses récurrentes | ⏳ différé — hors brief actuel, à arbitrer |
 | Notification push pour les rappels (en plus de l'e-mail) | ⏳ différé — chantier à part (service worker, clés VAPID, autorisation navigateur) |
+| Animation d'accueil juste après connexion (login/inscription) | ⏳ différé — chantier à part, pas encore scopé |
 
 **Audit UX/UI — listes qui grandissent**
 

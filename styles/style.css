@@ -253,8 +253,16 @@ button { font-family: inherit; }
 .history-amount { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 13.5px; }
 
 /* --- Bottom nav (menu latéral sur desktop, cf. media query) --- */
+/* `fixed` (et non `absolute`) : ancré directement au viewport visuel plutôt
+   qu'au bloc englobant .app-frame (dont la hauteur, en 100dvh, se recalcule
+   en layout à chaque apparition/disparition de la barre d'adresse mobile).
+   Avec `absolute`, ce recalcul de layout accuse un temps de retard sur
+   l'animation (gérée par le compositeur) de la barre du navigateur, ce qui
+   donnait l'impression que le menu "suivait" le scroll en laissant un
+   espace vide entre lui et le bas réel de l'écran. En `fixed`, le menu
+   colle instantanément au bas du viewport, comme sur une app native. */
 .bottom-nav {
-  position: absolute; bottom: 0; left: 0; right: 0; background: var(--surface-raised); backdrop-filter: blur(16px);
+  position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface-raised); backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-subtle); display: flex; padding: 10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
 }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; background: none; border: none; }
