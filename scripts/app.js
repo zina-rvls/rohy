@@ -522,6 +522,7 @@
   function goExpenses() { setState({ screen: 'expenses', navStack: [] }); }
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id, lastActiveGroupId: id }); }
   function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
+  function openAbout() { navigate('about', { showAccount: false }); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
@@ -1594,7 +1595,7 @@
     }
     return (
       '<div class="login-screen">' +
-      '<div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div>' +
+      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div><span class="login-wordmark">Rohy</span></div>' +
       '<div class="login-title">Se connecter</div>' +
       '<div class="login-subtitle">Retrouve tes groupes et vos comptes</div>' +
       body +
@@ -1605,7 +1606,7 @@
   function renderNewPasswordScreen() {
     return (
       '<div class="login-screen">' +
-      '<div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div>' +
+      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div><span class="login-wordmark">Rohy</span></div>' +
       '<div class="login-title">Nouveau mot de passe</div>' +
       '<div class="login-subtitle">Choisis un nouveau mot de passe pour ton compte</div>' +
       '<div class="field-label">Mot de passe</div>' +
@@ -1629,7 +1630,7 @@
   function renderTopBar() {
     var showBack = state.screen !== 'home' && state.screen !== 'groups' && state.screen !== 'history' && state.screen !== 'expenses';
     var showAddButton = state.screen === 'home' || state.screen === 'groups' || state.screen === 'expenses';
-    var titles = { home: 'Mes dépenses', groups: 'Groupes', history: 'Historique', expenses: 'Dépenses', person: 'Détail' };
+    var titles = { home: 'Mes dépenses', groups: 'Groupes', history: 'Historique', expenses: 'Dépenses', person: 'Détail', about: 'À propos' };
     var title = titles[state.screen];
     var subtitle = '';
     if (state.screen === 'groupDetail') {
@@ -1662,6 +1663,7 @@
       case 'person': return renderPersonDetail();
       case 'expenses': return renderAllExpenses();
       case 'history': return renderHistory();
+      case 'about': return renderAboutScreen();
       default: return '';
     }
   }
@@ -2167,6 +2169,19 @@
     }).join('');
   }
 
+  function renderAboutScreen() {
+    return (
+      '<div class="about-screen">' +
+      '<div class="about-logo">' + logoMarkMulti(56) + '</div>' +
+      '<div class="about-name">Rohy</div>' +
+      '<div class="about-tagline">Suivi des dépenses entre amis et en famille</div>' +
+      '<p class="about-text">Rohy aide un groupe d\'amis, de colocataires ou de proches à savoir qui a payé quoi, combien chacun doit, et à se régler entre eux sans tableur ni calculs à la main — poids ponctuels ou permanents par personne, plusieurs groupes et devises, historique complet, et export des données à tout moment.</p>' +
+      '<div class="about-divider"></div>' +
+      '<div class="about-meta">Une application indépendante, sans lien avec un service tiers.</div>' +
+      '</div>'
+    );
+  }
+
   function renderBottomNav() {
     function color(match) { return match ? 'var(--brand-secondary)' : 'var(--text-tertiary)'; }
     return (
@@ -2466,6 +2481,7 @@
       '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
       '</div>' +
+      '<button class="switch-user-row pressable" data-action="openAbout" style="margin-bottom:6px"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
       '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
       '</div></div>'
     );
@@ -2637,6 +2653,7 @@
         case 'closeReminderConfirm': closeReminderConfirm(); break;
         case 'confirmSendReminder': confirmSendReminder(); break;
         case 'openAccount': openAccount(); break;
+        case 'openAbout': openAbout(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
@@ -2779,7 +2796,14 @@
         }
       } else {
         var theme = state.theme;
-        state = Object.assign({}, defaultState(), { theme: theme });
+        // showSplash: false — sans cette précision, un défaut de session
+        // (déconnexion, ou tout simplement l'absence de session au tout
+        // premier chargement) réinitialiserait l'état via defaultState(),
+        // qui remet showSplash à true. L'écran de lancement n'a de sens
+        // qu'au tout premier rendu de la page ; le retimer qui le masque ne
+        // se redéclenche jamais après coup, donc le réactiver ici bloquerait
+        // l'app dessus indéfiniment après une déconnexion.
+        state = Object.assign({}, defaultState(), { theme: theme, showSplash: false });
         render();
       }
     });
