@@ -47,6 +47,7 @@
       loginError: null,
       magicSent: false,
       resetSent: false,
+      showAboutFromLogin: false,
       passwordRecovery: false,
       newPasswordForm: { password: '' },
       currentUserId: null,
@@ -523,6 +524,11 @@
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id, lastActiveGroupId: id }); }
   function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
   function openAbout() { navigate('about', { showAccount: false }); }
+  // Avant connexion, `render()` affiche renderLogin() quel que soit
+  // `state.screen` (cf. plus bas) : `navigate('about', ...)` ne suffit donc
+  // pas depuis la page de connexion — état dédié à la place.
+  function openAboutFromLogin() { setState({ showAboutFromLogin: true }); }
+  function closeAboutFromLogin() { setState({ showAboutFromLogin: false }); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
@@ -1629,7 +1635,7 @@
     if (state.passwordRecovery) {
       root.innerHTML = renderNewPasswordScreen();
     } else if (!state.loggedIn) {
-      root.innerHTML = renderLogin();
+      root.innerHTML = state.showAboutFromLogin ? renderAboutFromLogin() : renderLogin();
     } else if (state.dataLoading || !person(state.currentUserId)) {
       root.innerHTML = renderLoadingScreen();
     } else {
@@ -1750,6 +1756,21 @@
       '<div class="login-title">Se connecter</div>' +
       '<div class="login-subtitle">Retrouve tes groupes et vos comptes</div>' +
       body +
+      '<div class="login-footer-link pressable" data-action="openAboutFromLogin">À propos</div>' +
+      '</div>'
+    );
+  }
+  // État dédié (cf. openAboutFromLogin) : render() affiche cet écran à la
+  // place de renderLogin() sans passer par la navigation habituelle
+  // (navStack), indisponible avant connexion. Réutilise renderAboutScreen()
+  // telle quelle, avec juste un bouton retour propre à ce contexte.
+  function renderAboutFromLogin() {
+    return (
+      '<div class="login-screen" style="padding:0">' +
+      '<div style="padding:20px 20px 0">' +
+      '<button class="icon-btn pressable" data-action="closeAboutFromLogin"><i class="ph-bold ph-arrow-left"></i></button>' +
+      '</div>' +
+      renderAboutScreen() +
       '</div>'
     );
   }
@@ -2843,6 +2864,8 @@
         case 'confirmSendReminder': confirmSendReminder(); break;
         case 'openAccount': openAccount(); break;
         case 'openAbout': openAbout(); break;
+        case 'openAboutFromLogin': openAboutFromLogin(); break;
+        case 'closeAboutFromLogin': closeAboutFromLogin(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
