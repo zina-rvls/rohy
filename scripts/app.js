@@ -558,7 +558,11 @@
   function submitLogin() {
     var f = state.loginForm;
     if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
-    if (!f.password || f.password.length < 4) { setState({ loginError: 'Mot de passe trop court.' }); return; }
+    // Ici on vérifie un mot de passe déjà choisi (pas de règle à faire
+    // respecter, juste éviter un envoi vide) — Supabase renvoie de toute
+    // façon "e-mail ou mot de passe incorrect" si la valeur ne correspond
+    // pas au compte.
+    if (!f.password) { setState({ loginError: 'Entre ton mot de passe.' }); return; }
     setState({ loginError: null });
     sb.auth.signInWithPassword({ email: f.email.trim(), password: f.password }).then(function (res) {
       if (res.error) setState({ loginError: 'E-mail ou mot de passe incorrect.' });
@@ -570,7 +574,7 @@
     var f = state.loginForm;
     if (!f.name.trim()) { setState({ loginError: 'Entre ton prénom.' }); return; }
     if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
-    if (!f.password || f.password.length < 6) { setState({ loginError: 'Mot de passe trop court (6 caractères min).' }); return; }
+    if (!f.password || f.password.length < 8) { setState({ loginError: 'Mot de passe trop court (8 caractères min).' }); return; }
     setState({ loginError: null });
     sb.auth.signUp({
       email: f.email.trim(), password: f.password,
@@ -612,7 +616,7 @@
 
   function submitNewPassword() {
     var pw = state.newPasswordForm.password;
-    if (!pw || pw.length < 6) { setState({ loginError: 'Mot de passe trop court (6 caractères min).' }); return; }
+    if (!pw || pw.length < 8) { setState({ loginError: 'Mot de passe trop court (8 caractères min).' }); return; }
     setState({ loginError: null });
     sb.auth.updateUser({ password: pw }).then(function (res) {
       if (res.error) { setState({ loginError: res.error.message }); return; }
@@ -1705,7 +1709,7 @@
         '<div class="field-label">E-mail</div>' +
         '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<div class="field-label">Mot de passe</div>' +
-        '<input class="text-input" type="password" data-bind="loginPassword" placeholder="•••••••• (6 caractères min)" value="' + escapeHtml(f.password) + '" />' +
+        '<input class="text-input" type="password" data-bind="loginPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(f.password) + '" />' +
         '<button class="btn-primary pressable" data-action="submitSignup">Créer le compte</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
         '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">J\'ai déjà un compte →</div>';
@@ -1782,7 +1786,7 @@
       '<div class="login-title">Nouveau mot de passe</div>' +
       '<div class="login-subtitle">Choisis un nouveau mot de passe pour ton compte</div>' +
       '<div class="field-label">Mot de passe</div>' +
-      '<input class="text-input" type="password" data-bind="newPassword" placeholder="•••••••• (6 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
+      '<input class="text-input" type="password" data-bind="newPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
       '<button class="btn-primary pressable" data-action="submitNewPassword">Mettre à jour le mot de passe</button>' +
       (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
       '</div>'
