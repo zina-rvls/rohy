@@ -182,9 +182,17 @@ button { font-family: inherit; }
    transparence la bordure de la bande qu'elle est censée recouvrir —
    visible le temps de la transition. Une échelle seule reste toujours
    pleinement opaque, donc masque proprement dès qu'elle atteint un point,
-   sans jamais laisser rien transparaître. */
+   sans jamais laisser rien transparaître.
+   Le point d'origine de chaque bande (`transform-origin`) est fixé en
+   coordonnées explicites, en style inline sur chaque élément (cf. JS) —
+   plutôt que `transform-box: fill-box` + `transform-origin: center`, dont
+   le support est inégal selon les navigateurs pour les éléments <path>
+   (notamment sur WebKit/iOS, où le point de départ de l'échelle peut être
+   mal calculé, décalant la bordure par rapport au remplissage pendant la
+   transition et recréant un bug d'apparence similaire à celui de la
+   transparence). Des coordonnées explicites contournent entièrement ce
+   calcul de boîte englobante et sont fiables sur tous les navigateurs. */
 .splash-v, .splash-h {
-  transform-box: fill-box; transform-origin: center;
   animation: splashSettle .55s cubic-bezier(.2, .7, .3, 1) both;
 }
 @keyframes splashSettle {
