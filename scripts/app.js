@@ -2418,10 +2418,39 @@
       // Ancrée en bas du menu latéral desktop uniquement (cf. styles.css) —
       // seul point d'accès permanent à "Mon compte"/déconnexion sur cette
       // largeur, l'icône de la barre du haut étant réservée au mobile.
+      '<div class="sidebar-account-wrap">' +
       '<button class="sidebar-account pressable" data-action="openAccount">' +
       '<div class="avatar avatar-30" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<span class="sidebar-account-name">' + escapeHtml(cu.name) + '</span>' +
       '</button>' +
+      (state.showAccount ? renderAccountDropdown() : '') +
+      '</div>' +
+      '</div>'
+    );
+  }
+  // Menu déroulant ancré à l'avatar du menu latéral, desktop uniquement (cf.
+  // styles.css — invisible en dessous de 900px, où renderAccountModal() sert
+  // la même fonction en feuille glissée depuis le bas, plus adaptée au
+  // mobile). Façon Slack/Notion/Discord plutôt qu'une feuille pleine largeur
+  // centrée en bas d'un écran large, peu idiomatique à cette taille. Le
+  // calque plein écran (data-action="closeModal") ferme le menu au clic en
+  // dehors, comme les autres modales.
+  function renderAccountDropdown() {
+    var cu = person(state.currentUserId);
+    return (
+      '<div class="account-dropdown-overlay" data-action="closeModal"></div>' +
+      '<div class="account-dropdown" data-stop-click>' +
+      '<div class="account-dropdown-header">' +
+      '<div class="avatar avatar-30" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
+      '<span class="account-dropdown-name">' + escapeHtml(cu.name) + '</span>' +
+      '</div>' +
+      '<div class="account-dropdown-divider"></div>' +
+      '<button class="account-dropdown-item pressable" data-action="openAbout"><i class="ph-bold ph-info"></i>À propos</button>' +
+      '<div class="account-dropdown-divider"></div>' +
+      // Se déconnecter n'est pas une action destructive — pas de traitement
+      // "danger" (rouge) comme le ferait une suppression, juste une ligne de
+      // menu neutre comme les autres (cf. best practices desktop demandées).
+      '<button class="account-dropdown-item pressable" data-action="logout"><i class="ph-bold ph-sign-out"></i>Se déconnecter</button>' +
       '</div>'
     );
   }
@@ -2709,10 +2738,14 @@
     );
   }
 
+  // Mobile uniquement à partir de 900px (cf. styles.css) — remplacée sur
+  // desktop par le menu déroulant ancré au menu latéral (cf.
+  // renderAccountDropdown()), plus idiomatique à cette largeur qu'une
+  // feuille pleine largeur centrée en bas de l'écran.
   function renderAccountModal() {
     var cu = person(state.currentUserId);
     return (
-      '<div class="modal-overlay bottom" data-action="closeModal">' +
+      '<div class="modal-overlay bottom account-modal-mobile" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">Mon compte</div>' +
       '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +

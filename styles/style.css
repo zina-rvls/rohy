@@ -463,6 +463,11 @@ button { font-family: inherit; }
    — invisible sur mobile, où l'icône de compte de la barre du haut
    (.account-icon-btn) remplit déjà ce rôle. */
 .sidebar-account { display: none; }
+/* Menu déroulant ancré à .sidebar-account, desktop uniquement (cf.
+   media query) — sur mobile, cet élément n'existe que dans le flux du
+   menu latéral desktop et doit rester invisible par défaut. */
+.account-dropdown-overlay,
+.account-dropdown { display: none; }
 
 @media (min-width: 900px) {
   .bottom-nav {
@@ -497,12 +502,37 @@ button { font-family: inherit; }
   .account-icon-btn { display: none; }
   /* Ancrée en bas du menu latéral (marge automatique sur le dernier
      nav-item avant elle la pousse vers le bas), façon Slack/Notion/Discord
-     — toujours visible, séparée des liens de navigation principaux. */
+     — toujours visible, séparée des liens de navigation principaux.
+     position: relative sur le conteneur (et non le bouton lui-même) : sert
+     de repère d'ancrage au menu déroulant (.account-dropdown), qui doit
+     rester à la largeur du menu latéral quel que soit son contenu. */
+  .sidebar-account-wrap { position: relative; margin-top: auto; }
   .sidebar-account {
-    display: flex; align-items: center; gap: 10px; margin-top: auto; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
     border-top: 1px solid var(--border-subtle); border-radius: 0;
   }
   .sidebar-account-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .account-dropdown-overlay { display: block; position: fixed; inset: 0; z-index: 10; }
+  .account-dropdown {
+    display: flex; flex-direction: column; position: absolute; left: 0; right: 0; bottom: 100%;
+    margin-bottom: 8px; background: var(--surface-raised); border: 1px solid var(--border-subtle);
+    border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, .24); padding: 8px; z-index: 11;
+    animation: popIn .15s ease;
+  }
+  .account-dropdown-header { display: flex; align-items: center; gap: 10px; padding: 8px 10px 10px; }
+  .account-dropdown-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .account-dropdown-divider { height: 1px; background: var(--border-subtle); margin: 4px 0; }
+  .account-dropdown-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px;
+    border-radius: 10px; border: none; background: none; cursor: pointer; font-size: 13.5px;
+    font-weight: 600; color: var(--text-primary); font-family: 'Manrope', sans-serif;
+  }
+  .account-dropdown-item:hover { background: var(--surface-overlay); }
+  .account-dropdown-item i { font-size: 16px; color: var(--text-tertiary); }
+  /* Remplacée sur cette largeur par le menu déroulant ci-dessus (cf.
+     renderAccountDropdown()), plus idiomatique qu'une feuille glissée
+     depuis le bas façon mobile sur un écran large. */
+  .account-modal-mobile { display: none; }
   .nav-item {
     flex: none;
     flex-direction: row;
