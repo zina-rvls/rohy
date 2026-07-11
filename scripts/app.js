@@ -1829,9 +1829,11 @@
       // avant cette modification, elle n'était joignable que depuis
       // l'accueil ("Bonjour, ..."). Toujours visible ici, sur tous les
       // écrans, façon avatar de profil dans un en-tête.
+      // Le mode jour/nuit vit désormais dans "Mon compte" (feuille mobile)
+      // /le menu déroulant (desktop) avec les autres réglages de préférence
+      // — trop peu fréquent pour mériter une icône permanente dans la barre
+      // du haut, cf. À propos/Se déconnecter qui suivent le même principe.
       '<button class="avatar avatar-30 pressable account-icon-btn" data-action="openAccount" style="background:' + cu.color + ';border:none;padding:0;cursor:pointer" title="Mon compte">' + initials(cu.name) + '</button>' +
-      '<button class="icon-btn small pressable" data-action="toggleTheme">' +
-      '<i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i></button>' +
       (showAddButton ? '<button class="icon-btn small brand pressable" data-action="openAddExpenseGlobal"><i class="ph-bold ph-plus"></i></button>' : '') +
       '</div>'
     );
@@ -2446,6 +2448,7 @@
       '</div>' +
       '<div class="account-dropdown-divider"></div>' +
       '<button class="account-dropdown-item pressable" data-action="openAbout"><i class="ph-bold ph-info"></i>À propos</button>' +
+      '<button class="account-dropdown-item pressable" data-action="toggleTheme"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i>' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</button>' +
       '<div class="account-dropdown-divider"></div>' +
       // Se déconnecter n'est pas une action destructive — pas de traitement
       // "danger" (rouge) comme le ferait une suppression, juste une ligne de
@@ -2753,7 +2756,8 @@
       '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
       '</div>' +
-      '<button class="switch-user-row pressable" data-action="openAbout" style="margin-bottom:6px"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
+      '<button class="switch-user-row pressable" data-action="openAbout"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
+      '<button class="switch-user-row pressable" data-action="toggleTheme" style="margin-bottom:6px"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</span></button>' +
       '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
       '</div></div>'
     );
