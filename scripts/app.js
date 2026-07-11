@@ -1252,7 +1252,16 @@
           addGuestMembersSequentially(withoutEmail, newGroup.id, withEmail.length),
         ]).then(function (results) {
           var failedInvites = results[0].concat(results[1]).concat(results[2]);
-          setState({ showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id });
+          // Direction directe vers l'écran Dépenses du groupe qu'on vient de
+          // créer (filtré dessus), plutôt que de laisser sur la liste des
+          // groupes : on vient de créer ce groupe précisément pour y suivre
+          // des dépenses, autant y atterrir directement (même logique que
+          // Splitwise/Tricount) — état vide déjà pourvu d'un bouton "Ajouter
+          // une dépense" pré-scopé à ce groupe.
+          setState({
+            showAddGroup: false, submittingGroup: false, lastActiveGroupId: newGroup.id,
+            screen: 'expenses', navStack: [], expensesGroupFilter: newGroup.id,
+          });
           loadAppData().then(function () {
             if (failedInvites.length) { showToast('Erreur : ajout impossible pour ' + failedInvites.join(', ') + ' — réessaie depuis "gérer les membres".'); return; }
             var msgParts = [];
