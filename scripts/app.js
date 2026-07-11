@@ -1595,6 +1595,20 @@
       '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z" fill="none" stroke="#0A6B50" stroke-width="3" stroke-linejoin="round" style="animation-delay:.49s;transform-origin:50px 49px"></path>' +
       '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.58s;transform-origin:50px 74px"></path>' +
       '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.58s;transform-origin:50px 74px"></path>' +
+      // Aux 4 croisements où une bande verticale passe "au-dessus" (révélée
+      // par le trou evenodd d'une bande horizontale), ce même rect vertical
+      // garde sa propre bordure tout du long (elle court sur toute sa
+      // hauteur) — visible aussi dans cette fenêtre de révélation, ce qui
+      // donne l'impression que la bande "en dessous" garde un contour à
+      // l'intérieur du croisement. Un pavé plein (sans bordure), de la
+      // couleur de la bande verticale, posé par-dessus exactement sur cette
+      // fenêtre, aplatit le croisement en un patch de couleur propre — sans
+      // changer la couleur perçue, juste sans bordure superflue à cet
+      // endroit précis.
+      '<rect class="splash-h" x="42" y="13.5" width="18" height="18" fill="#7B3F98" style="animation-delay:.4s;transform-origin:51px 22.5px"></rect>' +
+      '<rect class="splash-h" x="16" y="40" width="18" height="18" fill="#C9A159" style="animation-delay:.49s;transform-origin:25px 49px"></rect>' +
+      '<rect class="splash-h" x="68" y="40" width="18" height="18" fill="#C9A159" style="animation-delay:.49s;transform-origin:77px 49px"></rect>' +
+      '<rect class="splash-h" x="42" y="65" width="18" height="18" fill="#7B3F98" style="animation-delay:.58s;transform-origin:51px 74px"></rect>' +
       '</svg>' +
       '<div class="splash-wordmark">Rohy</div>' +
       '<div class="splash-tagline">Suivi des dépenses entre amis et en famille</div>' +
