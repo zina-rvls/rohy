@@ -511,7 +511,13 @@ button { font-family: inherit; }
     display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
     border-top: 1px solid var(--border-subtle); border-radius: 0;
   }
+  .sidebar-account:hover { background: var(--surface-overlay); }
   .sidebar-account-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Avatar du menu latéral + de l'en-tête du menu déroulant : un léger
+     contour et une ombre portée lui donnent un peu de relief sur ces deux
+     fonds plats (menu latéral, en-tête du menu déroulant), plutôt qu'un
+     aplat de couleur qui se fond dedans. */
+  .avatar-account { box-shadow: 0 0 0 1px var(--border-subtle), 0 2px 5px rgba(0, 0, 0, .18); }
   .account-dropdown-overlay { display: block; position: fixed; inset: 0; z-index: 10; }
   .account-dropdown {
     display: flex; flex-direction: column; position: absolute; left: 0; right: 0; bottom: 100%;
@@ -531,8 +537,13 @@ button { font-family: inherit; }
   .account-dropdown-item i { font-size: 16px; color: var(--text-tertiary); }
   /* Remplacée sur cette largeur par le menu déroulant ci-dessus (cf.
      renderAccountDropdown()), plus idiomatique qu'une feuille glissée
-     depuis le bas façon mobile sur un écran large. */
-  .account-modal-mobile { display: none; }
+     depuis le bas façon mobile sur un écran large. Sélecteur à deux
+     classes (et non juste .account-modal-mobile) : .modal-overlay fixe
+     aussi son propre display:flex plus loin dans la feuille de style,
+     à spécificité égale — sans ce cran de spécificité en plus, l'ordre
+     du fichier ferait gagner .modal-overlay et la feuille resterait
+     visible en plus du nouveau menu déroulant. */
+  .modal-overlay.account-modal-mobile { display: none; }
   .nav-item {
     flex: none;
     flex-direction: row;

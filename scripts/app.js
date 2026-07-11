@@ -2420,7 +2420,7 @@
       // largeur, l'icône de la barre du haut étant réservée au mobile.
       '<div class="sidebar-account-wrap">' +
       '<button class="sidebar-account pressable" data-action="openAccount">' +
-      '<div class="avatar avatar-30" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
+      '<div class="avatar avatar-30 avatar-account" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<span class="sidebar-account-name">' + escapeHtml(cu.name) + '</span>' +
       '</button>' +
       (state.showAccount ? renderAccountDropdown() : '') +
@@ -2441,7 +2441,7 @@
       '<div class="account-dropdown-overlay" data-action="closeModal"></div>' +
       '<div class="account-dropdown" data-stop-click>' +
       '<div class="account-dropdown-header">' +
-      '<div class="avatar avatar-30" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
+      '<div class="avatar avatar-30 avatar-account" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<span class="account-dropdown-name">' + escapeHtml(cu.name) + '</span>' +
       '</div>' +
       '<div class="account-dropdown-divider"></div>' +
