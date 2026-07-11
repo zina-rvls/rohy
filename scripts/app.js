@@ -1098,17 +1098,23 @@
     });
   }
   // Le prénom doit rafraîchir la liste de suggestions de profils existants
-  // juste en dessous (cf. guestSuggestionsFor), mais re-rendre à CHAQUE
-  // frappe reproduisait le flash visuel déjà corrigé une première fois
-  // (la transition CSS globale rejoue sur les nœuds recréés) : la saisie
-  // elle-même reste silencieuse, seul le rafraîchissement des suggestions
-  // est différé de 300ms après la dernière frappe (debounce) — même
-  // compromis que setAddMemberName.
+  // juste en dessous (cf. guestSuggestionsFor), mais un setState (donc un
+  // render() complet, qui recrée tout le DOM de la modale via innerHTML)
+  // recrée aussi le champ "Prénom" lui-même, perturbant le clavier virtuel
+  // mobile — même debouncé de 300ms, ça reste visible dès que l'utilisateur
+  // marque une pause en tapant. Correctif définitif : ne patcher QUE le
+  // conteneur sous le champ (cf. data-invitee-below, inviteeBelowNameHtml),
+  // jamais le champ "Prénom" lui-même, qui ne quitte donc plus jamais le
+  // DOM pendant la frappe.
   function setInviteeName(index, v) {
     updateInvitee(index, 'name', v, true);
     updateInvitee(index, 'linkExistingId', null, true);
     clearTimeout(inviteeNameDebounceTimer);
-    inviteeNameDebounceTimer = setTimeout(function () { setState(function (s) { return s; }); }, 300);
+    inviteeNameDebounceTimer = setTimeout(function () {
+      var root = document.getElementById('app');
+      var below = root.querySelector('[data-invitee-below="' + index + '"]');
+      if (below) below.innerHTML = inviteeBelowNameHtml(index);
+    }, 300);
   }
   function setInviteeEmail(index, v) { updateInvitee(index, 'email', v, true); }
   function setInviteeShare(index, v) { updateInvitee(index, 'shareWeight', v, true); }
@@ -1279,16 +1285,19 @@
       };
     });
   }
-  // Le prénom doit rafraîchir la liste de suggestions de profils existants
-  // juste en dessous (cf. guestSuggestionsFor), mais re-rendre à CHAQUE
-  // frappe reproduisait le flash visuel déjà corrigé une première fois : la
-  // saisie reste silencieuse, seul le rafraîchissement des suggestions est
-  // différé de 300ms après la dernière frappe (debounce) — même compromis
-  // que setInviteeName.
+  // Cf. le commentaire de setInviteeName : ne patcher que le conteneur sous
+  // le champ "Prénom" (data-add-member-below), jamais le champ lui-même,
+  // pour ne plus jamais perturber le clavier virtuel mobile pendant la
+  // frappe — y compris lors des pauses (le debounce à lui seul ne suffisait
+  // pas, un render() complet reste un render() complet).
   function setAddMemberName(v) {
     setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { name: v, linkExistingId: null }) }; });
     clearTimeout(addMemberNameDebounceTimer);
-    addMemberNameDebounceTimer = setTimeout(function () { setState(function (s) { return s; }); }, 300);
+    addMemberNameDebounceTimer = setTimeout(function () {
+      var root = document.getElementById('app');
+      var below = root.querySelector('[data-add-member-below]');
+      if (below) below.innerHTML = addMemberBelowNameHtml();
+    }, 300);
   }
   function setAddMemberEmail(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { email: v }) }; }); }
   function setAddMemberWeight(v) { setStateSilent(function (s) { return { addMemberForm: Object.assign({}, s.addMemberForm, { shareWeight: v }) }; }); }
@@ -1305,6 +1314,71 @@
       if (excludeIds && excludeIds.indexOf(p.id) !== -1) return false;
       return p.name.toLowerCase().indexOf(q) !== -1;
     }).slice(0, 5);
+  }
+  // Contenu sous le champ "Prénom" d'une ligne d'invité (suggestions de
+  // profils existants, ou bandeau "déjà lié·e", ou champs e-mail/part) —
+  // extrait dans sa propre fonction pour pouvoir le rafraîchir isolément
+  // (cf. setInviteeName) sans reconstruire tout le DOM de la modale, donc
+  // sans jamais recréer le champ "Prénom" lui-même pendant la frappe.
+  function inviteeBelowNameHtml(index) {
+    var gf = state.groupForm;
+    var inv = gf.invitees[index];
+    if (!inv) return '';
+    var linkedProfile = inv.linkExistingId ? person(inv.linkExistingId) : null;
+    var otherLinkedIds = gf.invitees.filter(function (_, j) { return j !== index; })
+      .map(function (x) { return x.linkExistingId; }).filter(Boolean);
+    var suggestions = (!linkedProfile && !inv.email.trim()) ? guestSuggestionsFor(inv.name, otherLinkedIds) : [];
+    return (
+      (suggestions.length ?
+        '<div style="margin:-4px 0 10px">' +
+        suggestions.map(function (s) {
+          return '<div class="dashed-btn pressable" style="text-align:left;padding:8px 12px;margin-top:4px" data-action="selectExistingGuestForInvitee" data-group-id="' + index + '" data-id="' + s.id + '"><i class="ph-bold ph-user-circle" style="margin-right:6px"></i>' + escapeHtml(s.name) + ' — déjà ajouté·e dans un autre groupe, lier plutôt que recréer</div>';
+        }).join('') +
+        '</div>' : '') +
+      (linkedProfile ?
+        '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text-primary)">' +
+        '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part habituelle actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
+        '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + index + '">Annuler</span>' +
+        '</div>' :
+        '<input class="text-input" data-bind="inviteeEmail" data-id="' + index + '" placeholder="E-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="font-size:12.5px;color:var(--text-secondary)">Part habituelle (1 = part entière)</span>' +
+        '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + index + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
+        '</div>')
+    );
+  }
+  // Même principe que inviteeBelowNameHtml, pour le formulaire "+ ajouter un
+  // membre" de "Gérer les membres".
+  function addMemberBelowNameHtml() {
+    var mg = group(state.manageMembersGroupId);
+    var members = mg ? mg.memberIds.map(function (id) { return person(id); }).filter(Boolean) : [];
+    var linkedGuestProfile = state.addMemberForm.linkExistingId ? person(state.addMemberForm.linkExistingId) : null;
+    var guestSuggestions = (!linkedGuestProfile && !state.addMemberForm.email.trim())
+      ? guestSuggestionsFor(state.addMemberForm.name, members.map(function (x) { return x.id; }))
+      : [];
+    return (
+      (guestSuggestions.length ?
+        '<div style="margin:-8px 0 12px">' +
+        guestSuggestions.map(function (s) {
+          return '<div class="dashed-btn pressable" style="text-align:left;padding:8px 12px;margin-top:4px" data-action="selectExistingGuestForAddMember" data-id="' + s.id + '"><i class="ph-bold ph-user-circle" style="margin-right:6px"></i>' + escapeHtml(s.name) + ' — déjà ajouté·e dans un autre groupe, lier plutôt que recréer</div>';
+        }).join('') +
+        '</div>' : '') +
+      (linkedGuestProfile ?
+        '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--text-primary)">' +
+        '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedGuestProfile.name) + ' (déjà connu·e) sera ajouté·e à ce groupe avec sa part habituelle actuelle (' + String(linkedGuestProfile.shareWeight != null ? linkedGuestProfile.shareWeight : 1).replace('.', ',') + ').' +
+        '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">Annuler</span>' +
+        '</div>' :
+        '<div class="field-label">E-mail (facultatif)</div>' +
+        '<input class="text-input" data-bind="addMemberEmail" placeholder="Pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
+        '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
+        '<div class="field-label">Part habituelle (1 = part entière)</div>' +
+        '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
+        '<div class="field-label">Responsable (facultatif)</div>' +
+        '<select class="text-input" data-bind-change="addMemberGuardian">' +
+        '<option value="">— Aucun —</option>' +
+        members.map(function (x) { return '<option value="' + x.id + '"' + (state.addMemberForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
+        '</select>')
+    );
   }
   function selectExistingGuestForAddMember(profileId) {
     var p = person(profileId);
@@ -1711,8 +1785,8 @@
       '</div>' +
       // Icône de compte : seul point d'accès à "Mon compte"/déconnexion
       // avant cette modification, elle n'était joignable que depuis
-      // l'accueil ("Connecté en tant que..."). Toujours visible ici, sur
-      // tous les écrans, façon avatar de profil dans un en-tête.
+      // l'accueil ("Bonjour, ..."). Toujours visible ici, sur tous les
+      // écrans, façon avatar de profil dans un en-tête.
       '<button class="avatar avatar-30 pressable account-icon-btn" data-action="openAccount" style="background:' + cu.color + ';border:none;padding:0;cursor:pointer" title="Mon compte">' + initials(cu.name) + '</button>' +
       '<button class="icon-btn small pressable" data-action="toggleTheme">' +
       '<i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i></button>' +
@@ -1834,7 +1908,7 @@
       renderGroupFilterPills(filterId, 'setHomeGroupFilter') +
       '<button class="current-user-row pressable" data-action="openAccount">' +
       '<div class="avatar avatar-26" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
-      '<div style="font-size:13px;color:var(--text-secondary)">Connecté en tant que <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
+      '<div style="font-size:13px;color:var(--text-secondary)">Bonjour, <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
       '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
       '</button>' +
       (state.groups.length === 0 ?
@@ -2518,38 +2592,36 @@
     );
   }
 
+  // Regroupe les devises par région (cf. `region` dans scripts/data.js) en
+  // <optgroup> plutôt qu'une seule longue liste à plat de 37 devises — plus
+  // facile à parcourir, notamment pour retrouver rapidement une devise
+  // africaine (public cible principal de l'app) sans défiler tout le reste.
+  function currencyOptionsHtml(selectedCode) {
+    var groups = [];
+    var lastRegion = null;
+    seed.CURRENCIES.forEach(function (c) {
+      if (c.region !== lastRegion) { groups.push({ region: c.region, items: [] }); lastRegion = c.region; }
+      groups[groups.length - 1].items.push(c);
+    });
+    return groups.map(function (g) {
+      var opts = g.items.map(function (c) {
+        return '<option value="' + c.code + '"' + (selectedCode === c.code ? ' selected' : '') + '>' + c.code + ' — ' + escapeHtml(c.label) + ' (' + c.symbol + ')</option>';
+      }).join('');
+      return '<optgroup label="' + escapeHtml(g.region) + '">' + opts + '</optgroup>';
+    }).join('');
+  }
+
   function renderAddGroupModal() {
     var gf = state.groupForm;
-    var currencyOptions = seed.CURRENCIES.map(function (c) {
-      return '<option value="' + c.code + '"' + (gf.currency === c.code ? ' selected' : '') + '>' + c.code + ' — ' + escapeHtml(c.label) + ' (' + c.symbol + ')</option>';
-    }).join('');
+    var currencyOptions = currencyOptionsHtml(gf.currency);
     var inviteeRows = gf.invitees.map(function (inv, i) {
-      var linkedProfile = inv.linkExistingId ? person(inv.linkExistingId) : null;
-      var otherLinkedIds = gf.invitees.filter(function (_, j) { return j !== i; })
-        .map(function (x) { return x.linkExistingId; }).filter(Boolean);
-      var suggestions = (!linkedProfile && !inv.email.trim()) ? guestSuggestionsFor(inv.name, otherLinkedIds) : [];
       return (
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
         '<input class="text-input" style="margin-bottom:0" data-bind="inviteeName" data-id="' + i + '" placeholder="Prénom" value="' + escapeHtml(inv.name) + '" />' +
         (gf.invitees.length > 1 ? '<button class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeInviteeRow" data-id="' + i + '"><i class="ph-bold ph-x"></i></button>' : '') +
         '</div>' +
-        (suggestions.length ?
-          '<div style="margin:-4px 0 10px">' +
-          suggestions.map(function (s) {
-            return '<div class="dashed-btn pressable" style="text-align:left;padding:8px 12px;margin-top:4px" data-action="selectExistingGuestForInvitee" data-group-id="' + i + '" data-id="' + s.id + '"><i class="ph-bold ph-user-circle" style="margin-right:6px"></i>' + escapeHtml(s.name) + ' — déjà ajouté·e dans un autre groupe, lier plutôt que recréer</div>';
-          }).join('') +
-          '</div>' : '') +
-        (linkedProfile ?
-          '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text-primary)">' +
-          '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part habituelle actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
-          '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + i + '">Annuler</span>' +
-          '</div>' :
-          '<input class="text-input" data-bind="inviteeEmail" data-id="' + i + '" placeholder="E-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-size:12.5px;color:var(--text-secondary)">Part habituelle (1 = part entière)</span>' +
-          '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + i + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
-          '</div>') +
+        '<div data-invitee-below="' + i + '">' + inviteeBelowNameHtml(i) + '</div>' +
         '</div>'
       );
     }).join('');
@@ -2561,7 +2633,10 @@
       '<div class="field-label">Nom</div>' +
       '<input class="text-input" data-bind="groupName" placeholder="Ex : week-end à Lyon" value="' + escapeHtml(gf.name) + '" />' +
       '<div class="field-label">Devise</div>' +
-      '<select class="text-input" data-bind-change="groupCurrency">' + currencyOptions + '</select>' +
+      '<div class="select-field">' +
+      '<select class="text-input select-native" data-bind-change="groupCurrency">' + currencyOptions + '</select>' +
+      '<i class="ph-bold ph-caret-down select-chevron"></i>' +
+      '</div>' +
       '<div class="section-label">Ajouter des membres</div>' +
       '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-8px 0 12px">l\'e-mail est facultatif : renseigné, une invitation est envoyée pour que la personne se connecte elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
       inviteeRows +
@@ -2674,36 +2749,11 @@
       );
     }).join('');
 
-    var linkedGuestProfile = state.addMemberForm.linkExistingId ? person(state.addMemberForm.linkExistingId) : null;
-    var guestSuggestions = (!linkedGuestProfile && !state.addMemberForm.email.trim())
-      ? guestSuggestionsFor(state.addMemberForm.name, members.map(function (x) { return x.id; }))
-      : [];
-
     var addMemberSection = !state.showAddMemberForm ? '' :
       '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:14px">' +
       '<div class="field-label">Prénom</div>' +
       '<input class="text-input" data-bind="addMemberName" placeholder="Prénom" value="' + escapeHtml(state.addMemberForm.name) + '" />' +
-      (guestSuggestions.length ?
-        '<div style="margin:-8px 0 12px">' +
-        guestSuggestions.map(function (s) {
-          return '<div class="dashed-btn pressable" style="text-align:left;padding:8px 12px;margin-top:4px" data-action="selectExistingGuestForAddMember" data-id="' + s.id + '"><i class="ph-bold ph-user-circle" style="margin-right:6px"></i>' + escapeHtml(s.name) + ' — déjà ajouté·e dans un autre groupe, lier plutôt que recréer</div>';
-        }).join('') +
-        '</div>' : '') +
-      (linkedGuestProfile ?
-        '<div style="background:var(--status-positive-bg);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--text-primary)">' +
-        '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedGuestProfile.name) + ' (déjà connu·e) sera ajouté·e à ce groupe avec sa part habituelle actuelle (' + String(linkedGuestProfile.shareWeight != null ? linkedGuestProfile.shareWeight : 1).replace('.', ',') + ').' +
-        '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">Annuler</span>' +
-        '</div>' :
-        '<div class="field-label">E-mail (facultatif)</div>' +
-        '<input class="text-input" data-bind="addMemberEmail" placeholder="Pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
-        '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
-        '<div class="field-label">Part habituelle (1 = part entière)</div>' +
-        '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
-        '<div class="field-label">Responsable (facultatif)</div>' +
-        '<select class="text-input" data-bind-change="addMemberGuardian">' +
-        '<option value="">— Aucun —</option>' +
-        members.map(function (x) { return '<option value="' + x.id + '"' + (state.addMemberForm.guardianId === x.id ? ' selected' : '') + '>' + escapeHtml(x.name) + '</option>'; }).join('') +
-        '</select>') +
+      '<div data-add-member-below>' + addMemberBelowNameHtml() + '</div>' +
       '<button class="btn-primary pressable" style="margin-top:10px' + (state.addingMember ? ';opacity:0.6' : '') + '" data-action="submitAddMember">' +
       (state.addingMember ? 'Ajout en cours…' : 'Ajouter') + '</button>' +
       '</div>';

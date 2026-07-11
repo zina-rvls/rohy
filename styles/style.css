@@ -229,6 +229,18 @@ button { font-family: inherit; }
   background: var(--surface-canvas); color: var(--text-primary); font-size: 15px; margin-bottom: 14px;
   font-family: 'Manrope', sans-serif;
 }
+/* Un <select> avec juste la classe .text-input garde la flèche native du
+   navigateur/OS, qui jure avec le reste du design (pas la même forme, pas
+   toujours bien centrée dans le padding). .select-field masque cette
+   flèche (`appearance: none`) et la remplace par un chevron Phosphor,
+   cohérent avec les autres icônes de l'app (ex. le chevron déjà utilisé sur
+   la ligne "Bonjour" de l'accueil). */
+.select-field { position: relative; margin-bottom: 14px; }
+.select-field .select-native { margin-bottom: 0; appearance: none; -webkit-appearance: none; padding-right: 38px; }
+.select-field .select-chevron {
+  position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; color: var(--text-tertiary); pointer-events: none;
+}
 .link-right { text-align: right; color: var(--brand-primary-hover); font-size: 13px; font-weight: 700; margin-bottom: 20px; cursor: pointer; }
 .btn-primary {
   text-align: center; padding: 14px; background: var(--brand-primary); color: #fff; border-radius: 14px;
