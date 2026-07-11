@@ -62,7 +62,12 @@
    frappe dans un champ non "silencieux", provoquant un flash visuel.
    Basculée par scripts/app.js autour de chaque appel à render(). */
 .no-transition, .no-transition * { transition: none !important; }
-html, body { margin: 0; height: 100%; }
+/* overflow-x + overscroll-behavior-x : empêche tout défilement horizontal
+   (accidentel, ou l'effet de rebond élastique de certains navigateurs
+   mobiles quand on swipe au-delà du bord gauche/droit), qui décalait
+   momentanément l'app hors de son centrage. Ne touche pas au défilement
+   vertical (scroll normal, pull-to-refresh). */
+html, body { margin: 0; height: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
 body {
   background: var(--surface-sunken);
   font-family: 'Manrope', sans-serif;
