@@ -23,7 +23,8 @@ Dans le dashboard Supabase → SQL Editor, colle et exécute **dans l'ordre**
 PUIS `0005_households_scoped_to_group.sql`, PUIS
 `0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`,
 PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql`,
-PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`
+PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`,
+PUIS `0012_rebrand_profile_colors.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -160,6 +161,17 @@ rappels (deux personnes différentes recevant leurs rappels à la même
 adresse). La migration nettoie d'abord les doublons déjà présents (garde
 l'e-mail sur le profil le plus ancien, le retire des autres) avant
 d'ajouter la contrainte.
+
+`0012_rebrand_profile_colors.sql` remplace l'ancienne palette de couleurs
+d'avatar (posée avant l'envoi de la charte graphique de la marque) par une
+palette dérivée des 4 teintes du logo tissé. Trois changements : la valeur
+par défaut de `profiles.color`, le trigger `handle_new_user` (utilisé
+notamment par la connexion par lien magique, qui ne fournit pas de couleur
+dans ses métadonnées), et une réattribution en une fois de la nouvelle
+palette à tous les profils déjà créés (en cycle, par ordre de création,
+pour que des profils voisins dans un même groupe restent visuellement
+distincts). Testée de bout en bout sur un schéma Postgres local reproduisant
+exactement celui de production avant d'être livrée.
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 
