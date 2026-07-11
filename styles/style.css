@@ -76,27 +76,31 @@ button { font-family: inherit; }
 /* Par défaut (jusqu'à DESKTOP_BREAKPOINT ci-dessous, cf. media query) :
    l'app occupe tout l'écran, sans "carte" ni marge — c'est ce qui donne
    l'impression d'une vraie app plutôt qu'une maquette de téléphone flottant
-   au milieu de la page. 100dvh (hauteur de viewport "dynamique", qui suit
-   l'affichage/masquage de la barre d'adresse mobile) avec repli sur 100vh
-   pour les navigateurs qui ne le supportent pas encore. --app-vh (posée par
-   scripts/app.js à partir de window.visualViewport) affine encore cette
-   valeur : sur certains navigateurs/contextes mobiles (barre d'outils du
-   navigateur ancrée en bas, barre de navigation gestuelle Android, certains
-   navigateurs intégrés comme Instagram/TikTok...), 100dvh ne retire pas
-   toujours correctement cette zone de l'écran, ce qui fait passer le menu
-   du bas derrière cette barre. --app-vh est recalculée à chaque
-   redimensionnement du "visual viewport" (chrome du navigateur qui
-   apparaît/disparaît), donnant une valeur plus fiable que dvh seul. */
+   au milieu de la page. 100vh : repli pour les navigateurs qui ne
+   connaissent aucune des unités dynamiques ci-dessous. 100dvh (hauteur de
+   viewport "dynamique") tente de suivre l'affichage/masquage du chrome du
+   navigateur, mais s'est avérée peu fiable en pratique sur certains
+   navigateurs/contextes mobiles (barre d'outils ancrée en bas, barre de
+   navigation gestuelle Android, navigateurs intégrés) — y compris une
+   première tentative de correctif via window.visualViewport, qui ne
+   reflétait pas non plus toujours correctement cette barre, laissant le
+   menu du bas (position: fixed; bottom: 0) caché derrière. 100svh (hauteur
+   de viewport "small", qui suppose TOUJOURS le chrome du navigateur affiché
+   au maximum) est le dernier repli : par définition jamais trop grande,
+   donc jamais susceptible de cacher le menu du bas derrière une barre du
+   navigateur — au prix, dans de rares cas, de ne pas profiter du plein
+   espace disponible quand ce chrome vient à disparaître (compromis
+   largement préférable à un menu inaccessible). */
 .app-frame-wrap {
   min-height: 100vh;
   min-height: 100dvh;
-  min-height: calc(var(--app-vh, 1vh) * 100);
+  min-height: 100svh;
 }
 .app-frame {
   width: 100%;
   height: 100vh;
   height: 100dvh;
-  height: calc(var(--app-vh, 1vh) * 100);
+  height: 100svh;
   overflow: hidden;
   display: flex;
   flex-direction: column;

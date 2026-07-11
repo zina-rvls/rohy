@@ -16,28 +16,6 @@
   var sb = window.supabaseClient;
   var THEME_KEY = 'rohy-theme';
 
-  // Affine 100dvh (cf. styles.css --app-vh) : sur certains navigateurs/
-  // contextes mobiles, la hauteur "dynamic viewport" ne retire pas toujours
-  // correctement la zone occupée par le chrome du navigateur (barre
-  // d'adresse ancrée en bas, barre de navigation gestuelle Android,
-  // certains navigateurs intégrés), ce qui peut laisser le menu du bas
-  // (position: fixed; bottom: 0) caché derrière cette barre. window.
-  // visualViewport reflète la zone réellement visible et se met à jour à
-  // chaque affichage/masquage de ce chrome, contrairement à window.
-  // innerHeight (utilisé seulement en repli, sur les navigateurs sans
-  // visualViewport).
-  function updateAppVh() {
-    var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
-    document.documentElement.style.setProperty('--app-vh', (h * 0.01) + 'px');
-  }
-  updateAppVh();
-  window.addEventListener('resize', updateAppVh);
-  window.addEventListener('orientationchange', updateAppVh);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', updateAppVh);
-    window.visualViewport.addEventListener('scroll', updateAppVh);
-  }
-
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
