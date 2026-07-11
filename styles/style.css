@@ -262,7 +262,11 @@ button { font-family: inherit; }
   font-weight: 700; font-size: 15px; cursor: pointer; border: none; width: 100%;
   box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 24px rgba(214, 36, 122, .25);
 }
-.btn-primary:hover { background: var(--brand-primary-hover); }
+/* (hover: hover) : limite ces styles aux appareils à pointeur réel
+   (souris/trackpad). Sans ce garde-fou, un survol reste "collé" après un
+   tap sur tout appareil tactile (téléphone, ou tablette assez large pour
+   passer les seuils desktop ci-dessous) jusqu'au tap suivant ailleurs. */
+@media (hover: hover) { .btn-primary:hover { background: var(--brand-primary-hover); } }
 .form-error { text-align: center; color: var(--status-danger); font-size: 12.5px; margin-top: 10px; }
 .divider-or { display: flex; align-items: center; gap: 10px; margin: 20px 0; color: var(--text-tertiary); font-size: 12px; }
 .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
@@ -279,7 +283,7 @@ button { font-family: inherit; }
 .icon-btn { width: 34px; height: 34px; border-radius: 14px; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 16px; flex-shrink: 0; border: none; }
 .icon-btn.small { width: 36px; height: 36px; }
 .icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 20px rgba(214, 36, 122, .22); }
-.icon-btn.brand:hover { background: var(--brand-primary-hover); }
+@media (hover: hover) { .icon-btn.brand:hover { background: var(--brand-primary-hover); } }
 .top-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 19px; color: var(--text-primary); letter-spacing: -0.2px; }
 /* Sur l'écran d'accueil, le titre texte ("Mes dépenses") cède la place au
    logo + wordmark (cf. .top-bar-wordmark) — mais seulement sur mobile. Sur
@@ -338,7 +342,7 @@ button { font-family: inherit; }
 .group-members { font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
 .group-summary { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 14px; }
 .dashed-btn { text-align: center; padding: 14px; border: 1.5px dashed var(--border-default); border-radius: 16px; color: var(--text-tertiary); font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 6px; background: none; width: 100%; }
-.dashed-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary-hover); }
+@media (hover: hover) { .dashed-btn:hover { border-color: var(--brand-primary); color: var(--brand-primary-hover); } }
 
 /* --- Pièce jointe (formulaire dépense) --- */
 /* Zone cliquable habillée façon "dashed-btn" plutôt que le <input type="file">
@@ -351,13 +355,13 @@ button { font-family: inherit; }
   padding: 18px 14px; border: 1.5px dashed var(--border-default); border-radius: 16px;
   color: var(--text-tertiary); font-weight: 700; font-size: 13.5px; cursor: pointer; margin-bottom: 14px;
 }
-.attachment-dropzone:hover { border-color: var(--brand-primary); color: var(--brand-primary-hover); }
+@media (hover: hover) { .attachment-dropzone:hover { border-color: var(--brand-primary); color: var(--brand-primary-hover); } }
 .attachment-dropzone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .attachment-picked { display: flex; align-items: center; gap: 10px; background: var(--surface-raised); border-radius: 14px; padding: 11px 12px; margin-bottom: 14px; }
 .attachment-picked i { color: var(--status-positive); font-size: 17px; flex-shrink: 0; }
 .attachment-picked-name { flex: 1; font-size: 13px; color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-picked-clear { width: 26px; height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: none; border: none; color: var(--text-tertiary); cursor: pointer; }
-.attachment-picked-clear:hover { background: var(--surface-overlay); color: var(--text-primary); }
+@media (hover: hover) { .attachment-picked-clear:hover { background: var(--surface-overlay); color: var(--text-primary); } }
 
 /* --- Scan de ticket (formulaire dépense) --- */
 /* Même logique que .attachment-dropzone (input[type=file] natif superposé en
@@ -370,7 +374,7 @@ button { font-family: inherit; }
   color: var(--brand-primary); font-weight: 700; font-size: 14px; cursor: pointer; margin-bottom: 18px;
   background: rgba(214, 36, 122, .06);
 }
-.scan-dropzone:hover { background: rgba(214, 36, 122, .1); }
+@media (hover: hover) { .scan-dropzone:hover { background: rgba(214, 36, 122, .1); } }
 .scan-dropzone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .scan-dropzone.scanning { pointer-events: none; }
 .scan-spinner { width: 16px; height: 16px; border: 2px solid rgba(214, 36, 122, .3); border-top-color: var(--brand-primary); border-radius: 50%; animation: scanSpin .7s linear infinite; flex-shrink: 0; }
@@ -527,7 +531,7 @@ button { font-family: inherit; }
     border: none; border-top: 1px solid var(--border-subtle); border-radius: 0;
     background: none; cursor: pointer;
   }
-  .sidebar-account:hover { background: var(--surface-overlay); }
+  @media (hover: hover) { .sidebar-account:hover { background: var(--surface-overlay); } }
   .sidebar-account-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Avatar du menu latéral + de l'en-tête du menu déroulant : un léger
      contour et une ombre portée lui donnent un peu de relief sur ces deux
@@ -549,7 +553,7 @@ button { font-family: inherit; }
     border-radius: 10px; border: none; background: none; cursor: pointer; font-size: 13.5px;
     font-weight: 600; color: var(--text-primary); font-family: 'Manrope', sans-serif;
   }
-  .account-dropdown-item:hover { background: var(--surface-overlay); }
+  @media (hover: hover) { .account-dropdown-item:hover { background: var(--surface-overlay); } }
   .account-dropdown-item i { font-size: 16px; color: var(--text-tertiary); }
   /* Remplacée sur cette largeur par le menu déroulant ci-dessus (cf.
      renderAccountDropdown()), plus idiomatique qu'une feuille glissée
@@ -568,7 +572,7 @@ button { font-family: inherit; }
     padding: 11px 14px;
     border-radius: 12px;
   }
-  .nav-item:hover { background: var(--surface-overlay); }
+  @media (hover: hover) { .nav-item:hover { background: var(--surface-overlay); } }
   .nav-item-label { font-size: 13.5px; }
 }
 
@@ -604,7 +608,7 @@ button { font-family: inherit; }
 .modal-footer-buttons { display: flex; gap: 10px; }
 .btn-cancel { flex: 1; text-align: center; padding: 12px; background: transparent; border: 1px solid var(--border-default); color: var(--text-primary); border-radius: 14px; font-weight: 700; font-size: 14px; cursor: pointer; }
 .btn-confirm { flex: 1; text-align: center; padding: 12px; background: var(--brand-primary); color: #fff; border-radius: 14px; font-weight: 700; font-size: 14px; cursor: pointer; border: none; }
-.btn-confirm:hover { background: var(--brand-primary-hover); }
+@media (hover: hover) { .btn-confirm:hover { background: var(--brand-primary-hover); } }
 .delete-link { text-align: center; color: var(--status-danger); font-size: 13.5px; font-weight: 700; margin-top: 14px; cursor: pointer; background: none; border: none; width: 100%; padding: 0; }
 
 /* --- Toast --- */
@@ -612,3 +616,17 @@ button { font-family: inherit; }
 
 /* utility */
 .hidden { display: none !important; }
+
+/* Réglage d'accessibilité au niveau de l'OS (iOS/Android/macOS/Windows) —
+   raccourcit toute animation/transition CSS à une durée quasi nulle plutôt
+   que de la désactiver élément par élément (l'écran de lancement, les
+   fondus/glissements de modales, l'effet d'appui des boutons...). Les
+   confettis (JS, cf. celebrateSettlement) suivent déjà ce réglage de leur
+   côté via l'option disableForReducedMotion de la librairie. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

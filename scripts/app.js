@@ -1777,7 +1777,7 @@
     return (
       '<div class="login-screen" style="padding:0">' +
       '<div style="padding:20px 20px 0">' +
-      '<button class="icon-btn pressable" data-action="closeAboutFromLogin"><i class="ph-bold ph-arrow-left"></i></button>' +
+      '<button class="icon-btn pressable" data-action="closeAboutFromLogin" aria-label="Retour"><i class="ph-bold ph-arrow-left"></i></button>' +
       '</div>' +
       renderAboutScreen() +
       '</div>'
@@ -1823,7 +1823,7 @@
     var cu = person(state.currentUserId);
     return (
       '<div class="top-bar">' +
-      (showBack ? '<button class="icon-btn pressable" data-action="goBack"><i class="ph-bold ph-arrow-left"></i></button>' :
+      (showBack ? '<button class="icon-btn pressable" data-action="goBack" aria-label="Retour"><i class="ph-bold ph-arrow-left"></i></button>' :
         isHome ? '<div class="top-bar-wordmark">' + logoMarkMulti(26) + '<span>Rohy</span></div>' :
         '<div class="top-bar-logo">' + logoMark(20, '#D6247A', '#96195A') + '</div>') +
       '<div style="flex:1">' +
@@ -1838,8 +1838,8 @@
       // /le menu déroulant (desktop) avec les autres réglages de préférence
       // — trop peu fréquent pour mériter une icône permanente dans la barre
       // du haut, cf. À propos/Se déconnecter qui suivent le même principe.
-      '<button class="avatar avatar-30 pressable account-icon-btn" data-action="openAccount" style="background:' + cu.color + ';border:none;padding:0;cursor:pointer" title="Mon compte">' + initials(cu.name) + '</button>' +
-      (showAddButton ? '<button class="icon-btn small brand pressable" data-action="openAddExpenseGlobal"><i class="ph-bold ph-plus"></i></button>' : '') +
+      '<button class="avatar avatar-30 pressable account-icon-btn" data-action="openAccount" style="background:' + cu.color + ';border:none;padding:0;cursor:pointer" title="Mon compte" aria-label="Mon compte">' + initials(cu.name) + '</button>' +
+      (showAddButton ? '<button class="icon-btn small brand pressable" data-action="openAddExpenseGlobal" aria-label="Ajouter une dépense"><i class="ph-bold ph-plus"></i></button>' : '') +
       '</div>'
     );
   }
@@ -1947,7 +1947,7 @@
           globalTxns.map(function (t) {
             return '<div class="suggestion-row"><div><b>' + escapeHtml(person(t.from).name) + '</b> → <b>' + escapeHtml(person(t.to).name) + '</b></div>' +
               '<div style="display:flex;align-items:center;gap:8px"><div class="suggestion-amount">' + fmtC(t.amount) + '</div>' +
-              '<button class="btn-icon-settle pressable" title="Enregistrer ce paiement" data-action="quickSettle" data-from="' + t.from + '" data-to="' + t.to + '" data-amount="' + t.amount + '" data-group-id=""><i class="ph-bold ph-check-circle"></i></button>' +
+              '<button class="btn-icon-settle pressable" title="Enregistrer ce paiement" aria-label="Enregistrer ce paiement" data-action="quickSettle" data-from="' + t.from + '" data-to="' + t.to + '" data-amount="' + t.amount + '" data-group-id=""><i class="ph-bold ph-check-circle"></i></button>' +
               '</div></div>';
           }).join('');
       }
@@ -2161,7 +2161,7 @@
       var canSettle = t.fromId && t.toId;
       return '<div class="suggestion-row"><div><b>' + escapeHtml(t.fromLabel) + '</b> → <b>' + escapeHtml(t.toLabel) + '</b></div>' +
         '<div style="display:flex;align-items:center;gap:8px"><div class="suggestion-amount">' + fmtIn(t.amount, g.currency) + '</div>' +
-        (canSettle ? '<button class="btn-icon-settle pressable" title="Enregistrer ce paiement" data-action="quickSettle" data-from="' + t.fromId + '" data-to="' + t.toId + '" data-amount="' + t.amount + '" data-group-id="' + g.id + '"><i class="ph-bold ph-check-circle"></i></button>' : '') +
+        (canSettle ? '<button class="btn-icon-settle pressable" title="Enregistrer ce paiement" aria-label="Enregistrer ce paiement" data-action="quickSettle" data-from="' + t.fromId + '" data-to="' + t.toId + '" data-amount="' + t.amount + '" data-group-id="' + g.id + '"><i class="ph-bold ph-check-circle"></i></button>' : '') +
         '</div></div>';
     }).join('');
 
@@ -2183,7 +2183,7 @@
       (isAdmin ?
         '<div class="admin-actions">' +
         '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> Gérer les membres</button>' +
-        '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '"><i class="ph-bold ph-trash"></i></button>' +
+        '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '" aria-label="Supprimer le groupe"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' :
         '<div class="admin-actions">' +
         '<button class="btn-outline pressable" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open"></i> Quitter ce groupe</button>' +
@@ -2615,7 +2615,7 @@
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">' + (f.editingId ? 'Modifier la dépense' : 'Nouvelle dépense') + '</div>' +
-      '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
+      '<button class="modal-close" data-action="closeModal" aria-label="Fermer"><i class="ph-bold ph-x"></i></button></div>' +
       (f.scanning ?
         '<div class="scan-dropzone scanning"><div class="scan-spinner"></div><span>Lecture du ticket en cours...</span></div>'
         :
@@ -2649,13 +2649,13 @@
       (f.receiptPath && !f.receiptRemove ?
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
         '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> Voir le reçu actuel</button>' +
-        '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
+        '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu" aria-label="Retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' : '') +
       (f.receiptFile ?
         '<div class="attachment-picked">' +
         '<i class="ph-bold ph-file-check"></i>' +
         '<span class="attachment-picked-name">' + escapeHtml(f.receiptFile.name) + '</span>' +
-        '<button type="button" class="attachment-picked-clear pressable" data-action="clearReceiptFile" title="Choisir un autre fichier"><i class="ph-bold ph-x"></i></button>' +
+        '<button type="button" class="attachment-picked-clear pressable" data-action="clearReceiptFile" title="Choisir un autre fichier" aria-label="Choisir un autre fichier"><i class="ph-bold ph-x"></i></button>' +
         '</div>'
         :
         '<label class="attachment-dropzone pressable">' +
@@ -2698,7 +2698,7 @@
         '<div style="background:var(--surface-overlay);border-radius:14px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
         '<input class="text-input" style="margin-bottom:0" data-bind="inviteeName" data-id="' + i + '" placeholder="Prénom" value="' + escapeHtml(inv.name) + '" />' +
-        (gf.invitees.length > 1 ? '<button class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeInviteeRow" data-id="' + i + '"><i class="ph-bold ph-x"></i></button>' : '') +
+        (gf.invitees.length > 1 ? '<button class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeInviteeRow" data-id="' + i + '" aria-label="Retirer cette personne"><i class="ph-bold ph-x"></i></button>' : '') +
         '</div>' +
         '<div data-invitee-below="' + i + '">' + inviteeBelowNameHtml(i) + '</div>' +
         '</div>'
@@ -2708,7 +2708,7 @@
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">Nouveau groupe</div>' +
-      '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
+      '<button class="modal-close" data-action="closeModal" aria-label="Fermer"><i class="ph-bold ph-x"></i></button></div>' +
       '<div class="field-label">Nom</div>' +
       '<input class="text-input" data-bind="groupName" placeholder="Ex : week-end à Lyon" value="' + escapeHtml(gf.name) + '" />' +
       '<div class="field-label">Devise</div>' +
@@ -2756,7 +2756,7 @@
       '<div class="modal-overlay bottom account-modal-mobile" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">Mon compte</div>' +
-      '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
+      '<button class="modal-close" data-action="closeModal" aria-label="Fermer"><i class="ph-bold ph-x"></i></button></div>' +
       '<div style="display:flex;align-items:center;gap:12px;padding:4px 0 22px">' +
       '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
@@ -2810,7 +2810,7 @@
         (p.guardianId ? '<span class="badge-child inline">À charge</span>' : '') +
         '</div>' +
         (!isAdmin ?
-          '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
+          '<button class="btn-icon-danger pressable" style="width:30px;height:30px;flex-shrink:0" data-action="openConfirmRemoveMember" data-group-id="' + mg.id + '" data-id="' + p.id + '" title="retirer du groupe" aria-label="Retirer du groupe"><i class="ph-bold ph-trash"></i></button>' : '') +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
         '<div><div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">Part habituelle (1 = part entière)</div>' +
@@ -2846,7 +2846,7 @@
       '<div class="modal-overlay bottom" data-action="closeModal">' +
       '<div class="modal-sheet" data-stop-click>' +
       '<div class="modal-header"><div class="modal-title">Membres · ' + escapeHtml(mg.name) + '</div>' +
-      '<button class="modal-close" data-action="closeModal"><i class="ph-bold ph-x"></i></button></div>' +
+      '<button class="modal-close" data-action="closeModal" aria-label="Fermer"><i class="ph-bold ph-x"></i></button></div>' +
       '<div class="section-label">Foyers</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:14px">' +
       '<input class="text-input" style="margin-bottom:0;flex:1" data-bind="newHouseholdName" placeholder="Nom du foyer" value="' + escapeHtml(state.newHouseholdName) + '" />' +
