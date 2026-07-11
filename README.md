@@ -327,6 +327,27 @@ fils du tissage, et l'une des 4 teintes d'avatar). Les icônes bitmap
 l'identique pixel près (recoloration ciblée, pas un nouveau rendu depuis
 zéro) pour ne pas perdre en netteté par rapport aux fichiers d'origine.
 
+L'inversion primaire/secondaire ci-dessus a eu un effet de bord repéré
+juste après coup : le libellé de l'onglet actif du menu (bas sur mobile,
+latéral sur desktop) et le lien "Tout sélectionner" (formulaire de
+dépense) suivent `--brand-secondary`, qui valait le vert avant ce
+changement — après l'inversion, il pointait vers le rose, faisant passer
+ces deux textes du vert au rose sans que ce soit voulu. Corrigé en
+alignant `--brand-secondary` sur la même valeur que `--brand-primary`
+(vert) dans les deux thèmes : plus vraiment besoin d'une seconde teinte de
+marque distincte pour l'instant, les deux usages qui s'appuyaient dessus
+visaient déjà "la" couleur de marque, pas un accent différent. Les
+confettis (célébration d'un remboursement), qui lisaient aussi
+`--brand-secondary` pour varier leurs couleurs, reprennent directement le
+rose et le doré du logo tissé à la place — but purement décoratif, pas
+besoin d'un jeton de couleur sémantique pour ça.
+
+Pour rappel (cf. plus haut) : la pastille d'avatar reste volontairement
+sur son propre système de couleurs (rose/vert/doré/violet, cycle par
+ordre de création) — un avatar rose après ce changement n'est donc pas un
+oubli, juste le premier membre créé retombant sur la première teinte du
+cycle.
+
 **Audit UX/UI — listes qui grandissent**
 
 Point de départ : l'affichage en boutons/cartes de l'écran "Groupes" fonctionne

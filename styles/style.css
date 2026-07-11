@@ -17,7 +17,7 @@
   --border-default: #363B49;
   --brand-primary: #0F8F6B;
   --brand-primary-hover: #12AF83;
-  --brand-secondary: #E04891;
+  --brand-secondary: #0F8F6B;
   --status-positive: #4ADE80;
   --status-positive-bg: rgba(74, 222, 128, .12);
   --status-warning: #F4D35E;
@@ -41,7 +41,7 @@
   --border-default: #D8D4C9;
   --brand-primary: #0F8F6B;
   --brand-primary-hover: #0A5C45;
-  --brand-secondary: #D6247A;
+  --brand-secondary: #0F8F6B;
   /* Versions assombries de ces couleurs par rapport à leur teinte "brand"
      d'origine (#29B876/#C99A1E/#E1533F) : sur fond clair, ces teintes plus
      vives tombaient sous 3:1 de contraste (illisibles). Les fonds `-bg`

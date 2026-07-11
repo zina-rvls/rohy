@@ -768,13 +768,17 @@
   function celebrateSettlement() {
     if (typeof confetti !== 'function') return;
     var accent = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#0F8F6B';
-    var accent2 = getComputedStyle(document.documentElement).getPropertyValue('--brand-secondary').trim() || '#D6247A';
+    // --brand-secondary vaut désormais la même teinte que --brand-primary
+    // (cf. styles.css) : pour garder un peu de variété dans l'explosion de
+    // confettis (purement décorative, pas un indicateur de statut), on
+    // reprend directement une des autres teintes du logo tissé plutôt que
+    // de dupliquer deux fois le même vert.
     confetti({
       particleCount: 90,
       spread: 70,
       startVelocity: 38,
       origin: { y: 0.7 },
-      colors: [accent, accent2, '#FFC94A', '#FFFFFF'],
+      colors: [accent, '#D6247A', '#C9A159', '#FFFFFF'],
       disableForReducedMotion: true,
     });
   }
