@@ -509,7 +509,8 @@ button { font-family: inherit; }
   .sidebar-account-wrap { position: relative; margin-top: auto; }
   .sidebar-account {
     display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
-    border-top: 1px solid var(--border-subtle); border-radius: 0;
+    border: none; border-top: 1px solid var(--border-subtle); border-radius: 0;
+    background: none; cursor: pointer;
   }
   .sidebar-account:hover { background: var(--surface-overlay); }
   .sidebar-account-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
