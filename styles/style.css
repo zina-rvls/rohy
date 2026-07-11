@@ -164,10 +164,10 @@ button { font-family: inherit; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
 .splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
-/* Chaque bande s'assemble à sa place définitive (échelle + fondu, avec un
-   léger dépassement avant de se stabiliser) plutôt que de parcourir une
-   longue distance : plus net et plus confiant qu'un glissement, et honnête
-   sur ce qu'une simple transformation 2D peut représenter (un vrai tissage
+/* Chaque bande s'assemble à sa place définitive (échelle, avec un léger
+   dépassement avant de se stabiliser) plutôt que de parcourir une longue
+   distance : plus net et plus confiant qu'un glissement, et honnête sur ce
+   qu'une simple transformation 2D peut représenter (un vrai tissage
    par-dessus/en-dessous demanderait de faire alterner l'ordre d'empilement
    des bandes, pas juste leur position). Bandes verticales puis horizontales
    groupées (écart de .09s au sein d'un même groupe, contre .4s entre les
@@ -176,15 +176,21 @@ button { font-family: inherit; }
    isolée qui jure avec le reste. Contour et remplissage de chaque bande
    horizontale partagent la même classe et le même délai (`.splash-h`) pour
    apparaître ensemble — l'ancienne version animait seulement le
-   remplissage, laissant le contour vide visible dès le début. */
+   remplissage, laissant le contour vide visible dès le début.
+   Volontairement PAS de fondu d'opacité ici (contrairement à un premier
+   essai) : une bande semi-transparente en cours de fondu laisse voir par
+   transparence la bordure de la bande qu'elle est censée recouvrir —
+   visible le temps de la transition. Une échelle seule reste toujours
+   pleinement opaque, donc masque proprement dès qu'elle atteint un point,
+   sans jamais laisser rien transparaître. */
 .splash-v, .splash-h {
   transform-box: fill-box; transform-origin: center;
   animation: splashSettle .55s cubic-bezier(.2, .7, .3, 1) both;
 }
 @keyframes splashSettle {
-  0%   { opacity: 0; transform: scale(.7); }
-  65%  { opacity: 1; transform: scale(1.05); }
-  100% { opacity: 1; transform: scale(1); }
+  0%   { transform: scale(0); }
+  65%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 /* Wordmark + baseline : apparaissent une fois le motif assemblé (dernière
    bande installée à 1.13s), puis restent affichés le temps que l'utilisateur
