@@ -1,6 +1,11 @@
 /* Rohy — design tokens (cf. design_handoff_expense_tracker/README.md) */
 :root,
 [data-theme="dark"] {
+  /* Sans ça, les éléments natifs du navigateur (sélecteur de date,
+     liste déroulante ouverte, barre de défilement) gardent un rendu clair
+     par défaut même quand le thème sombre de l'app est actif — décalage
+     visible notamment sur le picker de date natif. */
+  color-scheme: dark;
   --surface-canvas: #111318;
   --surface-raised: #1B1E27;
   --surface-overlay: #262A35;
@@ -24,6 +29,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --surface-canvas: #FAF9F6;
   --surface-raised: #FFFFFF;
   --surface-overlay: #F4F3F0;
@@ -231,7 +237,11 @@ button { font-family: inherit; }
 .field-label { font-size: 11px; font-weight: 800; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
 .text-input {
   width: 100%; padding: 13px 15px; border-radius: 14px; border: 1px solid var(--border-default);
-  background: var(--surface-canvas); color: var(--text-primary); font-size: 15px; margin-bottom: 14px;
+  background: var(--surface-canvas); color: var(--text-primary);
+  /* 16px minimum : en dessous, Safari iOS zoome automatiquement toute la
+     page dès qu'on touche le champ (comportement natif non désactivable
+     autrement que par la taille de police elle-même). */
+  font-size: 16px; margin-bottom: 14px;
   font-family: 'Manrope', sans-serif;
 }
 /* Un <select> avec juste la classe .text-input garde la flèche native du
@@ -450,7 +460,12 @@ button { font-family: inherit; }
    espace vide entre lui et le bas réel de l'écran. En `fixed`, le menu
    colle instantanément au bas du viewport, comme sur une app native. */
 .bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface-raised); backdrop-filter: blur(16px);
+  position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface-raised);
+  /* Safari (macOS et iOS, donc aussi Chrome iOS qui partage le même moteur)
+     n'a supporté la propriété non préfixée qu'à partir de la version 18 —
+     sans le préfixe, le flou disparaît silencieusement sur les versions
+     antérieures, majoritaires au moment du lancement. */
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-subtle); display: flex; padding: 10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
 }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; background: none; border: none; }
@@ -480,7 +495,7 @@ button { font-family: inherit; }
     padding: 24px 14px;
     border-top: none;
     border-right: 1px solid var(--border-subtle);
-    backdrop-filter: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
   }
   .sidebar-brand {
     display: flex; align-items: center; gap: 10px; padding: 0 14px 20px; margin-bottom: 8px;
@@ -558,7 +573,7 @@ button { font-family: inherit; }
 }
 
 /* --- Modals --- */
-.modal-overlay { position: absolute; inset: 0; background: rgba(10, 11, 14, .6); backdrop-filter: blur(6px); display: flex; animation: fadeIn .15s ease; z-index: 10; }
+.modal-overlay { position: absolute; inset: 0; background: rgba(10, 11, 14, .6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; animation: fadeIn .15s ease; z-index: 10; }
 .modal-overlay.bottom { align-items: flex-end; justify-content: center; }
 .modal-overlay.center { align-items: center; justify-content: center; }
 /* max-width : sur un .app-frame plein écran (desktop large notamment), les
@@ -577,8 +592,13 @@ button { font-family: inherit; }
 .checkbox.checked { border-color: var(--brand-primary); background: var(--brand-primary); }
 .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border-subtle); cursor: pointer; }
 .checkbox-row:first-child { border-top: none; }
-.participant-select { font-size: 12px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--surface-canvas); padding: 6px 8px; font-family: 'Manrope', sans-serif; color: var(--text-primary); }
-.child-percent-input { width: 44px; text-align: center; padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border-default); background: var(--surface-canvas); color: var(--text-primary); font-size: 12.5px; font-family: 'Manrope', sans-serif; }
+/* font-size 16px sur les deux (au lieu de 12/12.5px) : même raison que
+   .text-input, ce sont aussi des champs natifs qu'on touche directement
+   (Safari iOS zoome la page en dessous de ce seuil). Largeur de
+   .child-percent-input élargie en conséquence pour garder 2-3 chiffres
+   lisibles sans les tronquer. */
+.participant-select { font-size: 16px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--surface-canvas); padding: 6px 8px; font-family: 'Manrope', sans-serif; color: var(--text-primary); }
+.child-percent-input { width: 56px; text-align: center; padding: 6px 4px; border-radius: 8px; border: 1px solid var(--border-default); background: var(--surface-canvas); color: var(--text-primary); font-size: 16px; font-family: 'Manrope', sans-serif; }
 .switch-user-row { display: flex; align-items: center; gap: 12px; padding: 11px 8px; border-radius: 14px; cursor: pointer; background: transparent; border: none; width: 100%; text-align: left; }
 .switch-user-row:active { background: var(--surface-overlay); }
 .modal-footer-buttons { display: flex; gap: 10px; }

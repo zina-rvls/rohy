@@ -242,7 +242,12 @@
     var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = url; a.download = filename;
+    // target="_blank" : filet de sécurité pour Safari iOS, qui ignore parfois
+    // l'attribut download selon le type de fichier et navigue à la place —
+    // sans ce filet, ce serait vers la même fenêtre (perte de l'état de
+    // l'app en cours) plutôt qu'un nouvel onglet, d'où l'on peut quand même
+    // enregistrer le fichier via "Partager".
+    a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
@@ -1367,7 +1372,7 @@
         '<i class="ph-bold ph-link" style="margin-right:6px;color:var(--status-positive)"></i>' + escapeHtml(linkedProfile.name) + ' (déjà connu·e) sera ajouté·e avec sa part habituelle actuelle (' + String(linkedProfile.shareWeight != null ? linkedProfile.shareWeight : 1).replace('.', ',') + ').' +
         '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForInvitee" data-id="' + index + '">Annuler</span>' +
         '</div>' :
-        '<input class="text-input" data-bind="inviteeEmail" data-id="' + index + '" placeholder="E-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
+        '<input class="text-input" type="email" data-bind="inviteeEmail" data-id="' + index + '" placeholder="E-mail (facultatif)" value="' + escapeHtml(inv.email) + '" style="margin-bottom:8px" />' +
         '<div style="display:flex;align-items:center;gap:8px">' +
         '<span style="font-size:12.5px;color:var(--text-secondary)">Part habituelle (1 = part entière)</span>' +
         '<input class="child-percent-input" data-bind="inviteeShare" data-id="' + index + '" value="' + escapeHtml(inv.shareWeight) + '" inputmode="decimal" />' +
@@ -1396,7 +1401,7 @@
         '<span class="delete-link" style="display:inline;margin-left:4px" data-action="unlinkExistingGuestForAddMember">Annuler</span>' +
         '</div>' :
         '<div class="field-label">E-mail (facultatif)</div>' +
-        '<input class="text-input" data-bind="addMemberEmail" placeholder="Pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
+        '<input class="text-input" type="email" data-bind="addMemberEmail" placeholder="Pour envoyer une invitation" value="' + escapeHtml(state.addMemberForm.email) + '" />' +
         '<div style="font-size:11.5px;color:var(--text-tertiary);margin:-10px 0 14px">Si renseigné, un e-mail d\'invitation est envoyé pour que cette personne puisse se connecter elle-même ; sinon, elle est simplement ajoutée au groupe.</div>' +
         '<div class="field-label">Part habituelle (1 = part entière)</div>' +
         '<input class="text-input" data-bind="addMemberWeight" inputmode="decimal" value="' + escapeHtml(state.addMemberForm.shareWeight) + '" />' +
@@ -1705,20 +1710,20 @@
     if (state.loginMode === 'signup') {
       body =
         '<div class="field-label">Prénom</div>' +
-        '<input class="text-input" data-bind="loginName" placeholder="Toi" value="' + escapeHtml(f.name) + '" />' +
+        '<input class="text-input" data-bind="loginName" autocomplete="name" placeholder="Toi" value="' + escapeHtml(f.name) + '" />' +
         '<div class="field-label">E-mail</div>' +
-        '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+        '<input class="text-input" type="email" autocomplete="email" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<div class="field-label">Mot de passe</div>' +
-        '<input class="text-input" type="password" data-bind="loginPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(f.password) + '" />' +
+        '<input class="text-input" type="password" autocomplete="new-password" data-bind="loginPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(f.password) + '" />' +
         '<button class="btn-primary pressable" data-action="submitSignup">Créer le compte</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
         '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">J\'ai déjà un compte →</div>';
     } else if (state.loginMode === 'password') {
       body =
         '<div class="field-label">E-mail</div>' +
-        '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+        '<input class="text-input" type="email" autocomplete="email" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<div class="field-label">Mot de passe</div>' +
-        '<input class="text-input" type="password" data-bind="loginPassword" placeholder="••••••••" value="' + escapeHtml(f.password) + '" />' +
+        '<input class="text-input" type="password" autocomplete="current-password" data-bind="loginPassword" placeholder="••••••••" value="' + escapeHtml(f.password) + '" />' +
         '<button class="btn-primary pressable" data-action="submitLogin">Se connecter</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
         '<div class="link-center" style="margin-top:12px" data-action="showForgotPassword">Mot de passe oublié ?</div>' +
@@ -1734,7 +1739,7 @@
         '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">Retour</div>' +
         '</div>' :
         '<div class="field-label">E-mail</div>' +
-        '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+        '<input class="text-input" type="email" autocomplete="email" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<button class="btn-primary pressable" data-action="submitForgotPassword">Envoyer le lien de réinitialisation</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
         '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">Retour à la connexion →</div>';
@@ -1749,7 +1754,7 @@
     } else {
       body =
         '<div class="field-label">E-mail</div>' +
-        '<input class="text-input" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+        '<input class="text-input" type="email" autocomplete="email" data-bind="loginEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
         '<button class="btn-primary pressable" data-action="submitMagicLink">Envoyer le lien</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
         '<div class="link-center" style="margin-top:20px" data-action="toggleLoginMode">Se connecter avec un mot de passe →</div>';
@@ -1786,7 +1791,7 @@
       '<div class="login-title">Nouveau mot de passe</div>' +
       '<div class="login-subtitle">Choisis un nouveau mot de passe pour ton compte</div>' +
       '<div class="field-label">Mot de passe</div>' +
-      '<input class="text-input" type="password" data-bind="newPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
+      '<input class="text-input" type="password" autocomplete="new-password" data-bind="newPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
       '<button class="btn-primary pressable" data-action="submitNewPassword">Mettre à jour le mot de passe</button>' +
       (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
       '</div>'
@@ -2487,7 +2492,7 @@
         p.hasAccount ?
           '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:18px">Cette personne n\'a pas d\'e-mail connu — le rappel restera uniquement dans l\'app.</div>' :
           '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:8px">Aucun e-mail renseigné pour cette personne — le rappel restera uniquement dans l\'app, sauf si tu en ajoutes un :</div>' +
-          '<input class="text-input" data-bind="reminderEmailDraft" placeholder="E-mail (facultatif)" value="' + escapeHtml(state.reminderEmailDraft || '') + '" />') +
+          '<input class="text-input" type="email" data-bind="reminderEmailDraft" placeholder="E-mail (facultatif)" value="' + escapeHtml(state.reminderEmailDraft || '') + '" />') +
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="closeReminderConfirm">Annuler</button>' +
       '<button class="btn-confirm pressable" data-action="confirmSendReminder">Envoyer le rappel</button>' +
@@ -2821,7 +2826,7 @@
           // modifiable depuis ici pour éviter toute désynchronisation.
           (p.email ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">E-mail</div><div style="font-size:13px;color:var(--text-secondary)">' + escapeHtml(p.email) + '</div>' : '') :
           '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:2px">E-mail (pour les rappels, facultatif)</div>' +
-          '<input class="text-input" style="margin-bottom:0" data-bind-change="memberEmail" data-id="' + p.id + '" placeholder="Pas d\'e-mail renseigné" value="' + escapeHtml(p.email || '') + '" />') +
+          '<input class="text-input" type="email" style="margin-bottom:0" data-bind-change="memberEmail" data-id="' + p.id + '" placeholder="Pas d\'e-mail renseigné" value="' + escapeHtml(p.email || '') + '" />') +
         '</div>' +
         '</div>' +
         '</div>'
@@ -3025,6 +3030,13 @@
   }
 
   // ---------- Démarrage ----------
+
+  // Safari iOS n'active la pseudo-classe :active au toucher que si un
+  // gestionnaire d'événement tactile existe quelque part dans la page —
+  // sans ça, tout le retour visuel au tap (.pressable:active, cf. styles.css)
+  // ne se déclenche jamais sur iPhone, alors qu'il fonctionne normalement
+  // partout ailleurs (souris, autres navigateurs mobiles).
+  document.addEventListener('touchstart', function () {}, { passive: true });
 
   document.addEventListener('DOMContentLoaded', function () {
     render();
