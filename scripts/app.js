@@ -568,7 +568,7 @@
     setState({ loginError: null });
     sb.auth.signUp({
       email: f.email.trim(), password: f.password,
-      options: { data: { name: f.name.trim(), color: '#7C5CFF' } },
+      options: { data: { name: f.name.trim(), color: INVITEE_COLORS[0] } },
     }).then(function (res) {
       if (res.error) { setState({ loginError: res.error.message }); return; }
       if (!res.data.session) {
@@ -752,8 +752,8 @@
   // capricieux), on l'ignore silencieusement plutôt que de bloquer l'action.
   function celebrateSettlement() {
     if (typeof confetti !== 'function') return;
-    var accent = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#7C5CFF';
-    var accent2 = getComputedStyle(document.documentElement).getPropertyValue('--brand-secondary').trim() || '#4ADE80';
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#D6247A';
+    var accent2 = getComputedStyle(document.documentElement).getPropertyValue('--brand-secondary').trim() || '#0F8F6B';
     confetti({
       particleCount: 90,
       spread: 70,
@@ -1076,7 +1076,15 @@
   }
 
   // ---------- Groups ----------
-  var INVITEE_COLORS = ['#4ADE80', '#F97362', '#9B81FF', '#29B876', '#F4D35E', '#5B9CF6', '#E88AC4'];
+  // Couleurs des pastilles d'avatar (initiales), attribuées en cycle aux
+  // nouveaux membres — dérivées des 4 couleurs de la marque (celles du logo
+  // tissé : rose, vert, doré, violet), pas une palette générique à part.
+  // Chaque teinte est éclaircie (même teinte/saturation, luminosité ajustée)
+  // juste ce qu'il faut pour rester lisible avec le texte foncé fixe des
+  // avatars (`.avatar`, cf. styles.css) — les couleurs de marque telles
+  // quelles n'offrent pas toutes un contraste suffisant avec ce texte (le
+  // rose et le violet, notamment, sont trop saturés une fois testés).
+  var INVITEE_COLORS = ['#E566A4', '#11A279', '#C9A15A', '#B381CB'];
 
   function openAddGroup() {
     setState({

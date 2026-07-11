@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { name, share_weight: weight, color: color || '#7C5CFF' },
+      data: { name, share_weight: weight, color: color || '#E566A4' },
     });
 
     let invitedUserId: string;
