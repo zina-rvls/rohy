@@ -15,9 +15,9 @@
   --text-tertiary: #6E7080;
   --border-subtle: #262A35;
   --border-default: #363B49;
-  --brand-primary: #E04891;
-  --brand-primary-hover: #E566A4;
-  --brand-secondary: #0F8F6B;
+  --brand-primary: #0F8F6B;
+  --brand-primary-hover: #12AF83;
+  --brand-secondary: #E04891;
   --status-positive: #4ADE80;
   --status-positive-bg: rgba(74, 222, 128, .12);
   --status-warning: #F4D35E;
@@ -39,9 +39,9 @@
   --text-tertiary: #83858C;
   --border-subtle: #E7E4DC;
   --border-default: #D8D4C9;
-  --brand-primary: #D6247A;
-  --brand-primary-hover: #A61C5F;
-  --brand-secondary: #0F8F6B;
+  --brand-primary: #0F8F6B;
+  --brand-primary-hover: #0A5C45;
+  --brand-secondary: #D6247A;
   /* Versions assombries de ces couleurs par rapport à leur teinte "brand"
      d'origine (#29B876/#C99A1E/#E1533F) : sur fond clair, ces teintes plus
      vives tombaient sous 3:1 de contraste (illisibles). Les fonds `-bg`
@@ -230,7 +230,7 @@ button { font-family: inherit; }
 }
 @keyframes splashFadeUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 .login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-.login-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(214, 36, 122, .12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.login-icon { width: 52px; height: 52px; border-radius: 16px; background: rgba(15, 143, 107, .12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .login-wordmark { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; color: var(--brand-primary); }
 .login-title { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 24px; color: var(--text-primary); margin-bottom: 6px; }
 .login-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 26px; }
@@ -260,7 +260,7 @@ button { font-family: inherit; }
 .btn-primary {
   text-align: center; padding: 14px; background: var(--brand-primary); color: #fff; border-radius: 14px;
   font-weight: 700; font-size: 15px; cursor: pointer; border: none; width: 100%;
-  box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 24px rgba(214, 36, 122, .25);
+  box-shadow: 0 0 0 1px rgba(15, 143, 107, .4), 0 8px 24px rgba(15, 143, 107, .25);
 }
 /* (hover: hover) : limite ces styles aux appareils à pointeur réel
    (souris/trackpad). Sans ce garde-fou, un survol reste "collé" après un
@@ -282,7 +282,7 @@ button { font-family: inherit; }
 .top-bar { padding: 18px 20px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
 .icon-btn { width: 34px; height: 34px; border-radius: 14px; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 16px; flex-shrink: 0; border: none; }
 .icon-btn.small { width: 36px; height: 36px; }
-.icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 20px rgba(214, 36, 122, .22); }
+.icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(15, 143, 107, .4), 0 8px 20px rgba(15, 143, 107, .22); }
 @media (hover: hover) { .icon-btn.brand:hover { background: var(--brand-primary-hover); } }
 .top-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 19px; color: var(--text-primary); letter-spacing: -0.2px; }
 /* Sur l'écran d'accueil, le titre texte ("Mes dépenses") cède la place au
@@ -372,12 +372,12 @@ button { font-family: inherit; }
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
   padding: 16px 14px; border: 1.5px dashed var(--brand-primary); border-radius: 16px;
   color: var(--brand-primary); font-weight: 700; font-size: 14px; cursor: pointer; margin-bottom: 18px;
-  background: rgba(214, 36, 122, .06);
+  background: rgba(15, 143, 107, .06);
 }
-@media (hover: hover) { .scan-dropzone:hover { background: rgba(214, 36, 122, .1); } }
+@media (hover: hover) { .scan-dropzone:hover { background: rgba(15, 143, 107, .1); } }
 .scan-dropzone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .scan-dropzone.scanning { pointer-events: none; }
-.scan-spinner { width: 16px; height: 16px; border: 2px solid rgba(214, 36, 122, .3); border-top-color: var(--brand-primary); border-radius: 50%; animation: scanSpin .7s linear infinite; flex-shrink: 0; }
+.scan-spinner { width: 16px; height: 16px; border: 2px solid rgba(15, 143, 107, .3); border-top-color: var(--brand-primary); border-radius: 50%; animation: scanSpin .7s linear infinite; flex-shrink: 0; }
 @keyframes scanSpin { to { transform: rotate(360deg); } }
 
 /* --- Group detail --- */

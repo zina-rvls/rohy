@@ -304,6 +304,29 @@ navigateur/appareil précis), pas en relisant le code sur desktop :
 | Aucun `aria-label` sur les boutons à icône seule (fermer une modale, retour, ajouter, retirer un membre/reçu, enregistrer un paiement...) — un lecteur d'écran n'a alors qu'un "bouton" sans nom à annoncer | ✅ fait — `aria-label` ajouté sur tous les boutons dont l'icône est le seul contenu |
 | Pas de prise en compte de `prefers-reduced-motion` (réglage d'accessibilité du système : iOS, Android, macOS, Windows) — l'animation de l'écran de lancement, les fondus/glissements de modales et l'effet d'appui des boutons jouaient toujours, même quand l'utilisateur a explicitement demandé de réduire les animations | ✅ fait — règle globale qui réduit toute animation/transition CSS à une durée quasi nulle quand ce réglage est actif ; les confettis (JS, pas CSS) le respectaient déjà via l'option `disableForReducedMotion` de la librairie |
 
+**Couleur principale : vert (`#0F8F6B`) plutôt que rose (`#D6247A`)**
+
+Demande explicite : utiliser le vert comme couleur principale de la marque à
+la place du rose. Les deux teintes coexistaient déjà dans la palette
+(`--brand-primary`/`--brand-secondary`) — inversion des deux rôles plutôt
+qu'une nouvelle teinte inventée, avec le même écart clair/sombre par thème
+que celui déjà en place pour le rose (dérivé par calcul HSL, même logique
+que les survols existants). Répercuté partout où "la" couleur de marque
+(pas le logo tissé multicolore, cf. plus bas) apparaît en une seule teinte :
+boutons principaux, liens, icône de groupe, spinner de scan de ticket,
+logo simplifié (page de connexion, menu latéral, barre du haut), favicon,
+icônes de raccourci (192/512/apple-touch), couleur de thème du navigateur
+(`theme-color`, `manifest.json`), et les habillages de marque des exports
+Excel/PDF (en-têtes, mot "Rohy"). Le logo tissé à 4 couleurs (rose, vert,
+doré, violet — écran de lancement, page "À propos", en-tête d'accueil) et
+la palette d'avatars des membres restent volontairement inchangés : ce
+sont des systèmes de couleur distincts de "la" couleur principale unique,
+qui n'ont pas vocation à suivre ce changement (le rose reste l'un des 4
+fils du tissage, et l'une des 4 teintes d'avatar). Les icônes bitmap
+(favicon PNG 192/512/apple-touch, image de partage) ont été régénérées à
+l'identique pixel près (recoloration ciblée, pas un nouveau rendu depuis
+zéro) pour ne pas perdre en netteté par rapport aux fichiers d'origine.
+
 **Audit UX/UI — listes qui grandissent**
 
 Point de départ : l'affichage en boutons/cartes de l'écran "Groupes" fonctionne

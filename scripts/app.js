@@ -196,7 +196,7 @@
   // usages où une image bitmap est nécessaire — jsPDF (doc.addImage) et
   // ExcelJS (workbook.addImage) ne savent pas dessiner un SVG directement.
   function logoPngDataUrl(size) {
-    var svg = logoMark(size, '#D6247A', '#96195A');
+    var svg = logoMark(size, '#0F8F6B', '#084b38');
     var url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
     return new Promise(function (resolve, reject) {
       var img = new Image();
@@ -312,7 +312,7 @@
     ws.addImage(logoImageId, { tl: { col: 0.15, row: 0.15 }, ext: { width: 26, height: 26 } });
     ws.mergeCells(1, 2, 1, Math.max(3, header.length));
     ws.getCell(1, 2).value = 'Rohy';
-    ws.getCell(1, 2).font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFD6247A' } };
+    ws.getCell(1, 2).font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FF0F8F6B' } };
     ws.mergeCells(2, 2, 2, Math.max(3, header.length));
     ws.getCell(2, 2).value = subtitle;
     ws.getCell(2, 2).font = { name: 'Calibri', size: 10.5, color: { argb: 'FF55575F' } };
@@ -324,7 +324,7 @@
       var cell = headerRow.getCell(i + 1);
       cell.value = h;
       cell.font = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6247A' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F8F6B' } };
       cell.alignment = { vertical: 'middle' };
     });
     headerRow.height = 20;
@@ -383,19 +383,19 @@
     // alternées) reprises telles quelles des tokens CSS --brand-primary /
     // --surface-canvas (thème clair) — jsPDF ne sait pas lire les variables
     // CSS, donc dupliquées ici en RGB.
-    var brandHeadStyles = { fillColor: [214, 36, 122], textColor: [255, 255, 255], fontStyle: 'bold' };
+    var brandHeadStyles = { fillColor: [15, 143, 107], textColor: [255, 255, 255], fontStyle: 'bold' };
     var brandAltRow = { fillColor: [251, 246, 233] };
 
     logoPngDataUrl(96).then(function (logoPng) {
       var doc = new jspdf.jsPDF();
       doc.addImage(logoPng, 'PNG', 14, 10, 12, 12);
       doc.setFontSize(16);
-      doc.setTextColor(214, 36, 122);
+      doc.setTextColor(15, 143, 107);
       doc.text('Rohy', 30, 19);
       doc.setFontSize(11);
       doc.setTextColor(20, 22, 27);
       doc.text(d.group.name, 30, 25);
-      doc.setDrawColor(214, 36, 122);
+      doc.setDrawColor(15, 143, 107);
       doc.setLineWidth(0.5);
       doc.line(14, 28, 196, 28);
 
@@ -767,8 +767,8 @@
   // capricieux), on l'ignore silencieusement plutôt que de bloquer l'action.
   function celebrateSettlement() {
     if (typeof confetti !== 'function') return;
-    var accent = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#D6247A';
-    var accent2 = getComputedStyle(document.documentElement).getPropertyValue('--brand-secondary').trim() || '#0F8F6B';
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#0F8F6B';
+    var accent2 = getComputedStyle(document.documentElement).getPropertyValue('--brand-secondary').trim() || '#D6247A';
     confetti({
       particleCount: 90,
       spread: 70,
@@ -1761,7 +1761,7 @@
     }
     return (
       '<div class="login-screen">' +
-      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div><span class="login-wordmark">Rohy</span></div>' +
+      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#0F8F6B', '#084b38') + '</div><span class="login-wordmark">Rohy</span></div>' +
       '<div class="login-title">Se connecter</div>' +
       '<div class="login-subtitle">Retrouve tes groupes et vos comptes</div>' +
       body +
@@ -1787,7 +1787,7 @@
   function renderNewPasswordScreen() {
     return (
       '<div class="login-screen">' +
-      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#D6247A', '#96195A') + '</div><span class="login-wordmark">Rohy</span></div>' +
+      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#0F8F6B', '#084b38') + '</div><span class="login-wordmark">Rohy</span></div>' +
       '<div class="login-title">Nouveau mot de passe</div>' +
       '<div class="login-subtitle">Choisis un nouveau mot de passe pour ton compte</div>' +
       '<div class="field-label">Mot de passe</div>' +
@@ -1825,7 +1825,7 @@
       '<div class="top-bar">' +
       (showBack ? '<button class="icon-btn pressable" data-action="goBack" aria-label="Retour"><i class="ph-bold ph-arrow-left"></i></button>' :
         isHome ? '<div class="top-bar-wordmark">' + logoMarkMulti(26) + '<span>Rohy</span></div>' :
-        '<div class="top-bar-logo">' + logoMark(20, '#D6247A', '#96195A') + '</div>') +
+        '<div class="top-bar-logo">' + logoMark(20, '#0F8F6B', '#084b38') + '</div>') +
       '<div style="flex:1">' +
       '<div class="top-title' + (isHome ? ' home-title' : '') + '">' + escapeHtml(title) + '</div>' +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
@@ -2417,7 +2417,7 @@
     var cu = person(state.currentUserId);
     return (
       '<div class="bottom-nav">' +
-      '<div class="sidebar-brand">' + logoMark(24, '#D6247A', '#96195A') + '<span>Rohy</span></div>' +
+      '<div class="sidebar-brand">' + logoMark(24, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
       '<button class="nav-item" data-action="goHome" style="color:' + color(state.screen === 'home') + '"><i class="ph-bold ph-house" style="font-size:20px"></i><div class="nav-item-label">Accueil</div></button>' +
       '<button class="nav-item" data-action="goGroups" style="color:' + color(state.screen === 'groups' || state.screen === 'groupDetail') + '"><i class="ph-bold ph-users-three" style="font-size:20px"></i><div class="nav-item-label">Groupes</div></button>' +
       '<button class="nav-item" data-action="goExpenses" style="color:' + color(state.screen === 'expenses') + '"><i class="ph-bold ph-receipt" style="font-size:20px"></i><div class="nav-item-label">Dépenses</div></button>' +
