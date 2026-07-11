@@ -196,6 +196,13 @@ possible — rien d'autre dans l'app n'est affecté. `ANTHROPIC_MODEL`
 précis (ex. `claude-sonnet-5`) si la lecture s'avère peu fiable en pratique,
 au prix d'un coût par appel plus élevé.
 
+Corrigé : sur un ticket affichant un montant avec un séparateur de milliers
+(ex. `196 720 Ar` ou `196.720 Ar`), le modèle confondait parfois ce
+séparateur avec une virgule décimale et renvoyait `196.72` au lieu de
+`196720`. Le prompt précise désormais explicitement la distinction
+(un séparateur suivi d'exactement 3 chiffres est un groupement de
+milliers, pas une décimale) avec un exemple correspondant à ce cas précis.
+
 ## 7. Front-end branché
 
 `scripts/app.js` appelle désormais Supabase directement (`scripts/supabase-client.js`

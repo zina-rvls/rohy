@@ -41,11 +41,18 @@ function jsonResponse(body: unknown, status = 200) {
 const PROMPT = `Tu regardes la photo d'un ticket de caisse. Réponds UNIQUEMENT avec un objet JSON brut (pas de texte autour, pas de balises markdown), avec exactement ces champs :
 {
   "label": string ou null,    // nom du commerce ou description courte (ex. "Carrefour", "Restaurant Le Central") — null si illisible
-  "amount": number ou null,   // montant total payé, nombre décimal simple (point, pas de virgule, pas de symbole de devise) — null si illisible
+  "amount": number ou null,   // montant total payé, EN UNITÉ ENTIÈRE de la devise, sans séparateur de milliers — null si illisible
   "date": string ou null,     // date du ticket au format AAAA-MM-JJ — null si illisible ou absente
   "currency": string ou null  // code devise ISO 4217 à 3 lettres si déductible du ticket (ex. "EUR", "USD") — sinon null
 }
-Prends bien le montant TOTAL final payé (pas un sous-total ni une ligne de TVA isolée). Si l'image n'est manifestement pas un ticket de caisse, renvoie null pour tous les champs.`;
+Attention à ne pas confondre séparateur de milliers et virgule décimale : un
+point, une virgule ou une espace suivi d'exactement 3 chiffres est presque
+toujours un séparateur de milliers, pas une décimale (ex. un ticket affichant
+"196.720 Ar" ou "196 720 Ar" vaut 196720, PAS 196.72). Ne garde une partie
+décimale que si elle a 1 ou 2 chiffres (ex. "42,50 €" vaut 42.5). Prends bien
+le montant TOTAL final payé (pas un sous-total ni une ligne de TVA isolée).
+Si l'image n'est manifestement pas un ticket de caisse, renvoie null pour
+tous les champs.`;
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
