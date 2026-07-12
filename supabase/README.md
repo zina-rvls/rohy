@@ -25,7 +25,8 @@ PUIS `0005_households_scoped_to_group.sql`, PUIS
 PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql`,
 PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`,
 PUIS `0012_rebrand_profile_colors.sql`, PUIS
-`0013_link_guest_profile_on_signup.sql`
+`0013_link_guest_profile_on_signup.sql`, PUIS
+`0014_payment_method_reference.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -192,6 +193,14 @@ part et son historique de groupes/dépenses (tous rattachés à son `id`,
 inchangé) sont conservés. Testée de bout en bout sur un schéma Postgres
 local reproduisant exactement ce scénario (profil invité existant, puis
 inscription réelle avec la même adresse) avant d'être livrée.
+
+`0014_payment_method_reference.sql` ajoute `payments.payment_method`
+(MVola/Orange Money/Airtel Money/Espèces/Autre, contrainte de valeurs) et
+`payments.payment_reference` (texte libre) — traçabilité du règlement
+d'une dette, cf. discussion mobile money. Aucune intégration à une
+passerelle de paiement : le formulaire de règlement propose juste
+d'ouvrir le clavier téléphone avec le code USSD de l'opérateur choisi
+(`tel:*111#` etc.), la confirmation reste entièrement manuelle.
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 

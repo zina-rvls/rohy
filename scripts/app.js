@@ -95,7 +95,7 @@
       lastActiveGroupId: null,
       groupForm: { name: '', currency: seed.CURRENCIES[0].code, invitees: [{ name: '', email: '', shareWeight: '1', linkExistingId: null }] },
       submittingGroup: false,
-      settleForm: { from: null, to: null, amount: '' },
+      settleForm: { from: null, to: null, amount: '', paymentMethod: '', paymentReference: '' },
       formError: null,
     };
   }
@@ -496,7 +496,10 @@
         };
       });
       var payments = paymentRows.map(function (p) {
-        return { id: p.id, from: p.from_user, to: p.to_user, amount: Number(p.amount), date: p.payment_date, groupId: p.group_id };
+        return {
+          id: p.id, from: p.from_user, to: p.to_user, amount: Number(p.amount), date: p.payment_date, groupId: p.group_id,
+          paymentMethod: p.payment_method || null, paymentReference: p.payment_reference || null,
+        };
       });
       var reminders = reminderRows.map(function (r) {
         return { id: r.id, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message };
@@ -737,7 +740,7 @@
     var from = bal < 0 ? me : personId;
     var to = bal < 0 ? personId : me;
     var decimals = currencyDecimalsFor(groupId && group(groupId) ? group(groupId).currency : null);
-    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(decimals).replace('.', ',') } });
+    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: from, to: to, amount: Math.abs(bal).toFixed(decimals).replace('.', ','), paymentMethod: '', paymentReference: '' } });
   }
   // Raccourci "enregistrer" directement sur une ligne de suggestion : à la
   // différence de openSettle (qui déduit qui doit à qui en comparant "moi"
@@ -746,20 +749,37 @@
   // impliqué, ex. sur la vue "tous les groupes").
   function openSettleForPair(fromId, toId, amount, groupId) {
     var decimals = currencyDecimalsFor(groupId && group(groupId) ? group(groupId).currency : null);
-    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: fromId, to: toId, amount: Math.abs(amount).toFixed(decimals).replace('.', ',') } });
+    setState({ showSettle: true, settleGroupId: groupId || null, settleForm: { from: fromId, to: toId, amount: Math.abs(amount).toFixed(decimals).replace('.', ','), paymentMethod: '', paymentReference: '' } });
   }
   function setSettleAmount(v) { setStateSilent(function (s) { return { settleForm: Object.assign({}, s.settleForm, { amount: v }) }; }); }
+  function setSettlePaymentMethod(v) { setState({ settleForm: Object.assign({}, state.settleForm, { paymentMethod: v }) }); }
+  function setSettleReference(v) { setStateSilent(function (s) { return { settleForm: Object.assign({}, s.settleForm, { paymentReference: v }) }; }); }
   function submitSettle() {
     var sf = state.settleForm;
     var amt = parseFloat((sf.amount || '').replace(',', '.'));
     if (!amt || amt <= 0) return;
-    sb.from('payments').insert({ from_user: sf.from, to_user: sf.to, amount: amt, group_id: state.settleGroupId || null }).then(function (res) {
+    sb.from('payments').insert({
+      from_user: sf.from, to_user: sf.to, amount: amt, group_id: state.settleGroupId || null,
+      payment_method: sf.paymentMethod || null, payment_reference: (sf.paymentReference || '').trim() || null,
+    }).then(function (res) {
       if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showSettle: false, settleGroupId: null });
       celebrateSettlement();
       loadAppData().then(function () { showToast('Paiement enregistré'); });
     });
   }
+  // Codes USSD des principaux opérateurs mobile money à Madagascar — pas de
+  // webhook de confirmation possible via ce canal (une session USSD se
+  // déroule entièrement côté réseau opérateur, hors de portée du
+  // navigateur) : ce bouton ouvre juste le clavier téléphone avec le code
+  // pré-rempli, le règlement effectif et sa confirmation dans Rohy restent
+  // manuels, comme le reste du règlement des dettes.
+  var MOBILE_MONEY_USSD = {
+    mvola: '*111#',
+    orange_money: '*144#',
+    airtel_money: '*436#',
+  };
+  function ussdTelHref(code) { return 'tel:' + encodeURIComponent(code); }
 
   // Petite explosion de confettis quand une dette est soldée — un moment
   // gratifiant qui mérite un peu plus qu'un toast discret. `confetti` vient
@@ -2346,7 +2366,12 @@
     });
     state.payments.forEach(function (p) {
       var pg = p.groupId ? group(p.groupId) : null;
-      items.push({ date: p.date, icon: 'ph-bold ph-check-circle', iconBg: 'var(--status-positive-bg)', iconColor: 'var(--status-positive)', text: escapeHtml(person(p.from).name) + ' → ' + escapeHtml(person(p.to).name), amountLabel: fmtIn(p.amount, pg && pg.currency), color: 'var(--status-positive)' });
+      var methodLabel = p.paymentMethod ? PAYMENT_METHOD_LABELS[p.paymentMethod] : null;
+      items.push({
+        date: p.date, icon: 'ph-bold ph-check-circle', iconBg: 'var(--status-positive-bg)', iconColor: 'var(--status-positive)',
+        text: escapeHtml(person(p.from).name) + ' → ' + escapeHtml(person(p.to).name) + (methodLabel ? ' · ' + escapeHtml(methodLabel) : ''),
+        amountLabel: fmtIn(p.amount, pg && pg.currency), color: 'var(--status-positive)',
+      });
     });
     state.reminders.forEach(function (r) {
       items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'Rappel envoyé à ' + escapeHtml(person(r.toPersonId).name), amountLabel: null, color: null });
@@ -2731,11 +2756,18 @@
     );
   }
 
+  // Libellés des moyens de paiement (cf. migration 0014) — un seul endroit
+  // à mettre à jour si un nouveau moyen de paiement s'ajoute.
+  var PAYMENT_METHOD_LABELS = {
+    mvola: 'MVola', orange_money: 'Orange Money', airtel_money: 'Airtel Money',
+    especes: 'Espèces', autre: 'Autre',
+  };
   function renderSettleModal() {
     var sf = state.settleForm;
     var fromName = sf.from ? person(sf.from).name : '';
     var toName = sf.to ? person(sf.to).name : '';
     var settleGroup = state.settleGroupId ? group(state.settleGroupId) : null;
+    var ussdCode = MOBILE_MONEY_USSD[sf.paymentMethod];
     return (
       '<div class="modal-overlay center" data-action="closeModal">' +
       '<div class="modal-card" data-stop-click>' +
@@ -2743,6 +2775,22 @@
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:14px">' + escapeHtml(fromName) + ' → ' + escapeHtml(toName) + '</div>' +
       '<div class="field-label">Montant (' + currencySymbolFor(settleGroup && settleGroup.currency) + ')</div>' +
       '<input class="text-input" data-bind="settleAmount" inputmode="decimal" value="' + escapeHtml(sf.amount) + '" />' +
+      '<div class="field-label">Moyen de paiement (facultatif)</div>' +
+      '<div class="select-field"><select class="text-input select-native" data-bind-change="settlePaymentMethod">' +
+      '<option value=""' + (!sf.paymentMethod ? ' selected' : '') + '>— Non précisé —</option>' +
+      Object.keys(PAYMENT_METHOD_LABELS).map(function (k) {
+        return '<option value="' + k + '"' + (sf.paymentMethod === k ? ' selected' : '') + '>' + PAYMENT_METHOD_LABELS[k] + '</option>';
+      }).join('') +
+      '</select><i class="ph-bold ph-caret-down select-chevron"></i></div>' +
+      // Ouvre juste le clavier téléphone avec le code USSD pré-rempli — le
+      // règlement se fait ensuite entièrement côté réseau de l'opérateur,
+      // hors de portée de l'app (pas de confirmation automatique possible
+      // par ce canal, cf. commentaire sur MOBILE_MONEY_USSD).
+      (ussdCode ?
+        '<a class="btn-outline pressable" style="margin-bottom:14px;text-decoration:none" href="' + ussdTelHref(ussdCode) + '"><i class="ph-bold ph-phone-call"></i> Ouvrir ' + PAYMENT_METHOD_LABELS[sf.paymentMethod] + ' (' + ussdCode + ')</a>'
+        : '') +
+      '<div class="field-label">Référence de transaction (facultatif)</div>' +
+      '<input class="text-input" data-bind="settleReference" placeholder="Ex : identifiant reçu par SMS" value="' + escapeHtml(sf.paymentReference || '') + '" />' +
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="closeModal">Annuler</button>' +
       '<button class="btn-confirm pressable" data-action="submitSettle">Confirmer</button>' +
@@ -2997,6 +3045,7 @@
         case 'paidExternal': setPaidExternal(v); break;
         case 'groupName': setGroupName(v); break;
         case 'settleAmount': setSettleAmount(v); break;
+        case 'settleReference': setSettleReference(v); break;
         case 'expensesSearch': setExpensesSearch(v); break;
         case 'reminderEmailDraft': setReminderEmailDraft(v); break;
         case 'manageMembersSearch': setManageMembersSearch(v); break;
@@ -3028,6 +3077,7 @@
         case 'addMemberGuardian': setAddMemberGuardian(el.value); break;
         case 'groupCurrency': setGroupCurrency(el.value); break;
         case 'expensesSort': setExpensesSort(el.value); break;
+        case 'settlePaymentMethod': setSettlePaymentMethod(el.value); break;
         default: break;
       }
     };
