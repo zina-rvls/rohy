@@ -108,7 +108,10 @@ Authentication → Providers → Email : active à la fois **Password** et
 
 Authentication → URL Configuration : renseigne l'URL du front-end déployé
 (Site URL) et ajoute-la aux Redirect URLs, sinon les liens des e-mails
-(invitation, lien magique) ne redirigeront pas au bon endroit.
+(invitation, lien magique) ne redirigeront pas au bon endroit. Domaine
+définitif : `https://rohy-app.com` (remplace l'ancienne URL GitHub Pages
+`zina-rvls.github.io/test`) — à mettre à jour ici dès que le domaine
+répond (propagation DNS + `CNAME` du dépôt, cf. README racine).
 
 **E-mail** : Supabase envoie les e-mails par défaut avec un service partagé
 très limité en volume (quelques e-mails/heure) — suffisant pour tester,
