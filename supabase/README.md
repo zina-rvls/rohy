@@ -24,7 +24,8 @@ PUIS `0005_households_scoped_to_group.sql`, PUIS
 `0006_participant_type_two_values.sql`, PUIS `0007_drop_participant_type.sql`,
 PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql`,
 PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`,
-PUIS `0012_rebrand_profile_colors.sql`
+PUIS `0012_rebrand_profile_colors.sql`, PUIS
+`0013_link_guest_profile_on_signup.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -175,6 +176,22 @@ palette à tous les profils déjà créés (en cycle, par ordre de création,
 pour que des profils voisins dans un même groupe restent visuellement
 distincts). Testée de bout en bout sur un schéma Postgres local reproduisant
 exactement celui de production avant d'être livrée.
+
+`0013_link_guest_profile_on_signup.sql` corrige un bug bloquant découvert en
+conditions réelles : une personne ayant déjà un profil "invité sans compte"
+(créé via "+ ajouter un membre", ou dont l'e-mail a été renseigné après coup
+dans "gérer les membres") ne pouvait pas créer son propre compte avec cette
+même adresse — la création de compte (lien magique, mot de passe, ou
+ré-invitation) échouait avec `duplicate key value violates unique
+constraint "profiles_email_unique"`, bloquant l'inscription. Le trigger
+`handle_new_user` insérait toujours un nouveau profil sans vérifier qu'un
+profil "invité" avec cette adresse existait déjà. Corrigé : si c'est le cas
+(et qu'il n'a pas encore de compte), on le rattache au nouveau compte
+(`auth_user_id`) plutôt que d'en créer un doublon — son nom, sa couleur, sa
+part et son historique de groupes/dépenses (tous rattachés à son `id`,
+inchangé) sont conservés. Testée de bout en bout sur un schéma Postgres
+local reproduisant exactement ce scénario (profil invité existant, puis
+inscription réelle avec la même adresse) avant d'être livrée.
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 

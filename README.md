@@ -372,6 +372,12 @@ temps réel, rôles avancés au-delà de admin/membre, paiement intégré (l'app
 reste déclarative — "marquer comme payé"). L'export de données, initialement
 dans cette liste, a finalement été demandé et livré (cf. tableau ci-dessus).
 
+## Bugs découverts en conditions réelles (post-audit pré-lancement)
+
+| Constat | Statut |
+|---|---|
+| Créer un compte (lien magique, mot de passe, ou ré-invitation) avec une adresse déjà utilisée par un profil "invité sans compte" existant échouait avec une erreur Postgres brute (`duplicate key value violates unique constraint "profiles_email_unique"`), bloquant complètement l'inscription | ✅ fait — migration `0013_link_guest_profile_on_signup.sql` (cf. `supabase/README.md`) : le trigger de création de profil rattache désormais ce profil existant au nouveau compte au lieu d'en créer un doublon, en conservant son nom/couleur/part/historique |
+
 ## Domaine
 
 Le domaine définitif de l'app est **rohy-app.com** (remplace l'URL GitHub
