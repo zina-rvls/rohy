@@ -447,19 +447,35 @@ button { font-family: inherit; }
 .ldg-section-head h2 { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(22px, 3.4vw, 28px); margin: 0 0 10px; color: var(--text-primary); }
 .ldg-section-head p { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
-/* Hero */
-.ldg-hero { padding: 28px 0 8px; text-align: center; }
+/* Hero : texte à gauche, mockups à droite (cf. référence fournie). */
+.ldg-hero { padding: 28px 0 8px; }
+.ldg-hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; }
+@media (max-width: 860px) { .ldg-hero-grid { grid-template-columns: 1fr; } .ldg-hero-stack { margin: 8px auto 0; } }
 .ldg-hero h1 {
-  font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(28px, 5vw, 42px);
-  line-height: 1.1; margin: 0 auto 20px; max-width: 15ch; color: var(--text-primary);
+  font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(28px, 4.4vw, 40px);
+  line-height: 1.12; margin: 0 0 18px; max-width: 16ch; color: var(--text-primary);
 }
 .ldg-hero h1 .ldg-h1-sub {
   display: block; font-family: 'Manrope', sans-serif; font-weight: 600; color: var(--text-secondary);
-  font-size: 0.5em; line-height: 1.5; margin-top: 14px; max-width: 34ch; margin-left: auto; margin-right: auto;
+  font-size: 0.52em; line-height: 1.5; margin-top: 14px; max-width: 36ch;
 }
-.ldg-hero .ldg-lede { font-size: 15.5px; color: var(--text-secondary); max-width: 48ch; margin: 0 auto 26px; }
-.ldg-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
+.ldg-hero .ldg-lede { font-size: 15.5px; color: var(--text-secondary); max-width: 46ch; margin: 0 0 24px; }
+.ldg-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-start; margin-bottom: 18px; }
 .ldg-ctas .btn-primary, .ldg-ctas .btn-outline { flex: none; width: auto; padding: 13px 22px; }
+.ldg-final .ldg-ctas { justify-content: center; margin-bottom: 0; }
+.ldg-hero-badge {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+  color: var(--text-secondary); background: var(--surface-raised); border: 1px solid var(--border-subtle);
+  padding: 8px 16px; border-radius: 999px;
+}
+.ldg-hero-stack { position: relative; }
+.ldg-hero-stack .ldg-phone.back {
+  position: absolute; top: -22px; right: -10px; z-index: 0;
+  width: 200px; opacity: .9; transform: rotate(10deg);
+}
+.ldg-hero-stack .ldg-phone.back .ldg-screen { height: 330px; }
+.ldg-hero-stack .ldg-phone.back .ldg-screen img { animation: none; }
+.ldg-hero-stack > .ldg-phone:not(.back) { position: relative; z-index: 1; }
 
 /* Nav marketing (pré-connexion) : logo à gauche, connexion/inscription à
    droite, dans l'esprit d'une page d'accueil Notion plutôt qu'un simple
@@ -473,8 +489,6 @@ button { font-family: inherit; }
   .ldg-nav-brand { flex: 1 0 100%; justify-content: center; }
   .ldg-nav-actions { flex: 1 0 100%; justify-content: center; }
 }
-.ldg-hero-visuals { display: flex; flex-direction: column; align-items: center; gap: 44px; }
-
 /* Device frames */
 .ldg-phone {
   width: 240px; margin: 0 auto; position: relative;
@@ -546,6 +560,8 @@ button { font-family: inherit; }
   line-height: 1.4; color: var(--text-primary); max-width: 46ch; margin: 0 0 20px;
 }
 .ldg-problem-quote em { color: var(--brand-primary); font-style: normal; }
+.ldg-problem-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.ldg-problem-list li { padding-left: 18px; border-left: 2px solid var(--brand-primary); font-size: 14.5px; color: var(--text-secondary); }
 
 /* Use cases */
 .ldg-usecases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 32px; }
@@ -569,11 +585,30 @@ button { font-family: inherit; }
 .ldg-step h3 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 15px; margin: 0 0 6px; color: var(--text-primary); }
 .ldg-step p { font-size: 13px; line-height: 1.5; color: var(--text-secondary); margin: 0 0 18px; min-height: 3em; }
 
-/* Differentiator list */
-.ldg-diff-list { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
-.ldg-diff-list li { padding-left: 18px; border-left: 2px solid var(--brand-primary); }
-.ldg-diff-list h3 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 15.5px; margin: 0 0 4px; color: var(--text-primary); }
-.ldg-diff-list p { font-size: 13.5px; color: var(--text-secondary); margin: 0; }
+/* Pourquoi Rohy est différent : cartes à icône (mécanismes) */
+.ldg-mechlist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 8px; }
+@media (max-width: 760px) { .ldg-mechlist { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .ldg-mechlist { grid-template-columns: 1fr; } }
+.ldg-mech { background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; }
+.ldg-mech .ldg-mech-icon {
+  width: 40px; height: 40px; border-radius: 12px; background: var(--status-positive-bg); color: var(--brand-primary);
+  display: flex; align-items: center; justify-content: center; font-size: 19px; margin-bottom: 14px;
+}
+.ldg-mech h3 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 15px; margin: 0 0 6px; color: var(--text-primary); }
+.ldg-mech p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+/* Fonctionnalités principales : rangées compactes en 2 colonnes */
+.ldg-feat-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; margin-top: 8px; }
+@media (max-width: 700px) { .ldg-feat-rows { grid-template-columns: 1fr; } }
+.ldg-feat-row { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; border-top: 1px solid var(--border-subtle); }
+.ldg-feat-rows > .ldg-feat-row:nth-child(-n+2) { border-top: none; }
+.ldg-feat-row .ph-bold { font-size: 18px; color: var(--brand-primary); flex: none; margin-top: 2px; }
+.ldg-feat-row h3 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0 0 4px; color: var(--text-primary); }
+.ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+/* Exemple concret */
+.ldg-example { text-align: center; }
+.ldg-example .ldg-infographic { text-align: left; }
 
 /* Mobile/desktop parity */
 .ldg-device-proof { margin: 36px 0 0; padding-top: 36px; border-top: 1px solid var(--border-subtle); max-width: 62ch; }
@@ -604,14 +639,7 @@ button { font-family: inherit; }
 .ldg-testimonial { background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; }
 .ldg-testimonial .ph-bold { color: var(--status-positive-bg); font-size: 22px; display: block; margin-bottom: 8px; }
 .ldg-testimonial p.quote { font-size: 13.5px; color: var(--text-primary); margin: 0 0 16px; }
-.ldg-testimonial .ldg-author { display: flex; align-items: center; gap: 10px; }
-.ldg-testimonial .ldg-avatar {
-  width: 32px; height: 32px; border-radius: 50%; background: var(--brand-primary); color: #fff;
-  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px;
-  font-family: 'Sora', sans-serif; flex: none;
-}
-.ldg-author-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.ldg-author-role { font-size: 12px; color: var(--text-tertiary); }
+.ldg-testimonial-meta { font-size: 12px; font-weight: 700; color: var(--text-tertiary); }
 
 /* FAQ */
 .ldg-faq-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; margin-top: 4px; align-items: start; }
