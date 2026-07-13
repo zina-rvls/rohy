@@ -45,7 +45,13 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return jsonResponse({ error: 'non authentifié.' }, 401);
 
-    const { toUserId, amount, message } = await req.json();
+    // groupId (optionnel) : n'est fourni que lorsque le rappel est envoyé
+    // depuis un écran filtré sur un groupe précis (cf. reminderGroupId côté
+    // client) — permet au rappel de disparaître avec ce groupe s'il est
+    // supprimé plus tard (cf. migration 0015). Un rappel envoyé depuis la
+    // vue "tous groupes confondus" n'a pas de groupId et n'est donc lié à
+    // aucun groupe en particulier.
+    const { toUserId, amount, message, groupId } = await req.json();
     if (!toUserId || amount == null || !message) {
       return jsonResponse({ error: 'toUserId, amount et message sont requis.' }, 400);
     }
@@ -80,7 +86,7 @@ Deno.serve(async (req) => {
 
     const { data: reminder, error: insertError } = await adminClient
       .from('reminders')
-      .insert({ from_user: user.id, to_user: toUserId, amount, message })
+      .insert({ from_user: user.id, to_user: toUserId, amount, message, group_id: groupId || null })
       .select()
       .single();
     if (insertError) return jsonResponse({ error: insertError.message }, 500);

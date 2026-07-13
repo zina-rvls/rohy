@@ -529,7 +529,7 @@
         };
       });
       var reminders = reminderRows.map(function (r) {
-        return { id: r.id, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message };
+        return { id: r.id, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message, groupId: r.group_id || undefined };
       });
 
       setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, households: households, dataLoading: false });
@@ -714,7 +714,7 @@
   function sendReminder(personId, groupId) {
     var p = person(personId);
     var data = computeReminderMessage(personId, groupId);
-    sb.functions.invoke('send-reminder', { body: { toUserId: personId, amount: data.amount, message: data.message } }).then(function (res) {
+    sb.functions.invoke('send-reminder', { body: { toUserId: personId, amount: data.amount, message: data.message, groupId: groupId || null } }).then(function (res) {
       extractFunctionErrorMessage(res).then(function (errMsg) {
         if (errMsg) { showToast('Erreur : ' + errMsg); return; }
         var d = res.data || {};
@@ -2421,7 +2421,8 @@
       });
     });
     state.reminders.forEach(function (r) {
-      items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'Rappel envoyé à ' + escapeHtml(person(r.toPersonId).name), amountLabel: null, color: null });
+      var rg = r.groupId ? group(r.groupId) : null;
+      items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'Rappel envoyé à ' + escapeHtml(person(r.toPersonId).name) + (rg ? ' · ' + escapeHtml(rg.name) : ''), amountLabel: null, color: null });
     });
     return items.sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (h) {
       return (
@@ -2747,13 +2748,23 @@
     var g = group(state.confirmDeleteGroupId);
     if (!g) return '';
     var expenseCount = state.expenses.filter(function (e) { return e.groupId === g.id; }).length;
+    var paymentCount = state.payments.filter(function (p) { return p.groupId === g.id; }).length;
+    var reminderCount = state.reminders.filter(function (r) { return r.groupId === g.id; }).length;
+    // Liste précisément ce qui disparaît avec le groupe (dépenses, règlements
+    // et rappels associés, cf. migration 0015) plutôt qu'un simple "action
+    // définitive" — pour que la suppression, irréversible, soit un choix
+    // informé.
+    var consequenceParts = [];
+    if (expenseCount > 0) consequenceParts.push(expenseCount > 1 ? expenseCount + ' dépenses' : '1 dépense');
+    if (paymentCount > 0) consequenceParts.push(paymentCount > 1 ? paymentCount + ' règlements' : '1 règlement');
+    if (reminderCount > 0) consequenceParts.push(reminderCount > 1 ? reminderCount + ' rappels' : '1 rappel');
     return (
       '<div class="modal-overlay center" data-action="closeModal">' +
       '<div class="modal-card" data-stop-click>' +
       '<div class="modal-title" style="margin-bottom:14px">Supprimer « ' + escapeHtml(g.name) + ' » ?</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:18px">' +
-      (expenseCount > 0
-        ? 'Cette action supprimera aussi ' + (expenseCount > 1 ? 'ses ' + expenseCount + ' dépenses associées.' : 'sa dépense associée.')
+      (consequenceParts.length > 0
+        ? 'Cette action supprimera aussi définitivement ' + consequenceParts.join(', ') + ' associé' + (expenseCount + paymentCount + reminderCount > 1 ? 's' : '') + '. Impossible de revenir en arrière.'
         : 'Cette action est définitive.') +
       '</div>' +
       '<div class="modal-footer-buttons">' +

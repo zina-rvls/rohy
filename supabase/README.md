@@ -26,7 +26,8 @@ PUIS `0008_guest_members_no_email.sql`, PUIS `0009_expense_receipts.sql`,
 PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`,
 PUIS `0012_rebrand_profile_colors.sql`, PUIS
 `0013_link_guest_profile_on_signup.sql`, PUIS
-`0014_payment_method_reference.sql`
+`0014_payment_method_reference.sql`, PUIS
+`0015_cascade_delete_group_payments_reminders.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -201,6 +202,20 @@ d'une dette, cf. discussion mobile money. Aucune intégration à une
 passerelle de paiement : le formulaire de règlement propose juste
 d'ouvrir le clavier téléphone avec le code USSD de l'opérateur choisi
 (`tel:*111#` etc.), la confirmation reste entièrement manuelle.
+
+`0015_cascade_delete_group_payments_reminders.sql` corrige un bug de
+cohérence : supprimer un groupe supprimait déjà (cascade) ses dépenses,
+mais ses règlements (`payments`) survivaient avec `group_id` mis à `null`
+(`on delete set null`) — ils continuaient donc d'alimenter le calcul de
+solde "tous groupes confondus" et l'écran Historique même après
+suppression complète des groupes d'un compte. `payments.group_id` passe
+maintenant en `on delete cascade`, comme `expenses.group_id`. `reminders`
+gagne aussi une colonne `group_id` (nullable, `on delete cascade`),
+remplie uniquement quand le rappel est envoyé depuis un écran filtré sur
+un groupe précis — un rappel envoyé depuis la vue "tous groupes
+confondus" n'est lié à aucun groupe et n'est donc concerné par aucune
+cascade. **Nécessite aussi de redéployer `send-reminder`** (accepte et
+enregistre désormais un `groupId` optionnel).
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 
