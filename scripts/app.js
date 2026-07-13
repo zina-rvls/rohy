@@ -2431,7 +2431,10 @@
       '<div class="ldg-ig-row charge" style="background:rgba(214,36,122,.12)"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 part</span><span class="ldg-ig-tag" style="color:#D6247A;background:rgba(214,36,122,.16)">à charge</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
       '<div class="ldg-ig-foot">Part calculée automatiquement, à chaque dépense.</div>' +
       '</div>' +
+      '<div class="ldg-hero-stack">' +
+      '<div class="ldg-phone back"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant le solde net et les soldes par personne."></div></div>' +
       '<div class="ldg-phone"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy sur mobile : Famille Randria apparaît comme un foyer consolidé en une seule ligne de solde."></div></div>' +
+      '</div>' +
       '</div>' +
       '</header>' +
 
@@ -2455,7 +2458,7 @@
       '</div>' +
       '<div class="ldg-steps">' +
       '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>Scannez un ticket</h3><p>Une photo suffit : montant, date et catégorie se remplissent tout seuls, à vérifier avant d\'enregistrer.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/04-add-expense-mobile.png" alt="Formulaire d\'ajout de dépense avec le bouton scanner un ticket."></div></div></div>' +
-      '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>Rattachez un foyer</h3><p>Une personne à charge se relie à son responsable une seule fois, sa part se fusionne automatiquement ensuite.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/03-manage-members-mobile.png" alt="Modale de gestion des membres avec foyers et responsables."></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>Rattachez un foyer</h3><p>Une personne à charge se relie à son responsable, sa part se fusionne automatiquement ensuite.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/03-manage-members-mobile.png" alt="Modale de gestion des membres avec foyers et responsables."></div></div></div>' +
       '<div class="ldg-step"><span class="ldg-step-num">3</span><h3>Réglez-vous en un tap</h3><p>Chacun voit combien il doit ou on lui doit, et peut relancer par e-mail ou régler en mobile money.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant le solde net et les soldes par personne."></div></div></div>' +
       '</div>' +
       '</section>' +
