@@ -55,6 +55,12 @@
       // connexion/inscription (cf. openLoginForm/ctaSignupFromAbout) — jamais
       // à l'arrivée sur la landing, qui doit s'afficher immédiatement.
       showSplash: hasPersistedSession(),
+      // La racine du site (rohy-app.com) doit toujours montrer la landing en
+      // premier, même pour un compte déjà connecté (nouvel onglet,
+      // rechargement) — jamais directement l'app. `enterApp` (déclenché par
+      // le CTA "Ouvrir l'app") est ce qui fait passer de la landing à
+      // l'écran d'accueil réel une fois dans la session.
+      enteredApp: false,
       screen: 'home',
       navStack: [],
       theme: loadTheme(),
@@ -560,6 +566,10 @@
   function openLoginForm() { setState({ showLoginForm: true, showSplash: true }); armSplashTimeout(); }
   function goToLanding() { setState({ showLoginForm: false }); }
   function ctaSignupFromAbout() { setState({ showLoginForm: true, loginMode: 'signup', loginError: null, showSplash: true }); armSplashTimeout(); }
+  // Bascule de la landing (racine du site, cf. `enteredApp` dans
+  // defaultState) vers l'app pour un compte déjà connecté — même moment de
+  // transition qu'un vrai lancement d'appli, donc même écran de lancement.
+  function enterApp() { setState({ enteredApp: true, showSplash: true }); armSplashTimeout(); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
@@ -1692,6 +1702,11 @@
       root.innerHTML = renderNewPasswordScreen();
     } else if (!state.loggedIn) {
       root.innerHTML = state.showLoginForm ? renderLogin() : renderAboutFromLogin();
+    } else if (!state.enteredApp) {
+      // Racine du site : toujours la landing en premier, même connecté (cf.
+      // commentaire sur `enteredApp` dans defaultState) — le CTA "Ouvrir
+      // l'app" de la nav/du hero (enterApp) fait passer à l'écran suivant.
+      root.innerHTML = renderAboutFromLogin();
     } else if (state.dataLoading || !person(state.currentUserId)) {
       root.innerHTML = renderLoadingScreen();
     } else {
@@ -1822,14 +1837,18 @@
   // l'app tant qu'on n'est pas connecté (comme Notion) : nav avec
   // connexion/inscription plutôt qu'un simple bouton retour.
   function renderAboutFromLogin() {
+    // Déjà connecté (racine du site rouverte dans un nouvel onglet, ou après
+    // rechargement) : plus besoin du bouton "Connexion", et le CTA principal
+    // doit mener dans l'app plutôt qu'à l'inscription (cf. enterApp).
+    var navActions = state.loggedIn ?
+      '<button class="btn-primary pressable" data-action="enterApp">🚀 Ouvrir l\'app</button>' :
+      '<button class="btn-outline pressable" data-action="openLoginForm">Connexion</button>' +
+      '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Essayer Rohy gratuitement</button>';
     return (
       '<div class="about-standalone-screen">' +
       '<nav class="ldg-nav">' +
       '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
-      '<div class="ldg-nav-actions">' +
-      '<button class="btn-outline pressable" data-action="openLoginForm">Connexion</button>' +
-      '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Essayer Rohy gratuitement</button>' +
-      '</div>' +
+      '<div class="ldg-nav-actions">' + navActions + '</div>' +
       '</nav>' +
       renderAboutScreen() +
       '</div>'
@@ -2416,13 +2435,18 @@
   }
 
   function renderAboutScreen() {
-    // Landing accessible avant connexion (nav dédiée, cf. renderAboutFromLogin)
-    // ou depuis le menu compte une fois connecté (cf. openAbout) : les CTA
-    // d'inscription n'ont de sens que dans le premier cas.
-    var showCtas = !state.loggedIn;
+    // Landing accessible avant connexion, ou connecté mais pas encore "entré"
+    // dans l'app (nav dédiée, cf. renderAboutFromLogin — la racine du site
+    // affiche toujours cette landing, cf. commentaire sur `enteredApp` dans
+    // defaultState), ou depuis le menu compte une fois dans l'app (cf.
+    // openAbout) : les CTA n'ont de sens que dans les deux premiers cas, et
+    // pointent vers l'inscription si anonyme, vers l'app si déjà connecté.
+    var showCtas = !state.loggedIn || !state.enteredApp;
+    var ctaAction = state.loggedIn ? 'enterApp' : 'ctaSignupFromAbout';
+    var ctaLabel = state.loggedIn ? '🚀 Ouvrir l\'app' : '🚀 Créer un compte gratuitement';
     var ctaRow =
       '<div class="ldg-ctas">' +
-      (showCtas ? '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Créer un compte gratuitement</button>' : '') +
+      (showCtas ? '<button class="btn-primary pressable" data-action="' + ctaAction + '">' + ctaLabel + '</button>' : '') +
       '<a class="btn-outline" href="#ldg-demo" style="flex:none;width:auto;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">▶ Voir la démo</a>' +
       '</div>';
     return (
@@ -2600,7 +2624,7 @@
       '<h2>Prêt à simplifier vos dépenses de groupe ?</h2>' +
       '<p>Créez votre premier groupe gratuitement et laissez Rohy faire les calculs à votre place.</p>' +
       '<div class="ldg-ctas">' +
-      (showCtas ? '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Commencer gratuitement</button>' : '') +
+      (showCtas ? '<button class="btn-primary pressable" data-action="' + ctaAction + '">' + (state.loggedIn ? ctaLabel : '🚀 Commencer gratuitement') + '</button>' : '') +
       '</div>' +
       '</div>' +
 
@@ -2616,7 +2640,9 @@
       '<div class="ldg-footer-links">' +
       '<div class="ldg-footer-col"><h4>Découvrir</h4><a href="#ldg-probleme">Le problème</a><a href="#ldg-difference">Pourquoi Rohy est différent</a><a href="#ldg-comment">Comment ça marche</a><a href="#ldg-usecases">Cas d\'usage</a></div>' +
       '<div class="ldg-footer-col"><h4>En savoir plus</h4><a href="#ldg-avis">Témoignages</a><a href="#ldg-faq">FAQ</a></div>' +
-      (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4><button type="button" data-action="ctaSignupFromAbout">Créer un compte</button><button type="button" data-action="openLoginForm">Connexion</button></div>' : '') +
+      (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4>' + (state.loggedIn ?
+        '<button type="button" data-action="enterApp">Ouvrir l\'app</button>' :
+        '<button type="button" data-action="ctaSignupFromAbout">Créer un compte</button><button type="button" data-action="openLoginForm">Connexion</button>') + '</div>' : '') +
       '</div>' +
       '</div>' +
       '<div class="ldg-footer-bottom">' +
@@ -3153,6 +3179,7 @@
         case 'openLoginForm': openLoginForm(); break;
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
+        case 'enterApp': enterApp(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
