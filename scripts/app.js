@@ -1688,13 +1688,13 @@
   }
 
   // Écran de lancement : la marque se tisse bande par bande (3 verticales +
-  // 3 horizontales, chacune glissant depuis le haut ou la gauche), reprise
-  // telle quelle de l'animation "1 · Écran de lancement" fournie. Les
-  // découpes dans les bandes horizontales (fill-rule evenodd) ne varient pas
-  // dans le temps : elles reproduisent le motif tissé final (quelle bande
-  // passe au-dessus/en-dessous de quelle autre) dès leur apparition — seul
-  // l'ORDRE d'arrivée des 6 bandes (via animation-delay) donne l'impression
-  // de tissage progressif.
+  // 3 horizontales), chacune glissant depuis l'extérieur du cadre jusqu'à sa
+  // position (cf. section "07 · Motion" du design system). Les découpes
+  // dans les bandes horizontales (fill-rule evenodd) ne varient pas dans le
+  // temps : elles reproduisent le motif tissé final (quelle bande passe
+  // au-dessus/en-dessous de quelle autre) dès leur apparition — seul l'ORDRE
+  // d'arrivée des 6 bandes (via animation-delay) donne l'impression de
+  // tissage progressif.
   function renderSplashScreen() {
     return (
       '<div class="splash-screen">' +
@@ -2430,10 +2430,6 @@
       '<div class="ldg-ig-row"><span class="ldg-ig-name">Lala<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
       '<div class="ldg-ig-row charge" style="background:rgba(214,36,122,.12)"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 part</span><span class="ldg-ig-tag" style="color:#D6247A;background:rgba(214,36,122,.16)">à charge</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
       '<div class="ldg-ig-foot">Part calculée automatiquement, à chaque dépense.</div>' +
-      '</div>' +
-      '<div class="ldg-hero-stack">' +
-      '<div class="ldg-phone back"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant le solde net et les soldes par personne."></div></div>' +
-      '<div class="ldg-phone"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy sur mobile : Famille Randria apparaît comme un foyer consolidé en une seule ligne de solde."></div></div>' +
       '</div>' +
       '</div>' +
       '</header>' +

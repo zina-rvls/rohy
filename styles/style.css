@@ -191,41 +191,29 @@ button { font-family: inherit; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
 .splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
-/* Chaque bande s'assemble à sa place définitive (échelle, avec un léger
-   dépassement avant de se stabiliser) plutôt que de parcourir une longue
-   distance : plus net et plus confiant qu'un glissement, et honnête sur ce
-   qu'une simple transformation 2D peut représenter (un vrai tissage
-   par-dessus/en-dessous demanderait de faire alterner l'ordre d'empilement
-   des bandes, pas juste leur position). Bandes verticales puis horizontales
-   groupées (écart de .09s au sein d'un même groupe, contre .4s entre les
-   deux groupes) : chaque étape intermédiaire montre un ensemble de couleurs
-   cohérent (le trio doré/violet, puis le motif complet), jamais une bande
-   isolée qui jure avec le reste. Contour et remplissage de chaque bande
-   horizontale partagent la même classe et le même délai (`.splash-h`) pour
-   apparaître ensemble — l'ancienne version animait seulement le
-   remplissage, laissant le contour vide visible dès le début.
-   Volontairement PAS de fondu d'opacité ici (contrairement à un premier
-   essai) : une bande semi-transparente en cours de fondu laisse voir par
-   transparence la bordure de la bande qu'elle est censée recouvrir —
-   visible le temps de la transition. Une échelle seule reste toujours
-   pleinement opaque, donc masque proprement dès qu'elle atteint un point,
-   sans jamais laisser rien transparaître.
-   Le point d'origine de chaque bande (`transform-origin`) est fixé en
-   coordonnées explicites, en style inline sur chaque élément (cf. JS) —
-   plutôt que `transform-box: fill-box` + `transform-origin: center`, dont
-   le support est inégal selon les navigateurs pour les éléments <path>
-   (notamment sur WebKit/iOS, où le point de départ de l'échelle peut être
-   mal calculé, décalant la bordure par rapport au remplissage pendant la
-   transition et recréant un bug d'apparence similaire à celui de la
-   transparence). Des coordonnées explicites contournent entièrement ce
-   calcul de boîte englobante et sont fiables sur tous les navigateurs. */
+/* Chaque bande glisse depuis l'extérieur du cadre jusqu'à sa position
+   tissée, déjà pleinement colorée (cf. section "07 · Motion" du design
+   system) — un geste plus artisanal qu'un chargement mécanique. Bandes
+   verticales puis horizontales groupées (écart de .09s au sein d'un même
+   groupe, contre .4s entre les deux groupes) : chaque étape intermédiaire
+   montre un ensemble de couleurs cohérent (le trio doré/violet, puis le
+   motif complet), jamais une bande isolée qui jure avec le reste. Contour
+   et remplissage de chaque bande horizontale partagent la même classe et
+   le même délai (`.splash-h`) pour apparaître ensemble.
+   Volontairement PAS de fondu d'opacité ici : une bande semi-transparente
+   en cours de fondu laisse voir par transparence la bordure de la bande
+   qu'elle est censée recouvrir, visible le temps de la transition. Une
+   translation seule reste toujours pleinement opaque, donc masque
+   proprement dès qu'elle atteint sa position, sans jamais laisser rien
+   transparaître. Durée totale compressée par rapport au rythme démonstratif
+   du design system (pensé pour un rejeu à la demande) : un vrai écran de
+   lancement doit rester bref à chaque connexion. */
 .splash-v, .splash-h {
-  animation: splashSettle .55s cubic-bezier(.2, .7, .3, 1) both;
+  animation: splashSettle .55s cubic-bezier(.16, .5, .2, 1) both;
 }
 @keyframes splashSettle {
-  0%   { transform: scale(0); }
-  65%  { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0%   { transform: translateY(-70px); }
+  100% { transform: translateY(0); }
 }
 /* Wordmark + baseline : apparaissent une fois le motif assemblé (dernière
    bande installée à 1.13s), puis restent affichés le temps que l'utilisateur
@@ -486,15 +474,6 @@ button { font-family: inherit; }
   .ldg-nav-actions { flex: 1 0 100%; justify-content: center; }
 }
 .ldg-hero-visuals { display: flex; flex-direction: column; align-items: center; gap: 44px; }
-/* Deux mockups superposés (avant/arrière), plutôt qu'un seul écran droit. */
-.ldg-hero-stack { position: relative; display: inline-block; padding: 0 40px 0 0; }
-.ldg-hero-stack .ldg-phone.back {
-  position: absolute; top: -22px; right: -10px; z-index: 0;
-  width: 200px; opacity: .9; transform: rotate(10deg);
-}
-.ldg-hero-stack .ldg-phone.back .ldg-screen { height: 330px; }
-.ldg-hero-stack .ldg-phone.back .ldg-screen img { animation: none; }
-.ldg-hero-stack > .ldg-phone:not(.back) { position: relative; z-index: 1; }
 
 /* Device frames */
 .ldg-phone {
@@ -524,10 +503,9 @@ button { font-family: inherit; }
 .ldg-phone.mini .ldg-screen img { position: static; animation: none; }
 .ldg-phone.mini::after { width: 26px; height: 3px; bottom: 3px; }
 
-/* Mockups légèrement inclinés (inspiré de références SaaS classiques),
-   plutôt que des écrans strictement droits. Les 3 téléphones de "Comment
-   ça marche" restent droits (alignement net avec leur numéro d'étape). */
-.ldg-hero-visuals .ldg-phone { transform: rotate(-7deg); }
+/* Mockup légèrement incliné (inspiré de références SaaS classiques),
+   plutôt qu'un écran strictement droit. Les 3 téléphones de "Comment ça
+   marche" restent droits (alignement net avec leur numéro d'étape). */
 .ldg-device-pair .ldg-phone.mini { transform: rotate(7deg); }
 
 .ldg-browser { border-radius: 14px 14px 0 0; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.16); border: 1px solid var(--border-default); background: var(--surface-raised); }
