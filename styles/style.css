@@ -468,6 +468,7 @@ button { font-family: inherit; }
   color: var(--text-secondary); background: var(--surface-raised); border: 1px solid var(--border-subtle);
   padding: 8px 16px; border-radius: 999px;
 }
+.ldg-flag-mg { flex: none; border-radius: 2px; }
 .ldg-hero-stack { position: relative; }
 .ldg-hero-stack .ldg-phone.back {
   position: absolute; top: -22px; right: -10px; z-index: 0;
@@ -611,11 +612,6 @@ button { font-family: inherit; }
 @media (max-width: 860px) { .ldg-example-grid { grid-template-columns: 1fr; } }
 .ldg-example .ldg-infographic { text-align: left; }
 
-/* Mobile/desktop parity */
-.ldg-device-pair { display: flex; gap: 24px; align-items: end; justify-content: center; flex-wrap: wrap; margin-top: 36px; padding-top: 36px; border-top: 1px solid var(--border-subtle); }
-.ldg-device-pair .ldg-laptop { flex: 1.6; min-width: 260px; max-width: 400px; }
-.ldg-device-pair .ldg-phone-mini { flex: none; }
-
 /* Comparison table */
 .ldg-compare { width: 100%; max-width: 640px; border-collapse: collapse; margin: 36px auto 0; }
 .ldg-compare th, .ldg-compare td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border-subtle); font-size: 13px; }
@@ -637,7 +633,14 @@ button { font-family: inherit; }
 .ldg-testimonial { background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; }
 .ldg-testimonial .ph-bold { color: var(--status-positive-bg); font-size: 22px; display: block; margin-bottom: 8px; }
 .ldg-testimonial p.quote { font-size: 13.5px; color: var(--text-primary); margin: 0 0 16px; }
-.ldg-testimonial-meta { font-size: 12px; font-weight: 700; color: var(--text-tertiary); }
+.ldg-testimonial-author { display: flex; align-items: center; gap: 10px; }
+.ldg-avatar {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--brand-primary);
+  color: #fff; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ldg-testimonial-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.ldg-testimonial-meta { font-size: 12px; color: var(--text-tertiary); }
 
 /* FAQ */
 .ldg-faq-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; margin-top: 4px; align-items: start; }
@@ -651,6 +654,16 @@ button { font-family: inherit; }
 .ldg-faq-item summary .caret { transition: transform .2s ease; color: var(--text-tertiary); font-size: 12px; flex: none; }
 .ldg-faq-item[open] summary .caret { transform: rotate(180deg); }
 .ldg-faq-item p { margin: 12px 0 0; font-size: 13.5px; color: var(--text-secondary); max-width: 62ch; }
+
+/* Le sens de Rohy : bref moment de respiration/émotion avant le CTA final */
+.ldg-meaning { text-align: center; }
+.ldg-meaning-inner { max-width: 46ch; margin: 0 auto; }
+.ldg-meaning-line { font-size: 16px; color: var(--text-secondary); margin: 14px 0 0; }
+.ldg-meaning-line strong { color: var(--text-primary); }
+.ldg-meaning-closing {
+  font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(19px, 2.6vw, 23px);
+  color: var(--brand-primary); margin: 22px 0 0;
+}
 
 /* Final CTA */
 .ldg-final {

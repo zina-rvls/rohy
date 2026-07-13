@@ -34,9 +34,27 @@
     try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* mode privé / quota */ }
   }
 
+  // Détecte une session Supabase déjà persistée (clé "sb-*-auth-token") sans
+  // attendre la résolution asynchrone de l'auth : sert à savoir, dès le tout
+  // premier rendu, si on doit jouer l'écran de lancement (retour d'un compte
+  // déjà connecté) ou l'omettre (visite de la landing, cf. defaultState).
+  function hasPersistedSession() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && /^sb-.*-auth-token$/.test(k)) return true;
+      }
+    } catch (err) { /* mode privé / quota */ }
+    return false;
+  }
+
   function defaultState() {
     return {
-      showSplash: true,
+      // L'écran de lancement ne sert qu'au vrai lancement de l'appli (compte
+      // déjà connecté qui revient) ou à la transition vers la page de
+      // connexion/inscription (cf. openLoginForm/ctaSignupFromAbout) — jamais
+      // à l'arrivée sur la landing, qui doit s'afficher immédiatement.
+      showSplash: hasPersistedSession(),
       screen: 'home',
       navStack: [],
       theme: loadTheme(),
@@ -539,9 +557,9 @@
   // `state.showLoginForm`, quel que soit `state.screen` (cf. plus bas) :
   // `navigate('about', ...)` ne suffit donc pas depuis cette zone — état
   // dédié à la place.
-  function openLoginForm() { setState({ showLoginForm: true }); }
+  function openLoginForm() { setState({ showLoginForm: true, showSplash: true }); armSplashTimeout(); }
   function goToLanding() { setState({ showLoginForm: false }); }
-  function ctaSignupFromAbout() { setState({ showLoginForm: true, loginMode: 'signup', loginError: null }); }
+  function ctaSignupFromAbout() { setState({ showLoginForm: true, loginMode: 'signup', loginError: null, showSplash: true }); armSplashTimeout(); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
@@ -2420,7 +2438,7 @@
       '</h1>' +
       '<p class="ldg-lede">Rohy simplifie le partage des dépenses entre amis, en famille ou en voyage, même lorsque certains participants paient pour leurs enfants, leur conjoint ou ne participent qu\'à certaines dépenses.</p>' +
       ctaRow +
-      '<div class="ldg-hero-badge"><span>🇲🇬</span> Conçu à Madagascar pour les groupes d\'amis, les familles et les voyageurs</div>' +
+      '<div class="ldg-hero-badge"><svg class="ldg-flag-mg" viewBox="0 0 30 20" width="18" height="12" aria-hidden="true"><rect width="30" height="20" fill="#fff"></rect><rect x="12" width="18" height="10" fill="#FC3D32"></rect><rect x="12" y="10" width="18" height="10" fill="#007E3A"></rect></svg> Conçu à Madagascar pour les groupes d\'amis, les familles et les voyageurs</div>' +
       '</div>' +
       '<div class="ldg-hero-stack">' +
       '<div class="ldg-phone back"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant le solde net et les soldes par personne."></div></div>' +
@@ -2454,10 +2472,6 @@
       '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-target"></i></span><h3>Les dépenses ciblées</h3><p>Une dépense peut concerner uniquement certains participants du groupe.</p></div>' +
       '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-calculator"></i></span><h3>Les calculs automatiques</h3><p>Rohy s\'occupe des calculs pour que chacun sache exactement qui doit combien à qui.</p></div>' +
       '</div>' +
-      '<div class="ldg-device-pair">' +
-      '<div class="ldg-laptop"><div class="ldg-browser"><div class="ldg-browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">rohy-app.com</span></div><img src="assets/landing/06-group-detail-desktop.png" alt="Le même groupe Rohy affiché en version desktop, avec la barre latérale."></div><div class="ldg-laptop-base"></div></div>' +
-      '<div class="ldg-phone-mini"><div class="ldg-phone mini"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Le même groupe Rohy affiché en version mobile."></div></div></div>' +
-      '</div>' +
       '</section>' +
 
       '<section class="ldg-section ldg-example" id="ldg-exemple">' +
@@ -2485,7 +2499,7 @@
       '<h2>En 3 étapes</h2>' +
       '</div>' +
       '<div class="ldg-steps">' +
-      '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>Créez votre groupe</h3><p>Voyage, colocation, week-end ou dépenses familiales.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant la liste des groupes."></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>Créez votre groupe</h3><p>Voyage, colocation, week-end ou dépenses familiales.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/07-create-group-mobile.png" alt="Formulaire de création d\'un nouveau groupe."></div></div></div>' +
       '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>Ajoutez les dépenses</h3><p>Indiquez qui a payé et qui participe à chaque dépense.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/04-add-expense-mobile.png" alt="Formulaire d\'ajout de dépense."></div></div></div>' +
       '<div class="ldg-step"><span class="ldg-step-num">3</span><h3>Laissez Rohy calculer</h3><p>Les soldes et remboursements sont calculés automatiquement.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy montrant les soldes et suggestions de règlement."></div></div></div>' +
       '</div>' +
@@ -2553,9 +2567,9 @@
       '<h2>Ils utilisent déjà Rohy pour leurs dépenses de groupe</h2>' +
       '</div>' +
       '<div class="ldg-testimonials">' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Pour la première fois, nous avons pu gérer facilement les dépenses du groupe sans passer des heures à refaire les calculs. »</p><div class="ldg-testimonial-meta">Tiana — Week-end à Mahambo, 8 participants</div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« La gestion des demi-parts pour les enfants nous a énormément simplifié la vie. »</p><div class="ldg-testimonial-meta">Ravaka — Voyage à Nosy Be, 6 adultes et 2 enfants</div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Tout le monde sait exactement ce qu\'il doit. Plus de discussions interminables à la fin du mois. »</p><div class="ldg-testimonial-meta">Dina — Colocation à Antananarivo, 4 colocataires</div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Pour la première fois, nous avons pu gérer facilement les dépenses du groupe sans passer des heures à refaire les calculs. »</p><div class="ldg-testimonial-author"><span class="ldg-avatar">T</span><div><div class="ldg-testimonial-name">Tiana</div><div class="ldg-testimonial-meta">Week-end à Mahambo, 8 participants</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« La gestion des demi-parts pour les enfants nous a énormément simplifié la vie. »</p><div class="ldg-testimonial-author"><span class="ldg-avatar" style="background:#D6247A">R</span><div><div class="ldg-testimonial-name">Ravaka</div><div class="ldg-testimonial-meta">Voyage à Nosy Be, 6 adultes et 2 enfants</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Tout le monde sait exactement ce qu\'il doit. Plus de discussions interminables à la fin du mois. »</p><div class="ldg-testimonial-author"><span class="ldg-avatar" style="background:#8a6a30">D</span><div><div class="ldg-testimonial-name">Dina</div><div class="ldg-testimonial-meta">Colocation à Antananarivo, 4 colocataires</div></div></div></div>' +
       '</div>' +
       '</section>' +
 
@@ -2570,6 +2584,15 @@
       '<details class="ldg-faq-item"><summary>Puis-je l\'utiliser sur mobile ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Rohy est optimisé pour les smartphones, tablettes et ordinateurs.</p></details>' +
       '<details class="ldg-faq-item"><summary>Puis-je gérer des demi-parts ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Rohy a été conçu pour gérer les contributions inégales, les enfants et les personnes à charge.</p></details>' +
       '<details class="ldg-faq-item"><summary>Mes données sont-elles sécurisées ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu\'aux membres de vos groupes.</p></details>' +
+      '</div>' +
+      '</section>' +
+
+      '<section class="ldg-section ldg-meaning" id="ldg-sens">' +
+      '<div class="ldg-meaning-inner">' +
+      '<span class="ldg-eyebrow">Le sens de Rohy</span>' +
+      '<p class="ldg-meaning-line">Rohy signifie <strong>« lien »</strong> en malgache.</p>' +
+      '<p class="ldg-meaning-line">Parce qu\'au-delà des dépenses, ce sont les liens entre les personnes qui comptent.</p>' +
+      '<p class="ldg-meaning-closing">Les comptes s\'équilibrent. Les liens restent.</p>' +
       '</div>' +
       '</section>' +
 
@@ -3251,6 +3274,17 @@
 
   // ---------- Démarrage ----------
 
+  // Durée de l'écran de lancement : dernière bande installée à 1.13s (sh3
+  // démarre à .58s, anime .55s) ; wordmark + baseline finissent leur fondu à
+  // 1.8s/1.98s (cf. styles.css) — marge à 3.2s pour laisser un temps de
+  // lecture avant de retirer l'écran. Le chargement des données (retour d'un
+  // compte connecté) se poursuit en parallèle pendant ce délai (cf. garde
+  // dans render()) ; une fois l'écran de lancement retiré, l'écran suivant
+  // (connexion ou app) reflète déjà l'état résolu à ce moment-là.
+  function armSplashTimeout() {
+    setTimeout(function () { setState({ showSplash: false }); }, 3200);
+  }
+
   // Safari iOS n'active la pseudo-classe :active au toucher que si un
   // gestionnaire d'événement tactile existe quelque part dans la page —
   // sans ça, tout le retour visuel au tap (.pressable:active, cf. styles.css)
@@ -3260,14 +3294,11 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     render();
-    // Durée de l'écran de lancement : dernière bande installée à 1.13s
-    // (sh3 démarre à .58s, anime .55s) ; wordmark + baseline finissent leur
-    // fondu à 1.8s/1.98s (cf. styles.css) — marge à 3.2s pour laisser un
-    // temps de lecture avant de retirer l'écran. La connexion/le chargement
-    // des données se poursuit en parallèle pendant ce délai (cf. garde dans
-    // render()) ; une fois l'écran de lancement retiré, l'écran suivant
-    // (connexion ou app) reflète déjà l'état résolu à ce moment-là.
-    setTimeout(function () { setState({ showSplash: false }); }, 3200);
+    // N'amorce le minuteur de retrait de l'écran de lancement que s'il est
+    // réellement affiché (compte déjà connecté qui revient, cf.
+    // hasPersistedSession) — sinon la landing est déjà à l'écran, il ne faut
+    // surtout pas la remplacer brièvement par l'écran de lancement.
+    if (state.showSplash) armSplashTimeout();
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });
