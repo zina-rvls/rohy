@@ -2454,10 +2454,6 @@
       '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-target"></i></span><h3>Les dépenses ciblées</h3><p>Une dépense peut concerner uniquement certains participants du groupe.</p></div>' +
       '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-calculator"></i></span><h3>Les calculs automatiques</h3><p>Rohy s\'occupe des calculs pour que chacun sache exactement qui doit combien à qui.</p></div>' +
       '</div>' +
-      '<div class="ldg-device-proof">' +
-      '<h3>Aussi bien pensée pour mobile que pour desktop</h3>' +
-      '<p>La même app, le même écran, que vous suiviez vos comptes depuis votre téléphone en voyage ou depuis un grand écran à la maison.</p>' +
-      '</div>' +
       '<div class="ldg-device-pair">' +
       '<div class="ldg-laptop"><div class="ldg-browser"><div class="ldg-browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">rohy-app.com</span></div><img src="assets/landing/06-group-detail-desktop.png" alt="Le même groupe Rohy affiché en version desktop, avec la barre latérale."></div><div class="ldg-laptop-base"></div></div>' +
       '<div class="ldg-phone-mini"><div class="ldg-phone mini"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Le même groupe Rohy affiché en version mobile."></div></div></div>' +
@@ -2465,7 +2461,8 @@
       '</section>' +
 
       '<section class="ldg-section ldg-example" id="ldg-exemple">' +
-      '<div class="ldg-section-head">' +
+      '<div class="ldg-example-grid">' +
+      '<div class="ldg-section-head" style="margin-bottom:0">' +
       '<span class="ldg-eyebrow">Exemple concret</span>' +
       '<h2>Un week-end entre amis et en famille</h2>' +
       '<p>Rohy calcule automatiquement la contribution de chacun en tenant compte des parts attribuées. Plus besoin de calculer manuellement.</p>' +
@@ -2479,6 +2476,7 @@
       '<div class="ldg-ig-row charge" style="background:rgba(214,36,122,.12)"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 part</span><span class="ldg-ig-tag" style="color:#D6247A;background:rgba(214,36,122,.16)">à charge</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
       '<div class="ldg-ig-foot">Part calculée automatiquement, à chaque dépense.</div>' +
       '</div>' +
+      '</div>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-comment">' +
@@ -2487,9 +2485,9 @@
       '<h2>En 3 étapes</h2>' +
       '</div>' +
       '<div class="ldg-steps">' +
-      '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>Scannez un ticket</h3><p>Une photo suffit : montant, date et catégorie se remplissent tout seuls, à vérifier avant d\'enregistrer.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/04-add-expense-mobile.png" alt="Formulaire d\'ajout de dépense avec le bouton scanner un ticket."></div></div></div>' +
-      '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>Rattachez un foyer</h3><p>Une personne à charge se relie à son responsable, sa part se fusionne automatiquement ensuite.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/03-manage-members-mobile.png" alt="Modale de gestion des membres avec foyers et responsables."></div></div></div>' +
-      '<div class="ldg-step"><span class="ldg-step-num">3</span><h3>Laissez Rohy calculer</h3><p>Chacun voit combien il doit ou on lui doit, et peut relancer par e-mail ou régler en mobile money.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant le solde net et les soldes par personne."></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>Créez votre groupe</h3><p>Voyage, colocation, week-end ou dépenses familiales.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant la liste des groupes."></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>Ajoutez les dépenses</h3><p>Indiquez qui a payé et qui participe à chaque dépense.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/04-add-expense-mobile.png" alt="Formulaire d\'ajout de dépense."></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">3</span><h3>Laissez Rohy calculer</h3><p>Les soldes et remboursements sont calculés automatiquement.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy montrant les soldes et suggestions de règlement."></div></div></div>' +
       '</div>' +
       '</section>' +
 
@@ -2512,9 +2510,10 @@
       '<h2>Voyez Rohy en action</h2>' +
       '<p>Créez un groupe, ajoutez vos dépenses, et laissez Rohy calculer automatiquement les remboursements.</p>' +
       '</div>' +
-      '<div class="ldg-browser" style="max-width:720px;margin:0 auto">' +
-      '<div class="ldg-browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">rohy-app.com</span></div>' +
-      '<img src="assets/landing/06-group-detail-desktop.png" alt="Détail d\'un groupe Rohy, montrant le tableau payé/part/solde et les suggestions de règlement.">' +
+      '<div class="ldg-laptop" style="max-width:720px;margin:0 auto">' +
+      '<div class="ldg-browser"><div class="ldg-browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">rohy-app.com</span></div>' +
+      '<img src="assets/landing/06-group-detail-desktop.png" alt="Détail d\'un groupe Rohy, montrant le tableau payé/part/solde et les suggestions de règlement."></div>' +
+      '<div class="ldg-laptop-base"></div>' +
       '</div>' +
       '</section>' +
 
@@ -2531,14 +2530,19 @@
       '<div class="ldg-feat-row"><i class="ph-bold ph-camera"></i><div><h3>Scan intelligent des tickets</h3><p>Ajoutez rapidement vos dépenses à partir d\'une photo.</p></div></div>' +
       '<div class="ldg-feat-row"><i class="ph-bold ph-check-circle"></i><div><h3>Suivi des remboursements</h3><p>Gardez une vue claire des règlements effectués.</p></div></div>' +
       '</div>' +
+      '<div class="ldg-section-head" style="margin-top:48px">' +
+      '<span class="ldg-eyebrow">Comparatif fonctionnel</span>' +
+      '<h2>Pensé pour les situations du quotidien</h2>' +
+      '</div>' +
       '<table class="ldg-compare">' +
+      '<thead><tr><th></th><th>Rohy</th><th>Concurrents</th></tr></thead>' +
       '<tbody>' +
-      '<tr><td>Répartition classique</td><td class="yes">✓</td></tr>' +
-      '<tr><td>Demi-parts</td><td class="yes">✓</td></tr>' +
-      '<tr><td>Enfants et personnes à charge</td><td class="yes">✓</td></tr>' +
-      '<tr><td>Contributions personnalisées</td><td class="yes">✓</td></tr>' +
-      '<tr><td>Dépenses ciblées</td><td class="yes">✓</td></tr>' +
-      '<tr><td>Suivi des remboursements</td><td class="yes">✓</td></tr>' +
+      '<tr><td>Répartition classique</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
+      '<tr><td>Demi-parts</td><td class="yes">✓</td><td class="no">Rare</td></tr>' +
+      '<tr><td>Enfants et personnes à charge</td><td class="yes">✓</td><td class="no">Rare</td></tr>' +
+      '<tr><td>Contributions personnalisées</td><td class="yes">✓</td><td class="no">Limité</td></tr>' +
+      '<tr><td>Dépenses ciblées</td><td class="yes">✓</td><td class="no">Limité</td></tr>' +
+      '<tr><td>Suivi des remboursements</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
       '</tbody>' +
       '</table>' +
       '</section>' +
@@ -2549,9 +2553,9 @@
       '<h2>Ils utilisent déjà Rohy pour leurs dépenses de groupe</h2>' +
       '</div>' +
       '<div class="ldg-testimonials">' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Pour la première fois, nous avons pu gérer facilement les dépenses du groupe sans passer des heures à refaire les calculs. »</p><div class="ldg-testimonial-meta">Week-end à Mahambo, 8 participants</div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« La gestion des demi-parts pour les enfants nous a énormément simplifié la vie. »</p><div class="ldg-testimonial-meta">Voyage à Nosy Be, 6 adultes et 2 enfants</div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Tout le monde sait exactement ce qu\'il doit. Plus de discussions interminables à la fin du mois. »</p><div class="ldg-testimonial-meta">Colocation à Antananarivo, 4 colocataires</div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Pour la première fois, nous avons pu gérer facilement les dépenses du groupe sans passer des heures à refaire les calculs. »</p><div class="ldg-testimonial-meta">Tiana — Week-end à Mahambo, 8 participants</div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« La gestion des demi-parts pour les enfants nous a énormément simplifié la vie. »</p><div class="ldg-testimonial-meta">Ravaka — Voyage à Nosy Be, 6 adultes et 2 enfants</div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Tout le monde sait exactement ce qu\'il doit. Plus de discussions interminables à la fin du mois. »</p><div class="ldg-testimonial-meta">Dina — Colocation à Antananarivo, 4 colocataires</div></div>' +
       '</div>' +
       '</section>' +
 

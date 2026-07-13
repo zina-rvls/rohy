@@ -607,14 +607,12 @@ button { font-family: inherit; }
 .ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 0; }
 
 /* Exemple concret */
-.ldg-example { text-align: center; }
+.ldg-example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+@media (max-width: 860px) { .ldg-example-grid { grid-template-columns: 1fr; } }
 .ldg-example .ldg-infographic { text-align: left; }
 
 /* Mobile/desktop parity */
-.ldg-device-proof { margin: 36px 0 0; padding-top: 36px; border-top: 1px solid var(--border-subtle); max-width: 62ch; }
-.ldg-device-proof h3 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 15.5px; margin: 0 0 6px; color: var(--text-primary); }
-.ldg-device-proof p { font-size: 13.5px; color: var(--text-secondary); margin: 0; }
-.ldg-device-pair { display: flex; gap: 24px; align-items: end; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+.ldg-device-pair { display: flex; gap: 24px; align-items: end; justify-content: center; flex-wrap: wrap; margin-top: 36px; padding-top: 36px; border-top: 1px solid var(--border-subtle); }
 .ldg-device-pair .ldg-laptop { flex: 1.6; min-width: 260px; max-width: 400px; }
 .ldg-device-pair .ldg-phone-mini { flex: none; }
 
