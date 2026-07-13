@@ -47,7 +47,10 @@
       loginError: null,
       magicSent: false,
       resetSent: false,
-      showAboutFromLogin: false,
+      // false = page d'accueil (landing) avant connexion, true = formulaire de
+      // connexion/inscription. La landing est la racine par défaut (comme
+      // Notion) plutôt que le formulaire, atteint via le bouton "Connexion".
+      showLoginForm: false,
       passwordRecovery: false,
       newPasswordForm: { password: '' },
       currentUserId: null,
@@ -532,12 +535,13 @@
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id, lastActiveGroupId: id }); }
   function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
   function openAbout() { navigate('about', { showAccount: false }); }
-  // Avant connexion, `render()` affiche renderLogin() quel que soit
-  // `state.screen` (cf. plus bas) : `navigate('about', ...)` ne suffit donc
-  // pas depuis la page de connexion — état dédié à la place.
-  function openAboutFromLogin() { setState({ showAboutFromLogin: true }); }
-  function closeAboutFromLogin() { setState({ showAboutFromLogin: false }); }
-  function ctaSignupFromAbout() { setState({ showAboutFromLogin: false, loginMode: 'signup', loginError: null }); }
+  // Avant connexion, `render()` affiche la landing ou renderLogin() selon
+  // `state.showLoginForm`, quel que soit `state.screen` (cf. plus bas) :
+  // `navigate('about', ...)` ne suffit donc pas depuis cette zone — état
+  // dédié à la place.
+  function openLoginForm() { setState({ showLoginForm: true }); }
+  function goToLanding() { setState({ showLoginForm: false }); }
+  function ctaSignupFromAbout() { setState({ showLoginForm: true, loginMode: 'signup', loginError: null }); }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
@@ -1669,7 +1673,7 @@
     if (state.passwordRecovery) {
       root.innerHTML = renderNewPasswordScreen();
     } else if (!state.loggedIn) {
-      root.innerHTML = state.showAboutFromLogin ? renderAboutFromLogin() : renderLogin();
+      root.innerHTML = state.showLoginForm ? renderLogin() : renderAboutFromLogin();
     } else if (state.dataLoading || !person(state.currentUserId)) {
       root.innerHTML = renderLoadingScreen();
     } else {
@@ -1790,20 +1794,25 @@
       '<div class="login-title">Se connecter</div>' +
       '<div class="login-subtitle">Retrouve tes groupes et vos comptes</div>' +
       body +
-      '<div class="login-footer-link pressable" data-action="openAboutFromLogin">À propos</div>' +
+      '<div class="login-footer-link pressable" data-action="goToLanding">← Retour à l\'accueil</div>' +
       '</div>'
     );
   }
-  // État dédié (cf. openAboutFromLogin) : render() affiche cet écran à la
-  // place de renderLogin() sans passer par la navigation habituelle
-  // (navStack), indisponible avant connexion. Réutilise renderAboutScreen()
-  // telle quelle, avec juste un bouton retour propre à ce contexte.
+  // État dédié (cf. openLoginForm/goToLanding) : render() affiche cet écran
+  // à la place de renderLogin() sans passer par la navigation habituelle
+  // (navStack), indisponible avant connexion. La landing est la racine de
+  // l'app tant qu'on n'est pas connecté (comme Notion) : nav avec
+  // connexion/inscription plutôt qu'un simple bouton retour.
   function renderAboutFromLogin() {
     return (
       '<div class="about-standalone-screen">' +
-      '<div style="padding:20px 20px 0">' +
-      '<button class="icon-btn pressable" data-action="closeAboutFromLogin" aria-label="Retour"><i class="ph-bold ph-arrow-left"></i></button>' +
+      '<nav class="ldg-nav">' +
+      '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
+      '<div class="ldg-nav-actions">' +
+      '<button class="btn-outline pressable" data-action="openLoginForm">Connexion</button>' +
+      '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Essayer Rohy gratuitement</button>' +
       '</div>' +
+      '</nav>' +
       renderAboutScreen() +
       '</div>'
     );
@@ -2389,11 +2398,14 @@
   }
 
   function renderAboutScreen() {
-    var showCtas = !!state.showAboutFromLogin;
+    // Landing accessible avant connexion (nav dédiée, cf. renderAboutFromLogin)
+    // ou depuis le menu compte une fois connecté (cf. openAbout) : les CTA
+    // d'inscription n'ont de sens que dans le premier cas.
+    var showCtas = !state.loggedIn;
     var ctaRow =
       '<div class="ldg-ctas">' +
-      (showCtas ? '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Essayer gratuitement</button>' : '') +
-      '<a class="btn-outline" href="#ldg-comment" style="flex:none;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">Voir comment ça marche ↓</a>' +
+      (showCtas ? '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Essayer Rohy gratuitement</button>' : '') +
+      '<a class="btn-outline" href="#ldg-comment" style="flex:none;width:auto;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">Voir comment ça marche ↓</a>' +
       '</div>';
     return (
       '<div class="about-screen">' +
@@ -2416,7 +2428,7 @@
       '<div class="ldg-ig-row"><span class="ldg-ig-name">Hery<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
       '<div class="ldg-ig-row"><span class="ldg-ig-name">Voahirana<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
       '<div class="ldg-ig-row"><span class="ldg-ig-name">Lala<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
-      '<div class="ldg-ig-row charge"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 part</span><span class="ldg-ig-tag">à charge</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
+      '<div class="ldg-ig-row charge" style="background:rgba(214,36,122,.12)"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 part</span><span class="ldg-ig-tag" style="color:#D6247A;background:rgba(214,36,122,.16)">à charge</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
       '<div class="ldg-ig-foot">Part calculée automatiquement, à chaque dépense.</div>' +
       '</div>' +
       '<div class="ldg-phone"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy sur mobile : Famille Randria apparaît comme un foyer consolidé en une seule ligne de solde."></div></div>' +
@@ -2429,9 +2441,9 @@
       '<p style="font-size:14.5px;color:var(--text-secondary);max-width:60ch">Un parent paie pour ses enfants. Un frère prend en charge sa mère. Une coloc où l\'un gagne plus que l\'autre. Ce sont ces situations, pas l\'exception, la norme, qui finissent par transformer un simple week-end entre proches en calculatrice et post-it. Rohy part du principe inverse.</p>' +
       '<div class="ldg-usecases">' +
       '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-airplane-tilt"></i></span><h3>Voyage entre amis</h3><p>Villa, essence, restaurants, sans que tout le monde paie pareil.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-house-line"></i></span><h3>Famille</h3><p>Parents et enfants, avec des parts qui reflètent la réalité.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-heart"></i></span><h3>Couple</h3><p>Une personne peut prendre en charge l\'autre, sans faire de calcul.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-buildings"></i></span><h3>Colocation</h3><p>Courses, internet, eau, électricité, tout au même endroit.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-house-line"></i></span><h3>Famille</h3><p>Parents et enfants, avec des parts qui reflètent la réalité.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-heart"></i></span><h3>Couple</h3><p>Une personne peut prendre en charge l\'autre, sans faire de calcul.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-buildings"></i></span><h3>Colocation</h3><p>Courses, internet, eau, électricité, tout au même endroit.</p></div>' +
       '</div>' +
       '</section>' +
 
@@ -2487,8 +2499,8 @@
       '<p>Rohy est encore en bêta, voici ce que nous disent les premiers groupes qui l\'utilisent.</p>' +
       '</div>' +
       '<div class="ldg-testimonials">' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Enfin une app qui comprend qu\'en voyage, tout le monde ne paie pas la même chose. »</p><div class="ldg-author"><span class="ldg-avatar">TI</span><div><div class="ldg-author-name">Tiana</div><div class="ldg-author-role">Voyage entre amis</div></div></div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Le foyer qui se regroupe en une seule ligne, ça change tout pour gérer les dépenses de toute la famille. »</p><div class="ldg-author"><span class="ldg-avatar">RA</span><div><div class="ldg-author-name">Ravaka</div><div class="ldg-author-role">Famille</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Enfin une app qui comprend qu\'en voyage, tout le monde ne paie pas la même chose. »</p><div class="ldg-author"><span class="ldg-avatar" style="background:#D6247A">TI</span><div><div class="ldg-author-name">Tiana</div><div class="ldg-author-role">Voyage entre amis</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Le foyer qui se regroupe en une seule ligne, ça change tout pour gérer les dépenses de toute la famille. »</p><div class="ldg-author"><span class="ldg-avatar" style="background:#C9A159">RA</span><div><div class="ldg-author-name">Ravaka</div><div class="ldg-author-role">Famille</div></div></div></div>' +
       '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Simple à mettre en place pour la coloc, et tout le monde comprend son solde du premier coup. »</p><div class="ldg-author"><span class="ldg-avatar">DI</span><div><div class="ldg-author-name">Dina</div><div class="ldg-author-role">Colocation</div></div></div></div>' +
       '</div>' +
       '</section>' +
@@ -2525,7 +2537,7 @@
       '<div class="ldg-footer-links">' +
       '<div class="ldg-footer-col"><h4>Découvrir</h4><a href="#ldg-probleme">Le problème</a><a href="#ldg-comment">Comment ça marche</a><a href="#ldg-difference">Ce qui distingue Rohy</a></div>' +
       '<div class="ldg-footer-col"><h4>En savoir plus</h4><a href="#ldg-avis">Avis</a><a href="#ldg-faq">FAQ</a></div>' +
-      (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4><button type="button" data-action="ctaSignupFromAbout">Créer un compte</button><button type="button" data-action="closeAboutFromLogin">Se connecter</button></div>' : '') +
+      (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4><button type="button" data-action="ctaSignupFromAbout">Essayer Rohy gratuitement</button><button type="button" data-action="openLoginForm">Connexion</button></div>' : '') +
       '</div>' +
       '</div>' +
       '<div class="ldg-footer-bottom">' +
@@ -3059,8 +3071,8 @@
         case 'confirmSendReminder': confirmSendReminder(); break;
         case 'openAccount': openAccount(); break;
         case 'openAbout': openAbout(); break;
-        case 'openAboutFromLogin': openAboutFromLogin(); break;
-        case 'closeAboutFromLogin': closeAboutFromLogin(); break;
+        case 'openLoginForm': openLoginForm(); break;
+        case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
