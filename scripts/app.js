@@ -15,6 +15,7 @@
   var seed = window.RohyData;
   var sb = window.supabaseClient;
   var THEME_KEY = 'rohy-theme';
+  var UPGRADE_NUDGE_DISMISSED_KEY = 'rohy-upgrade-nudge-dismissed';
 
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
@@ -32,6 +33,16 @@
   }
   function saveTheme(theme) {
     try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* mode privé / quota */ }
+  }
+
+  // Relance "Créer un compte" (cf. tryWithoutAccount) : une fois refermée,
+  // ne doit plus jamais réapparaître sur cet appareil — persistée en local
+  // plutôt qu'en mémoire, pour survivre à un rechargement de page.
+  function loadUpgradeNudgeDismissed() {
+    try { return localStorage.getItem(UPGRADE_NUDGE_DISMISSED_KEY) === '1'; } catch (err) { return false; }
+  }
+  function saveUpgradeNudgeDismissed() {
+    try { localStorage.setItem(UPGRADE_NUDGE_DISMISSED_KEY, '1'); } catch (err) { /* mode privé / quota */ }
   }
 
   // Détecte une session Supabase déjà persistée (clé "sb-*-auth-token") sans
@@ -75,6 +86,7 @@
       joinSubmitting: false,
       joinError: null,
       isAnonymous: false,
+      showUpgradeNudge: false,
       showShareLink: false,
       shareLinkGroupId: null,
       showUpgradeAccount: false,
@@ -597,6 +609,24 @@
   // defaultState) vers l'app pour un compte déjà connecté — même moment de
   // transition qu'un vrai lancement d'appli, donc même écran de lancement.
   function enterApp() { setState({ enteredApp: true, showSplash: true }); armSplashTimeout(); }
+
+  // Symétrique du lien d'invitation (cf. plus bas) : jusqu'ici, seul
+  // l'invité pouvait rejoindre un groupe sans compte — l'organisateur devait
+  // toujours créer un vrai compte pour commencer. Compte anonyme + ouverture
+  // immédiate de "Nouveau groupe" : zéro friction pour essayer, au prix d'un
+  // vrai risque (perdre la session anonyme = perdre l'accès admin à ce
+  // groupe, personne d'autre ne peut le récupérer) — compensé par la
+  // relance "Créer un compte" après la première dépense, cf.
+  // maybeShowUpgradeNudge dans submitExpense.
+  function tryWithoutAccount() {
+    sb.auth.signInAnonymously().then(function (res) {
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      setState({ enteredApp: true, showSplash: true, showAddGroup: true });
+      armSplashTimeout();
+    }).catch(function () {
+      showToast('Erreur réseau — réessaie.');
+    });
+  }
 
   // ---------- Lien d'invitation par groupe (cf. renderJoinScreen) ----------
   function setJoinNameInput(v) { setStateSilent({ joinNameInput: v, joinError: null }); }
@@ -1225,6 +1255,7 @@
           setState({ showAddExpense: false });
           loadAppData().then(function () {
             showToast(recRes.error ? 'Dépense ajoutée à ' + g.name + ' (reçu : ' + recRes.error.message + ')' : 'Dépense ajoutée à ' + g.name);
+            maybeShowUpgradeNudge();
           });
         });
       });
@@ -1489,6 +1520,19 @@
     }
   }
 
+  // Relance affichée une fois, après la première dépense d'un compte
+  // anonyme (cf. tryWithoutAccount) : avant, il n'y a encore rien de réel à
+  // perdre ; après, le groupe a un vrai historique financier qui mérite
+  // d'être protégé par un compte.
+  function maybeShowUpgradeNudge() {
+    if (!state.isAnonymous || loadUpgradeNudgeDismissed()) return;
+    setState({ showUpgradeNudge: true });
+  }
+  function dismissUpgradeNudge() {
+    saveUpgradeNudgeDismissed();
+    setState({ showUpgradeNudge: false });
+  }
+
   // ---------- Compte anonyme → compte permanent (cf. performJoin) ----------
   function openUpgradeAccount() {
     var cu = person(state.currentUserId);
@@ -1512,7 +1556,8 @@
     sb.auth.updateUser({ email: f.email.trim(), password: f.password }).then(function (res) {
       if (res.error) { setState({ upgradeSubmitting: false, upgradeError: res.error.message }); return; }
       sb.from('profiles').update({ name: f.name.trim() }).eq('id', state.currentUserId).then(function (profRes) {
-        setState({ upgradeSubmitting: false, showUpgradeAccount: false, upgradeForm: { name: '', email: '', password: '' } });
+        saveUpgradeNudgeDismissed();
+        setState({ upgradeSubmitting: false, showUpgradeAccount: false, showUpgradeNudge: false, upgradeForm: { name: '', email: '', password: '' } });
         if (profRes.error) { showToast('Compte mis à jour, mais erreur sur le prénom : ' + profRes.error.message); return; }
         loadAppData();
         showToast("Compte créé — si une confirmation par e-mail est activée, vérifie ta boîte mail avant de te reconnecter avec ce mot de passe.");
@@ -2076,10 +2121,26 @@
   function renderApp() {
     return (
       renderTopBar() +
+      renderUpgradeNudgeBanner() +
       '<div class="content">' + renderContent() + '</div>' +
       renderBottomNav() +
       renderModals() +
       renderToast()
+    );
+  }
+
+  // Relance persistante (cf. maybeShowUpgradeNudge) : visible sur tous les
+  // écrans tant qu'elle n'est pas ignorée ou qu'un compte n'a pas été créé.
+  function renderUpgradeNudgeBanner() {
+    if (!state.showUpgradeNudge) return '';
+    return (
+      '<div class="upgrade-nudge">' +
+      '<span><i class="ph-bold ph-info"></i> Ce groupe n\'est pas encore protégé par un compte — tu pourrais en perdre l\'accès en changeant d\'appareil.</span>' +
+      '<div class="upgrade-nudge-actions">' +
+      '<button class="btn-primary pressable" style="padding:8px 16px;font-size:13px;flex:none" data-action="openUpgradeAccount">Créer un compte</button>' +
+      '<button class="icon-btn pressable" data-action="dismissUpgradeNudge" aria-label="Ignorer"><i class="ph-bold ph-x"></i></button>' +
+      '</div>' +
+      '</div>'
     );
   }
 
@@ -2668,6 +2729,7 @@
       '</h1>' +
       '<p class="ldg-lede">Rohy simplifie le partage des dépenses entre amis, en famille ou en voyage, même lorsque certains participants paient pour leurs enfants, leur conjoint ou ne participent qu\'à certaines dépenses.</p>' +
       ctaRow +
+      (!state.loggedIn ? '<button type="button" class="ldg-try-noaccount pressable" data-action="tryWithoutAccount">Essayer sans compte →</button>' : '') +
       '<div class="ldg-hero-badge"><svg class="ldg-flag-mg" viewBox="0 0 30 20" width="18" height="12" aria-hidden="true"><rect width="30" height="20" fill="#fff"></rect><rect x="12" width="18" height="10" fill="#FC3D32"></rect><rect x="12" y="10" width="18" height="10" fill="#007E3A"></rect></svg> Conçu à Madagascar pour les groupes d\'amis, les familles et les voyageurs</div>' +
       '</div>' +
       '<div class="ldg-hero-stack">' +
@@ -2741,10 +2803,13 @@
       '<h2>Adapté à toutes les situations</h2>' +
       '</div>' +
       '<div class="ldg-usecases">' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-airplane-tilt"></i></span><h3>Voyages entre amis</h3><p>Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.</p></div>' +
       '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-house-line"></i></span><h3>Vacances en famille</h3><p>Prenez en compte les enfants et les personnes à charge sans calcul compliqué.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-rings"></i></span><h3>Mariage</h3><p>Comité familial, participations inégales entre foyers : chacun contribue selon ses moyens.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-flower-lotus"></i></span><h3>Cérémonies familiales</h3><p>Baptême, cérémonie religieuse : organisez les contributions de chaque foyer sans malaise.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-hand-coins"></i></span><h3>Associations et cotisations</h3><p>Cotisation mensuelle d\'une association, collecte pour un cadeau ou un événement commun.</p></div>' +
       '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-heart"></i></span><h3>Couples</h3><p>Gérez facilement les dépenses partagées et les prises en charge partielles.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-buildings"></i></span><h3>Colocations</h3><p>Suivez les dépenses du quotidien et répartissez les coûts équitablement.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-buildings"></i></span><h3>Colocations</h3><p>Suivez les dépenses du quotidien et répartissez les coûts équitablement.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-airplane-tilt"></i></span><h3>Voyages entre amis</h3><p>Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.</p></div>' +
       '</div>' +
       '</section>' +
 
@@ -2773,6 +2838,8 @@
       '<div class="ldg-feat-row"><i class="ph-bold ph-clock-counter-clockwise"></i><div><h3>Historique complet</h3><p>Retrouvez toutes les dépenses et remboursements.</p></div></div>' +
       '<div class="ldg-feat-row"><i class="ph-bold ph-camera"></i><div><h3>Scan intelligent des tickets</h3><p>Ajoutez rapidement vos dépenses à partir d\'une photo.</p></div></div>' +
       '<div class="ldg-feat-row"><i class="ph-bold ph-check-circle"></i><div><h3>Suivi des remboursements</h3><p>Gardez une vue claire des règlements effectués.</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-link"></i><div><h3>Lien d\'invitation</h3><p>Invitez sans obliger vos proches à créer un compte.</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-coins"></i><div><h3>Devises et mobile money africains</h3><p>Ariary, francs CFA, Mvola, Orange Money, Airtel Money.</p></div></div>' +
       '</div>' +
       '<div class="ldg-section-head" style="margin-top:48px">' +
       '<span class="ldg-eyebrow">Comparatif fonctionnel</span>' +
@@ -3448,6 +3515,7 @@
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
         case 'enterApp': enterApp(); break;
+        case 'tryWithoutAccount': tryWithoutAccount(); break;
         case 'performJoin': performJoin(); break;
         case 'cancelJoin': cancelJoin(); break;
         case 'logout': logout(); break;
@@ -3465,6 +3533,7 @@
         case 'disableShareLink': disableShareLink(); break;
         case 'copyShareLink': copyShareLink(); break;
         case 'openUpgradeAccount': openUpgradeAccount(); break;
+        case 'dismissUpgradeNudge': dismissUpgradeNudge(); break;
         case 'submitUpgradeAccount': submitUpgradeAccount(); break;
         case 'openConfirmDeleteGroup': openConfirmDeleteGroup(id); break;
         case 'confirmDeleteGroup': confirmDeleteGroup(); break;
