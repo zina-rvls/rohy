@@ -3694,6 +3694,16 @@
           loadAppData();
         }
       } else {
+        // Contrôle d'auth obsolète : cet évènement "pas de session" a
+        // démarré avant qu'une session plus rapide ne s'établisse entre-
+        // temps (essai sans compte via signInAnonymously, ou lien
+        // d'invitation) et arrive après coup — l'appliquer quand même
+        // écraserait tout l'état en cours et renverrait sur la landing en
+        // pleine création de groupe, sans erreur visible ("bouton qui ne
+        // mène nulle part"). Seul un vrai SIGNED_OUT doit déclencher la
+        // réinitialisation complète ci-dessous ; tout le reste, si on est
+        // déjà connecté, est ignoré.
+        if (event !== 'SIGNED_OUT' && state.loggedIn) return;
         var theme = state.theme;
         // Ce même branchement (session absente) couvre deux cas bien
         // différents : (a) le tout premier contrôle d'auth au chargement de
