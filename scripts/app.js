@@ -1987,7 +1987,11 @@
         '<input class="text-input" type="password" autocomplete="new-password" data-bind="loginPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(f.password) + '" />' +
         '<button class="btn-primary pressable" data-action="submitSignup">Créer le compte</button>' +
         (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
-        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">J\'ai déjà un compte →</div>';
+        '<div class="link-center" style="margin-top:20px" data-action="showPasswordLogin">J\'ai déjà un compte →</div>' +
+        // Option discrète plutôt qu'un CTA du hero (cf. discussion) : pas
+        // envie de diluer le CTA principal de la landing, mais utile pour
+        // qui hésite déjà à créer un compte au moment précis où on le lui demande.
+        '<div class="link-center" style="margin-top:12px" data-action="tryWithoutAccount">Essayer sans compte →</div>';
     } else if (state.loginMode === 'password') {
       body =
         '<div class="field-label">E-mail</div>' +
@@ -2729,7 +2733,6 @@
       '</h1>' +
       '<p class="ldg-lede">Rohy simplifie le partage des dépenses entre amis, en famille ou en voyage, même lorsque certains participants paient pour leurs enfants, leur conjoint ou ne participent qu\'à certaines dépenses.</p>' +
       ctaRow +
-      (!state.loggedIn ? '<button type="button" class="ldg-try-noaccount pressable" data-action="tryWithoutAccount">Essayer sans compte →</button>' : '') +
       '<div class="ldg-hero-badge"><svg class="ldg-flag-mg" viewBox="0 0 30 20" width="18" height="12" aria-hidden="true"><rect width="30" height="20" fill="#fff"></rect><rect x="12" width="18" height="10" fill="#FC3D32"></rect><rect x="12" y="10" width="18" height="10" fill="#007E3A"></rect></svg> Conçu à Madagascar pour les groupes d\'amis, les familles et les voyageurs</div>' +
       '</div>' +
       '<div class="ldg-hero-stack">' +
