@@ -1929,6 +1929,7 @@
   function renderSplashScreen() {
     return (
       '<div class="splash-screen">' +
+      '<div class="splash-row">' +
       '<svg viewBox="0 0 100 100" width="100" height="100" aria-hidden="true">' +
       '<g class="splash-weave">' +
       '<rect class="splash-v" x="20" y="10" width="12" height="80" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:0s;transform-origin:26px 50px"></rect>' +
@@ -1947,8 +1948,11 @@
       '<rect class="splash-patch" x="44" y="68" width="12" height="12" rx="3" fill="#0F8F6B" style="animation-delay:1.15s;transform-origin:50px 74px"></rect>' +
       '</g>' +
       '</svg>' +
+      '<div class="splash-text">' +
       '<div class="splash-wordmark">Rohy</div>' +
       '<div class="splash-tagline">Suivi des dépenses entre amis et en famille</div>' +
+      '</div>' +
+      '</div>' +
       '</div>'
     );
   }

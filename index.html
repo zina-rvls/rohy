@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
-  <link href="styles/style.css" rel="stylesheet" type="text/css">
+  <link href="styles/style.css?v=2" rel="stylesheet" type="text/css">
   <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "1c8def4bafea4996849e0e7d5d0ea9f1"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body>
@@ -45,9 +45,17 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  <script src="scripts/supabase-client.js"></script>
-  <script src="scripts/calc.js"></script>
-  <script src="scripts/data.js"></script>
-  <script src="scripts/app.js"></script>
+  <!-- ?v=N sur les 4 scripts locaux ci-dessous (et sur styles/style.css plus
+       haut) : GitHub Pages ne permet pas de configurer ses en-têtes
+       Cache-Control (pas d'équivalent _headers), et un simple F5 réutilise
+       souvent ces fichiers depuis le cache navigateur tant que leur URL ne
+       change pas, même quand la page HTML elle-même est revalidée. Sans
+       cache-busting, une mise à jour de ces fichiers pouvait rester invisible
+       malgré un rafraîchissement classique. À incrémenter à chaque modification
+       de l'un de ces 5 fichiers. -->
+  <script src="scripts/supabase-client.js?v=2"></script>
+  <script src="scripts/calc.js?v=2"></script>
+  <script src="scripts/data.js?v=2"></script>
+  <script src="scripts/app.js?v=2"></script>
 </body>
 </html>
