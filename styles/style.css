@@ -191,25 +191,21 @@ button { font-family: inherit; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
 .splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
-/* Chorégraphie alignée sur "07 · Motion" du design system (v1) : les 3
+/* Reproduit fidèlement la démo animée de "07 · Motion" du design system
+   (v1) : brins en simple contour (fill: none, stroke émeraude), jamais en
+   aplat — seuls les pavés de croisement (.splash-patch) sont pleins. Les 3
    brins verticaux tombent d'abord en cascade légère (translateY), puis les
    3 brins horizontaux entrent en ALTERNANCE gauche/droite/gauche
    (translateX) et se tissent à travers les verticaux — jamais tous depuis
    la même direction, pour un geste plus artisanal qu'un chargement
-   mécanique. Contour, remplissage et patch de croisement d'une même bande
-   horizontale partagent la même classe de direction et le même délai pour
-   apparaître ensemble. Une fois le tissage terminé, le motif entier
-   rebondit légèrement (`.splash-weave`, écho du rebond élastique du design
-   system) puis respire doucement tant que l'écran reste affiché.
-   Volontairement PAS de fondu d'opacité sur les bandes : une bande
-   semi-transparente en cours de fondu laisse voir par transparence la
-   bordure de la bande qu'elle est censée recouvrir. Une translation seule
-   reste toujours pleinement opaque, donc masque proprement dès qu'elle
-   atteint sa position. Durée totale par bande compressée par rapport au
-   rythme démonstratif du design system (pensé pour un rejeu à la
-   demande) : un vrai écran de lancement doit rester bref à chaque
-   connexion — mais la direction, l'easing (cubic-bezier(.2,.65,.3,1)) et le
-   rebond final suivent la dernière version du spec. */
+   mécanique. Une fois le tissage terminé, le motif entier rebondit
+   légèrement (`.splash-weave`, écho du rebond élastique du design system)
+   puis respire doucement tant que l'écran reste affiché. Durée totale par
+   bande compressée par rapport au rythme démonstratif du design system
+   (pensé pour un rejeu à la demande) : un vrai écran de lancement doit
+   rester bref à chaque connexion — mais la direction, l'easing
+   (cubic-bezier(.2,.65,.3,1)) et le rebond final suivent la dernière
+   version du spec. */
 .splash-v {
   animation: splashVIn .55s cubic-bezier(.2, .65, .3, 1) both;
 }
@@ -231,11 +227,21 @@ button { font-family: inherit; }
   0%   { transform: translateX(70px); }
   100% { transform: translateX(0); }
 }
+/* transform-box: fill-box : sans lui, le scale de départ (.6) se ferait
+   depuis l'origine du <svg> entier plutôt que le centre du pavé lui-même. */
+.splash-patch {
+  opacity: 0; transform-box: fill-box; transform-origin: center;
+  animation: splashPatchIn .2s ease both;
+}
+@keyframes splashPatchIn {
+  0%   { opacity: 0; transform: scale(.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
 .splash-weave {
   transform-origin: 50px 50px;
   animation:
-    splashWeaveSettle .5s cubic-bezier(.2, .65, .3, 1) 1.13s both,
-    splashWeaveBreathe 1.6s ease-in-out 1.63s infinite;
+    splashWeaveSettle .5s cubic-bezier(.2, .65, .3, 1) 1.35s both,
+    splashWeaveBreathe 1.6s ease-in-out 1.85s infinite;
 }
 @keyframes splashWeaveSettle {
   0%   { transform: scale(1); }
@@ -247,18 +253,19 @@ button { font-family: inherit; }
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.015); }
 }
-/* Wordmark + baseline : apparaissent une fois le motif assemblé (dernière
-   bande installée à 1.13s), puis restent affichés le temps que l'utilisateur
-   les lise avant que l'écran de lancement ne disparaisse (cf. le délai dans
-   DOMContentLoaded, ajusté en conséquence). Léger décalage entre les deux
-   (wordmark puis baseline) plutôt qu'une apparition simultanée — un fondu
-   enchaîné progressif plutôt qu'un bloc de texte qui surgit d'un coup. */
+/* Wordmark + baseline : apparaissent une fois le motif assemblé (derniers
+   pavés installés à 1.15s + leur propre durée), puis restent affichés le
+   temps que l'utilisateur les lise avant que l'écran de lancement ne
+   disparaisse (cf. le délai dans DOMContentLoaded, ajusté en conséquence).
+   Léger décalage entre les deux (wordmark puis baseline) plutôt qu'une
+   apparition simultanée — un fondu enchaîné progressif plutôt qu'un bloc de
+   texte qui surgit d'un coup. */
 .splash-wordmark {
   font-family: 'Sora', sans-serif; font-weight: 800; font-size: 30px; color: var(--brand-primary);
-  margin-top: 18px; opacity: 0; animation: splashFadeUp .5s ease both; animation-delay: 1.3s;
+  margin-top: 18px; opacity: 0; animation: splashFadeUp .5s ease both; animation-delay: 1.4s;
 }
 .splash-tagline {
-  font-size: 14px; color: var(--text-secondary); opacity: 0; animation: splashFadeUp .5s ease both; animation-delay: 1.48s;
+  font-size: 14px; color: var(--text-secondary); opacity: 0; animation: splashFadeUp .5s ease both; animation-delay: 1.58s;
 }
 @keyframes splashFadeUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 .login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
