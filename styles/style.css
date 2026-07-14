@@ -191,29 +191,61 @@ button { font-family: inherit; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
 .splash-screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--surface-canvas); }
-/* Chaque bande glisse depuis l'extérieur du cadre jusqu'à sa position
-   tissée, déjà pleinement colorée (cf. section "07 · Motion" du design
-   system) — un geste plus artisanal qu'un chargement mécanique. Bandes
-   verticales puis horizontales groupées (écart de .09s au sein d'un même
-   groupe, contre .4s entre les deux groupes) : chaque étape intermédiaire
-   montre un ensemble de couleurs cohérent (le trio doré/violet, puis le
-   motif complet), jamais une bande isolée qui jure avec le reste. Contour
-   et remplissage de chaque bande horizontale partagent la même classe et
-   le même délai (`.splash-h`) pour apparaître ensemble.
-   Volontairement PAS de fondu d'opacité ici : une bande semi-transparente
-   en cours de fondu laisse voir par transparence la bordure de la bande
-   qu'elle est censée recouvrir, visible le temps de la transition. Une
-   translation seule reste toujours pleinement opaque, donc masque
-   proprement dès qu'elle atteint sa position, sans jamais laisser rien
-   transparaître. Durée totale compressée par rapport au rythme démonstratif
-   du design system (pensé pour un rejeu à la demande) : un vrai écran de
-   lancement doit rester bref à chaque connexion. */
-.splash-v, .splash-h {
-  animation: splashSettle .55s cubic-bezier(.16, .5, .2, 1) both;
+/* Chorégraphie alignée sur "07 · Motion" du design system (v1) : les 3
+   brins verticaux tombent d'abord en cascade légère (translateY), puis les
+   3 brins horizontaux entrent en ALTERNANCE gauche/droite/gauche
+   (translateX) et se tissent à travers les verticaux — jamais tous depuis
+   la même direction, pour un geste plus artisanal qu'un chargement
+   mécanique. Contour, remplissage et patch de croisement d'une même bande
+   horizontale partagent la même classe de direction et le même délai pour
+   apparaître ensemble. Une fois le tissage terminé, le motif entier
+   rebondit légèrement (`.splash-weave`, écho du rebond élastique du design
+   system) puis respire doucement tant que l'écran reste affiché.
+   Volontairement PAS de fondu d'opacité sur les bandes : une bande
+   semi-transparente en cours de fondu laisse voir par transparence la
+   bordure de la bande qu'elle est censée recouvrir. Une translation seule
+   reste toujours pleinement opaque, donc masque proprement dès qu'elle
+   atteint sa position. Durée totale par bande compressée par rapport au
+   rythme démonstratif du design system (pensé pour un rejeu à la
+   demande) : un vrai écran de lancement doit rester bref à chaque
+   connexion — mais la direction, l'easing (cubic-bezier(.2,.65,.3,1)) et le
+   rebond final suivent la dernière version du spec. */
+.splash-v {
+  animation: splashVIn .55s cubic-bezier(.2, .65, .3, 1) both;
 }
-@keyframes splashSettle {
+@keyframes splashVIn {
   0%   { transform: translateY(-70px); }
   100% { transform: translateY(0); }
+}
+.splash-h-left {
+  animation: splashHLeftIn .55s cubic-bezier(.2, .65, .3, 1) both;
+}
+@keyframes splashHLeftIn {
+  0%   { transform: translateX(-70px); }
+  100% { transform: translateX(0); }
+}
+.splash-h-right {
+  animation: splashHRightIn .55s cubic-bezier(.2, .65, .3, 1) both;
+}
+@keyframes splashHRightIn {
+  0%   { transform: translateX(70px); }
+  100% { transform: translateX(0); }
+}
+.splash-weave {
+  transform-origin: 50px 50px;
+  animation:
+    splashWeaveSettle .5s cubic-bezier(.2, .65, .3, 1) 1.13s both,
+    splashWeaveBreathe 1.6s ease-in-out 1.63s infinite;
+}
+@keyframes splashWeaveSettle {
+  0%   { transform: scale(1); }
+  55%  { transform: scale(1.035); }
+  80%  { transform: scale(.99); }
+  100% { transform: scale(1); }
+}
+@keyframes splashWeaveBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.015); }
 }
 /* Wordmark + baseline : apparaissent une fois le motif assemblé (dernière
    bande installée à 1.13s), puis restent affichés le temps que l'utilisateur

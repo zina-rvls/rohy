@@ -1929,26 +1929,32 @@
   }
 
   // Écran de lancement : la marque se tisse bande par bande (3 verticales +
-  // 3 horizontales), chacune glissant depuis l'extérieur du cadre jusqu'à sa
-  // position (cf. section "07 · Motion" du design system). Les découpes
-  // dans les bandes horizontales (fill-rule evenodd) ne varient pas dans le
-  // temps : elles reproduisent le motif tissé final (quelle bande passe
-  // au-dessus/en-dessous de quelle autre) dès leur apparition — seul l'ORDRE
-  // d'arrivée des 6 bandes (via animation-delay) donne l'impression de
-  // tissage progressif.
+  // 3 horizontales), suivant la chorégraphie de la section "07 · Motion" du
+  // design system (v1) : les verticales tombent d'en haut (cascade légère),
+  // les horizontales entrent en ALTERNANCE gauche/droite/gauche à travers
+  // elles, puis l'ensemble rebondit légèrement une fois assemblé (cf.
+  // .splash-weave). Les découpes dans les bandes horizontales (fill-rule
+  // evenodd) ne varient pas dans le temps : elles reproduisent le motif
+  // tissé final (quelle bande passe au-dessus/en-dessous de quelle autre)
+  // dès leur apparition — seuls la direction et l'ORDRE d'arrivée des 6
+  // bandes (via animation-delay) donnent l'impression de tissage progressif.
   function renderSplashScreen() {
     return (
       '<div class="splash-screen">' +
       '<svg viewBox="0 0 100 100" width="100" height="100" aria-hidden="true">' +
+      '<g class="splash-weave">' +
       '<rect class="splash-v" x="16" y="0" width="18" height="100" rx="3" fill="#C9A159" stroke="#96793A" stroke-width="3" stroke-linecap="square" style="animation-delay:0s;transform-origin:25px 50px"></rect>' +
       '<rect class="splash-v" x="42" y="0" width="18" height="100" rx="3" fill="#7B3F98" stroke="#5A2C71" stroke-width="3" stroke-linecap="square" style="animation-delay:.09s;transform-origin:51px 50px"></rect>' +
       '<rect class="splash-v" x="68" y="0" width="18" height="100" rx="3" fill="#C9A159" stroke="#96793A" stroke-width="3" stroke-linecap="square" style="animation-delay:.18s;transform-origin:77px 50px"></rect>' +
-      '<path class="splash-h" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z M42,13.5 L42,31.5 L60,31.5 L60,13.5 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.4s;transform-origin:50px 22.5px"></path>' +
-      '<path class="splash-h" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.4s;transform-origin:50px 22.5px"></path>' +
-      '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z M16,40 L16,58 L34,58 L34,40 Z M68,40 L68,58 L86,58 L86,40 Z" fill-rule="evenodd" fill="#0F8F6B" stroke="none" style="animation-delay:.49s;transform-origin:50px 49px"></path>' +
-      '<path class="splash-h" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z" fill="none" stroke="#0A6B50" stroke-width="3" stroke-linejoin="round" style="animation-delay:.49s;transform-origin:50px 49px"></path>' +
-      '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.58s;transform-origin:50px 74px"></path>' +
-      '<path class="splash-h" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.58s;transform-origin:50px 74px"></path>' +
+      // Bande du haut : entre par la GAUCHE (mh-left).
+      '<path class="splash-h-left" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z M42,13.5 L42,31.5 L60,31.5 L60,13.5 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.4s;transform-origin:50px 22.5px"></path>' +
+      '<path class="splash-h-left" d="M3,13.5 L97,13.5 Q100,13.5 100,16.5 L100,28.5 Q100,31.5 97,31.5 L3,31.5 Q0,31.5 0,28.5 L0,16.5 Q0,13.5 3,13.5 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.4s;transform-origin:50px 22.5px"></path>' +
+      // Bande du milieu : entre par la DROITE (mh-right).
+      '<path class="splash-h-right" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z M16,40 L16,58 L34,58 L34,40 Z M68,40 L68,58 L86,58 L86,40 Z" fill-rule="evenodd" fill="#0F8F6B" stroke="none" style="animation-delay:.49s;transform-origin:50px 49px"></path>' +
+      '<path class="splash-h-right" d="M3,40 L97,40 Q100,40 100,43 L100,55 Q100,58 97,58 L3,58 Q0,58 0,55 L0,43 Q0,40 3,40 Z" fill="none" stroke="#0A6B50" stroke-width="3" stroke-linejoin="round" style="animation-delay:.49s;transform-origin:50px 49px"></path>' +
+      // Bande du bas : entre à nouveau par la GAUCHE (mh-left).
+      '<path class="splash-h-left" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z M42,65 L42,83 L60,83 L60,65 Z" fill-rule="evenodd" fill="#D6247A" stroke="none" style="animation-delay:.58s;transform-origin:50px 74px"></path>' +
+      '<path class="splash-h-left" d="M3,65 L97,65 Q100,65 100,68 L100,80 Q100,83 97,83 L3,83 Q0,83 0,80 L0,68 Q0,65 3,65 Z" fill="none" stroke="#96195A" stroke-width="3" stroke-linejoin="round" style="animation-delay:.58s;transform-origin:50px 74px"></path>' +
       // Aux 4 croisements où une bande verticale passe "au-dessus" (révélée
       // par le trou evenodd d'une bande horizontale), ce même rect vertical
       // garde sa propre bordure tout du long (elle court sur toute sa
@@ -1958,11 +1964,12 @@
       // couleur de la bande verticale, posé par-dessus exactement sur cette
       // fenêtre, aplatit le croisement en un patch de couleur propre — sans
       // changer la couleur perçue, juste sans bordure superflue à cet
-      // endroit précis.
-      '<rect class="splash-h" x="42" y="13.5" width="18" height="18" fill="#7B3F98" style="animation-delay:.4s;transform-origin:51px 22.5px"></rect>' +
-      '<rect class="splash-h" x="16" y="40" width="18" height="18" fill="#C9A159" style="animation-delay:.49s;transform-origin:25px 49px"></rect>' +
-      '<rect class="splash-h" x="68" y="40" width="18" height="18" fill="#C9A159" style="animation-delay:.49s;transform-origin:77px 49px"></rect>' +
-      '<rect class="splash-h" x="42" y="65" width="18" height="18" fill="#7B3F98" style="animation-delay:.58s;transform-origin:51px 74px"></rect>' +
+      // endroit précis. Chaque patch suit la même direction que sa bande.
+      '<rect class="splash-h-left" x="42" y="13.5" width="18" height="18" fill="#7B3F98" style="animation-delay:.4s;transform-origin:51px 22.5px"></rect>' +
+      '<rect class="splash-h-right" x="16" y="40" width="18" height="18" fill="#C9A159" style="animation-delay:.49s;transform-origin:25px 49px"></rect>' +
+      '<rect class="splash-h-right" x="68" y="40" width="18" height="18" fill="#C9A159" style="animation-delay:.49s;transform-origin:77px 49px"></rect>' +
+      '<rect class="splash-h-left" x="42" y="65" width="18" height="18" fill="#7B3F98" style="animation-delay:.58s;transform-origin:51px 74px"></rect>' +
+      '</g>' +
       '</svg>' +
       '<div class="splash-wordmark">Rohy</div>' +
       '<div class="splash-tagline">Suivi des dépenses entre amis et en famille</div>' +
