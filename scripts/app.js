@@ -48,6 +48,16 @@
     return false;
   }
 
+  // Lien d'invitation par groupe (?join=<token>, cf. "Partager le lien
+  // d'invitation" dans le détail d'un groupe) : détecté dès le premier
+  // rendu pour prendre le pas sur la landing/le formulaire de connexion,
+  // quel que soit l'état de connexion (cf. renderJoinScreen).
+  function getJoinTokenFromUrl() {
+    try {
+      return new URLSearchParams(window.location.search).get('join') || null;
+    } catch (err) { return null; }
+  }
+
   function defaultState() {
     return {
       // L'écran de lancement ne sert qu'au vrai lancement de l'appli (compte
@@ -55,6 +65,22 @@
       // connexion/inscription (cf. openLoginForm/ctaSignupFromAbout) — jamais
       // à l'arrivée sur la landing, qui doit s'afficher immédiatement.
       showSplash: hasPersistedSession(),
+      // Lien d'invitation ouvert (cf. renderJoinScreen) : joinPreview est
+      // rempli par fetchJoinPreview() une fois le nom/la devise du groupe
+      // connus ; joinToken repasse à null une fois la personne bien ajoutée
+      // au groupe (cf. performJoin), pour ne jamais réafficher cet écran.
+      joinToken: getJoinTokenFromUrl(),
+      joinPreview: null,
+      joinNameInput: '',
+      joinSubmitting: false,
+      joinError: null,
+      isAnonymous: false,
+      showShareLink: false,
+      shareLinkGroupId: null,
+      showUpgradeAccount: false,
+      upgradeForm: { name: '', email: '', password: '' },
+      upgradeError: null,
+      upgradeSubmitting: false,
       // La racine du site (rohy-app.com) doit toujours montrer la landing en
       // premier, même pour un compte déjà connecté (nouvel onglet,
       // rechargement) — jamais directement l'app. `enterApp` (déclenché par
@@ -503,6 +529,7 @@
       var groups = groupRows.map(function (g) {
         return {
           id: g.id, name: g.name, icon: g.icon, currency: g.currency, adminId: g.admin_id,
+          shareToken: g.share_token || null,
           memberIds: memberRows.filter(function (m) { return m.group_id === g.id; }).map(function (m) { return m.user_id; }),
         };
       });
@@ -570,6 +597,63 @@
   // defaultState) vers l'app pour un compte déjà connecté — même moment de
   // transition qu'un vrai lancement d'appli, donc même écran de lancement.
   function enterApp() { setState({ enteredApp: true, showSplash: true }); armSplashTimeout(); }
+
+  // ---------- Lien d'invitation par groupe (cf. renderJoinScreen) ----------
+  function setJoinNameInput(v) { setStateSilent({ joinNameInput: v, joinError: null }); }
+
+  // Récupère nom/devise/nombre de membres du groupe désigné par le jeton
+  // (Edge Function join-group, action "preview") — ne rejoint pas encore,
+  // sert juste à afficher "Vous rejoignez tel groupe" avant confirmation.
+  function fetchJoinPreview() {
+    var token = state.joinToken;
+    if (!token) return;
+    sb.functions.invoke('join-group', { body: { token: token, action: 'preview' } }).then(function (res) {
+      extractFunctionErrorMessage(res).then(function (errMsg) {
+        if (errMsg) { setState({ joinPreview: { error: errMsg } }); return; }
+        var d = res.data || {};
+        setState({ joinPreview: { groupName: d.groupName, currency: d.currency, memberCount: d.memberCount || 0 } });
+      });
+    }).catch(function () {
+      setState({ joinPreview: { error: 'Erreur réseau — réessaie.' } });
+    });
+  }
+
+  function performJoin() {
+    var token = state.joinToken;
+    if (!token) return;
+    var name = (state.joinNameInput || '').trim();
+    if (!state.loggedIn && !name) { setState({ joinError: 'Entre ton prénom.' }); return; }
+    setState({ joinSubmitting: true, joinError: null });
+    // Déjà connecté (compte réel ou anonyme d'une session précédente) : pas
+    // besoin de (re)créer une session, on rejoint directement avec celle-ci.
+    // Sinon, une session anonyme est créée à la volée — jamais de mot de
+    // passe pour un simple accès par lien.
+    var authStep = state.loggedIn ? Promise.resolve() : sb.auth.signInAnonymously().then(function (res) {
+      if (res.error) return Promise.reject(res.error);
+    });
+    authStep.then(function () {
+      return sb.functions.invoke('join-group', { body: { token: token, action: 'join', name: name } });
+    }).then(function (res) {
+      return extractFunctionErrorMessage(res).then(function (errMsg) {
+        if (errMsg) throw new Error(errMsg);
+        var d = res.data || {};
+        setState({
+          joinToken: null, joinSubmitting: false, joinPreview: null, joinNameInput: '',
+          enteredApp: true, screen: 'groupDetail', navStack: [], selectedGroupId: d.groupId,
+        });
+        // Retire ?join=... de l'URL : un rechargement ne doit pas rouvrir cet écran.
+        try { window.history.replaceState({}, '', window.location.pathname); } catch (err) { /* ignore */ }
+        loadAppData();
+      });
+    }).catch(function (err) {
+      setState({ joinSubmitting: false, joinError: (err && err.message) || 'Erreur réseau.' });
+    });
+  }
+
+  function cancelJoin() {
+    setState({ joinToken: null, joinPreview: null, joinError: null, joinNameInput: '' });
+    try { window.history.replaceState({}, '', window.location.pathname); } catch (err) { /* ignore */ }
+  }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
@@ -1363,6 +1447,79 @@
       loadAppData().then(function () { showToast('Groupe supprimé'); });
     });
   }
+  // ---------- Lien d'invitation par groupe (cf. renderShareLinkModal /
+  // join-group Edge Function / renderJoinScreen) ----------
+  function openShareLink(groupId) { setState({ showShareLink: true, shareLinkGroupId: groupId }); }
+  function generateShareLink() {
+    var groupId = state.shareLinkGroupId;
+    if (!groupId) return;
+    var token = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (String(Date.now()) + Math.random().toString(36).slice(2));
+    // Régénérer révoque l'ancien lien du même coup : join-group cherche une
+    // correspondance exacte sur share_token, l'ancienne valeur ne pointe
+    // donc plus vers rien une fois remplacée.
+    sb.from('groups').update({ share_token: token }).eq('id', groupId).then(function (res) {
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      // Patch local plutôt qu'un loadAppData() complet : évite de faire
+      // disparaître cette modale derrière l'écran de chargement pour une
+      // simple mise à jour d'un seul champ.
+      setState(function (s) {
+        return { groups: s.groups.map(function (g) { return g.id === groupId ? Object.assign({}, g, { shareToken: token }) : g; }) };
+      });
+    });
+  }
+  function disableShareLink() {
+    var groupId = state.shareLinkGroupId;
+    if (!groupId) return;
+    sb.from('groups').update({ share_token: null }).eq('id', groupId).then(function (res) {
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      setState(function (s) {
+        return { groups: s.groups.map(function (g) { return g.id === groupId ? Object.assign({}, g, { shareToken: null }) : g; }) };
+      });
+      showToast('Lien désactivé');
+    });
+  }
+  function copyShareLink() {
+    var g = group(state.shareLinkGroupId);
+    if (!g || !g.shareToken) return;
+    var url = window.location.origin + window.location.pathname + '?join=' + g.shareToken;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { showToast('Lien copié'); }).catch(function () { showToast("Impossible de copier — sélectionne et copie-le manuellement."); });
+    } else {
+      showToast('Copie non supportée sur ce navigateur.');
+    }
+  }
+
+  // ---------- Compte anonyme → compte permanent (cf. performJoin) ----------
+  function openUpgradeAccount() {
+    var cu = person(state.currentUserId);
+    setState({
+      showUpgradeAccount: true, upgradeError: null,
+      upgradeForm: { name: (cu && cu.name && cu.name !== 'Invité') ? cu.name : '', email: '', password: '' },
+    });
+  }
+  function setUpgradeName(v) { setStateSilent(function (s) { return { upgradeForm: Object.assign({}, s.upgradeForm, { name: v }), upgradeError: null }; }); }
+  function setUpgradeEmail(v) { setStateSilent(function (s) { return { upgradeForm: Object.assign({}, s.upgradeForm, { email: v }), upgradeError: null }; }); }
+  function setUpgradePassword(v) { setStateSilent(function (s) { return { upgradeForm: Object.assign({}, s.upgradeForm, { password: v }), upgradeError: null }; }); }
+  function submitUpgradeAccount() {
+    var f = state.upgradeForm;
+    if (!f.name.trim()) { setState({ upgradeError: 'Entre ton prénom.' }); return; }
+    if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ upgradeError: 'Entre un e-mail valide.' }); return; }
+    if (!f.password || f.password.length < 8) { setState({ upgradeError: 'Mot de passe trop court (8 caractères min).' }); return; }
+    setState({ upgradeSubmitting: true, upgradeError: null });
+    // updateUser() sur une session anonyme la transforme en compte permanent
+    // EN PLACE (même id, donc même historique) plutôt que d'en créer un
+    // nouveau — c'est le mécanisme officiel de Supabase pour ce cas.
+    sb.auth.updateUser({ email: f.email.trim(), password: f.password }).then(function (res) {
+      if (res.error) { setState({ upgradeSubmitting: false, upgradeError: res.error.message }); return; }
+      sb.from('profiles').update({ name: f.name.trim() }).eq('id', state.currentUserId).then(function (profRes) {
+        setState({ upgradeSubmitting: false, showUpgradeAccount: false, upgradeForm: { name: '', email: '', password: '' } });
+        if (profRes.error) { showToast('Compte mis à jour, mais erreur sur le prénom : ' + profRes.error.message); return; }
+        loadAppData();
+        showToast("Compte créé — si une confirmation par e-mail est activée, vérifie ta boîte mail avant de te reconnecter avec ce mot de passe.");
+      });
+    });
+  }
+
   function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId, manageMembersSearchQuery: '' }); }
   function setManageMembersSearch(v) { setState({ manageMembersSearchQuery: v }); }
   function toggleAddMemberForm() {
@@ -1627,7 +1784,8 @@
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
       showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
-      showReminderConfirm: false,
+      showReminderConfirm: false, showShareLink: false, shareLinkGroupId: null,
+      showUpgradeAccount: false, upgradeError: null, upgradeForm: { name: '', email: '', password: '' },
       settleGroupId: null, showAddMemberForm: false,
     });
   }
@@ -1700,6 +1858,11 @@
     root.classList.add('no-transition');
     if (state.passwordRecovery) {
       root.innerHTML = renderNewPasswordScreen();
+    } else if (state.joinToken) {
+      // Lien d'invitation ouvert (cf. renderJoinScreen) : passe devant tout
+      // le reste, connecté ou non — se referme de lui-même une fois la
+      // personne ajoutée au groupe (performJoin remet joinToken à null).
+      root.innerHTML = renderJoinScreen();
     } else if (!state.loggedIn) {
       root.innerHTML = state.showLoginForm ? renderLogin() : renderAboutFromLogin();
     } else if (!state.enteredApp) {
@@ -1831,6 +1994,47 @@
       '</div>'
     );
   }
+  // Lien d'invitation par groupe (cf. renderGroupDetail → "Partager le lien
+  // d'invitation", et l'Edge Function join-group) : à l'ouverture de
+  // rohy-app.com/?join=<token>, montre "Vous rejoignez tel groupe" puis
+  // ajoute la personne comme un vrai participant (compte anonyme si elle
+  // n'était pas déjà connectée) — jamais de mot de passe à créer ici.
+  function renderJoinScreen() {
+    var preview = state.joinPreview;
+    var body;
+    if (!preview) {
+      body = '<div class="login-subtitle" style="text-align:center">Chargement du lien d\'invitation…</div>';
+    } else if (preview.error) {
+      body =
+        '<div class="login-subtitle" style="text-align:center">' + escapeHtml(preview.error) + '</div>' +
+        '<div class="link-center" style="margin-top:20px" data-action="cancelJoin">← Retour à l\'accueil</div>';
+    } else {
+      var memberLine = preview.memberCount > 0
+        ? preview.memberCount + (preview.memberCount > 1 ? ' participants déjà dans ce groupe.' : ' participant déjà dans ce groupe.')
+        : 'Sois le premier à rejoindre ce groupe.';
+      body =
+        '<div class="login-subtitle" style="text-align:center;margin-bottom:18px">' + escapeHtml(memberLine) + '</div>' +
+        (state.loggedIn ?
+          '<button class="btn-primary pressable" data-action="performJoin"' + (state.joinSubmitting ? ' disabled' : '') + '>' +
+          (state.joinSubmitting ? 'Ajout en cours…' : 'Rejoindre avec « ' + escapeHtml(person(state.currentUserId).name) + ' »') +
+          '</button>' :
+          '<div class="field-label">Ton prénom</div>' +
+          '<input class="text-input" data-bind="joinName" placeholder="Toi" value="' + escapeHtml(state.joinNameInput) + '" />' +
+          '<button class="btn-primary pressable" data-action="performJoin"' + (state.joinSubmitting ? ' disabled' : '') + '>' +
+          (state.joinSubmitting ? 'Ajout en cours…' : 'Rejoindre le groupe') + '</button>' +
+          '<div class="login-subtitle" style="font-size:12px;margin-top:10px">Aucun mot de passe requis — tu pourras créer un compte plus tard si tu veux retrouver ce groupe depuis un autre appareil.</div>') +
+        (state.joinError ? '<div class="form-error">' + escapeHtml(state.joinError) + '</div>' : '') +
+        '<div class="link-center" style="margin-top:20px" data-action="cancelJoin">← Retour à l\'accueil</div>';
+    }
+    return (
+      '<div class="login-screen">' +
+      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#0F8F6B', '#084b38') + '</div><span class="login-wordmark">Rohy</span></div>' +
+      '<div class="login-title">' + (preview && !preview.error ? 'Rejoindre « ' + escapeHtml(preview.groupName) + ' »' : 'Lien d\'invitation') + '</div>' +
+      body +
+      '</div>'
+    );
+  }
+
   // État dédié (cf. openLoginForm/goToLanding) : render() affiche cet écran
   // à la place de renderLogin() sans passer par la navigation habituelle
   // (navStack), indisponible avant connexion. La landing est la racine de
@@ -2254,6 +2458,7 @@
       (isAdmin ?
         '<div class="admin-actions">' +
         '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> Gérer les membres</button>' +
+        '<button class="btn-outline pressable" data-action="openShareLink" data-id="' + g.id + '"><i class="ph-bold ph-link"></i> Partager le lien d\'invitation</button>' +
         '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '" aria-label="Supprimer le groupe"><i class="ph-bold ph-trash"></i></button>' +
         '</div>' :
         '<div class="admin-actions">' +
@@ -2696,6 +2901,7 @@
       '<span class="account-dropdown-name">' + escapeHtml(cu.name) + '</span>' +
       '</div>' +
       '<div class="account-dropdown-divider"></div>' +
+      (state.isAnonymous ? '<button class="account-dropdown-item pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus"></i>Créer un compte</button>' : '') +
       '<button class="account-dropdown-item pressable" data-action="openAbout"><i class="ph-bold ph-info"></i>À propos</button>' +
       '<button class="account-dropdown-item pressable" data-action="toggleTheme"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i>' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</button>' +
       '<div class="account-dropdown-divider"></div>' +
@@ -2714,6 +2920,8 @@
     if (state.showSettle) out += renderSettleModal();
     if (state.showAccount) out += renderAccountModal();
     if (state.showManageMembers) out += renderManageMembersModal();
+    if (state.showShareLink) out += renderShareLinkModal();
+    if (state.showUpgradeAccount) out += renderUpgradeAccountModal();
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
     if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
@@ -2741,6 +2949,54 @@
       '<button class="btn-cancel pressable" data-action="closeReminderConfirm">Annuler</button>' +
       '<button class="btn-confirm pressable" data-action="confirmSendReminder">Envoyer le rappel</button>' +
       '</div></div></div>'
+    );
+  }
+
+  // Lien d'invitation façon Tricount/Kittysplit : quiconque l'ouvre devient
+  // un vrai participant (voit/ajoute des dépenses, voit son solde) sans
+  // jamais créer de compte e-mail/mot de passe — cf. renderJoinScreen et
+  // l'Edge Function join-group.
+  function renderShareLinkModal() {
+    var g = group(state.shareLinkGroupId);
+    if (!g) return '';
+    var url = g.shareToken ? (window.location.origin + window.location.pathname + '?join=' + g.shareToken) : '';
+    return (
+      '<div class="modal-overlay center" data-action="closeModal">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">Lien d\'invitation</div>' +
+      '<div style="font-size:13.5px;color:var(--text-secondary);margin-bottom:18px">' +
+      'Toute personne qui ouvre ce lien rejoint « ' + escapeHtml(g.name) + ' » directement — elle voit ses dépenses et son solde, sans avoir besoin de créer de compte.' +
+      '</div>' +
+      (g.shareToken ?
+        '<div class="text-input" style="display:flex;align-items:center;overflow-x:auto;white-space:nowrap;user-select:all;margin-bottom:14px">' + escapeHtml(url) + '</div>' +
+        '<button class="btn-primary pressable" style="margin-bottom:10px" data-action="copyShareLink"><i class="ph-bold ph-copy"></i> Copier le lien</button>' +
+        '<div class="modal-footer-buttons">' +
+        '<button class="btn-cancel pressable" data-action="disableShareLink">Désactiver</button>' +
+        '<button class="btn-outline pressable" data-action="generateShareLink">Régénérer</button>' +
+        '</div>' :
+        '<button class="btn-primary pressable" data-action="generateShareLink"><i class="ph-bold ph-link"></i> Générer un lien</button>') +
+      '</div></div>'
+    );
+  }
+
+  // Compte anonyme (rejoint via un lien d'invitation, cf. performJoin) qui
+  // veut garder l'accès à ses groupes après un changement d'appareil.
+  function renderUpgradeAccountModal() {
+    var f = state.upgradeForm;
+    return (
+      '<div class="modal-overlay center" data-action="closeModal">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">Créer un compte</div>' +
+      '<div style="font-size:13.5px;color:var(--text-secondary);margin-bottom:16px">Garde l\'accès à tes groupes même en changeant d\'appareil — ton historique est conservé tel quel.</div>' +
+      '<div class="field-label">Prénom</div>' +
+      '<input class="text-input" data-bind="upgradeName" placeholder="Toi" value="' + escapeHtml(f.name) + '" />' +
+      '<div class="field-label">E-mail</div>' +
+      '<input class="text-input" type="email" autocomplete="email" data-bind="upgradeEmail" placeholder="toi@exemple.com" value="' + escapeHtml(f.email) + '" />' +
+      '<div class="field-label">Mot de passe</div>' +
+      '<input class="text-input" type="password" autocomplete="new-password" data-bind="upgradePassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(f.password) + '" />' +
+      '<button class="btn-primary pressable" style="margin-top:14px' + (state.upgradeSubmitting ? ';opacity:0.6' : '') + '" data-action="submitUpgradeAccount">' + (state.upgradeSubmitting ? 'Création en cours…' : 'Créer le compte') + '</button>' +
+      (state.upgradeError ? '<div class="form-error">' + escapeHtml(state.upgradeError) + '</div>' : '') +
+      '</div></div>'
     );
   }
 
@@ -3038,6 +3294,7 @@
       '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
       '</div>' +
+      (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Créer un compte</span></button>' : '') +
       '<button class="switch-user-row pressable" data-action="openAbout"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
       '<button class="switch-user-row pressable" data-action="toggleTheme" style="margin-bottom:6px"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</span></button>' +
       '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
@@ -3191,6 +3448,8 @@
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
         case 'enterApp': enterApp(); break;
+        case 'performJoin': performJoin(); break;
+        case 'cancelJoin': cancelJoin(); break;
         case 'logout': logout(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
@@ -3201,6 +3460,12 @@
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
         case 'openAddGroup': openAddGroup(); break;
         case 'openManageMembers': openManageMembers(id); break;
+        case 'openShareLink': openShareLink(id); break;
+        case 'generateShareLink': generateShareLink(); break;
+        case 'disableShareLink': disableShareLink(); break;
+        case 'copyShareLink': copyShareLink(); break;
+        case 'openUpgradeAccount': openUpgradeAccount(); break;
+        case 'submitUpgradeAccount': submitUpgradeAccount(); break;
         case 'openConfirmDeleteGroup': openConfirmDeleteGroup(id); break;
         case 'confirmDeleteGroup': confirmDeleteGroup(); break;
         case 'editExpense': openEditExpense(id); break;
@@ -3265,6 +3530,10 @@
         case 'loginEmail': setLoginEmail(v); break;
         case 'loginPassword': setLoginPassword(v); break;
         case 'loginName': setLoginName(v); break;
+        case 'joinName': setJoinNameInput(v); break;
+        case 'upgradeName': setUpgradeName(v); break;
+        case 'upgradeEmail': setUpgradeEmail(v); break;
+        case 'upgradePassword': setUpgradePassword(v); break;
         case 'newPassword': setNewPassword(v); break;
         case 'expenseLabel': setLabel(v); break;
         case 'expenseAmount': setAmount(v); break;
@@ -3337,6 +3606,7 @@
     // hasPersistedSession) — sinon la landing est déjà à l'écran, il ne faut
     // surtout pas la remplacer brièvement par l'écran de lancement.
     if (state.showSplash) armSplashTimeout();
+    if (state.joinToken) fetchJoinPreview();
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });
@@ -3344,7 +3614,11 @@
       }
       if (session) {
         var alreadyLoaded = state.loggedIn && state.currentUserId === session.user.id;
-        setStateSilent({ loggedIn: true, currentUserId: session.user.id, loginError: null });
+        // is_anonymous distingue une session créée par signInAnonymously
+        // (cf. performJoin) d'un vrai compte — sert à proposer "Créer un
+        // compte" dans le menu plutôt qu'à traiter cette personne comme un
+        // compte incomplet.
+        setStateSilent({ loggedIn: true, currentUserId: session.user.id, loginError: null, isAnonymous: !!session.user.is_anonymous });
         if (!alreadyLoaded) {
           setStateSilent({ dataLoading: true });
           render();
@@ -3364,7 +3638,17 @@
         // que dans le cas (b), identifié via `state.loggedIn` AVANT ce
         // reset : s'il était vrai, on vient bien de se déconnecter.
         var wasLoggedIn = state.loggedIn;
-        state = Object.assign({}, defaultState(), { theme: theme, showSplash: wasLoggedIn ? false : state.showSplash });
+        // Préserve aussi l'avancement d'un lien d'invitation en cours (cf.
+        // fetchJoinPreview/performJoin) : ce contrôle d'auth initial arrive
+        // souvent quelques dizaines de ms après le premier rendu, parfois
+        // après que la preview du lien ait déjà été récupérée — sans ça,
+        // defaultState() l'effacerait et l'écran resterait bloqué sur
+        // "Chargement du lien d'invitation…" indéfiniment.
+        state = Object.assign({}, defaultState(), {
+          theme: theme, showSplash: wasLoggedIn ? false : state.showSplash,
+          joinPreview: state.joinPreview, joinNameInput: state.joinNameInput,
+          joinError: state.joinError, joinSubmitting: state.joinSubmitting,
+        });
         render();
       }
     });

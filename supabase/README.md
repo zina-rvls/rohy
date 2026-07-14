@@ -27,9 +27,13 @@ PUIS `0010_expense_split_modes.sql`, PUIS `0011_profiles_email_unique.sql`,
 PUIS `0012_rebrand_profile_colors.sql`, PUIS
 `0013_link_guest_profile_on_signup.sql`, PUIS
 `0014_payment_method_reference.sql`, PUIS
-`0015_cascade_delete_group_payments_reminders.sql`
+`0015_cascade_delete_group_payments_reminders.sql`, PUIS
+`0016_group_share_link.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
+
+**Important pour `0016`** : nécessite aussi d'activer l'authentification
+anonyme (Dashboard → Authentication), cf. section 3.
 
 `0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
@@ -108,6 +112,12 @@ et `split_value = null`, donc un comportement strictement inchangé (cf.
 
 Authentication → Providers → Email : active à la fois **Password** et
 **Magic Link / OTP** (les deux modes prévus par la spec de hand-off).
+
+Authentication → Sign In / Providers → active **Anonymous Sign-Ins**
+(désactivée par défaut) — nécessaire pour le lien d'invitation par groupe
+(cf. `0016_group_share_link.sql` et section 7) : sans elle,
+`signInAnonymously()` échoue côté client et personne ne peut rejoindre un
+groupe par lien sans déjà avoir un compte.
 
 Authentication → URL Configuration : renseigne l'URL du front-end déployé
 (Site URL) et ajoute-la aux Redirect URLs, sinon les liens des e-mails
@@ -217,6 +227,21 @@ confondus" n'est lié à aucun groupe et n'est donc concerné par aucune
 cascade. **Nécessite aussi de redéployer `send-reminder`** (accepte et
 enregistre désormais un `groupId` optionnel).
 
+`0016_group_share_link.sql` ajoute `groups.share_token` (jeton unique,
+régénérable, nullable) pour le lien d'invitation façon Tricount/Kittysplit :
+contrairement à l'invitation par e-mail (crée un compte, envoie un
+e-mail) ou au membre "invité sans compte" (une fiche que l'admin gère à sa
+place, sans accès propre), la personne qui ouvre ce lien devient un vrai
+participant — elle voit ses dépenses et son solde, et peut en ajouter —
+sans jamais créer de compte e-mail/mot de passe, via l'authentification
+anonyme de Supabase (`signInAnonymously`, cf. section 3). Une vraie session
+est créée, donc les policies RLS existantes n'ont pas eu besoin de changer.
+Un compte anonyme peut ensuite être transformé en compte permanent
+(bouton "Créer un compte" du menu, `auth.updateUser`) en conservant le même
+`id`, donc tout son historique. La migration ajoute aussi un dernier repli
+`'Invité'` au trigger `handle_new_user` (un compte anonyme n'a pas d'e-mail,
+donc l'ancien repli `split_part(new.email, ...)` ne suffisait pas).
+
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 
 `functions/scan-receipt/index.ts` lit une photo de ticket de caisse via un
@@ -247,7 +272,26 @@ séparateur avec une virgule décimale et renvoyait `196.72` au lieu de
 (un séparateur suivi d'exactement 3 chiffres est un groupement de
 milliers, pas une décimale) avec un exemple correspondant à ce cas précis.
 
-## 7. Front-end branché
+## 7. Déployer la fonction du lien d'invitation (join-group)
+
+`functions/join-group/index.ts` gère le lien d'invitation par groupe (cf.
+`0016_group_share_link.sql`) : un non-membre ne peut normalement ni lire un
+groupe (`groups_select` réservée aux membres) ni s'y ajouter lui-même
+(`group_members_insert_admin` réservée à l'admin) — cette fonction
+contourne volontairement ces deux garde-fous, mais seulement pour quelqu'un
+qui présente un jeton `share_token` valide. Deux actions : `preview`
+(nom/devise/nombre de membres du groupe, sans rien modifier — affiche
+"Vous rejoignez tel groupe" avant confirmation) et `join` (ajoute
+réellement l'appelant, et renseigne son prénom s'il n'en a pas encore).
+
+```
+supabase functions deploy join-group --project-ref <ref>
+```
+
+Rien à configurer en plus (pas de secret) — mais rappel : nécessite
+l'authentification anonyme activée, cf. section 3.
+
+## 8. Front-end branché
 
 `scripts/app.js` appelle désormais Supabase directement (`scripts/supabase-client.js`
 contient l'URL du projet et la clé publiable) : vraie inscription/connexion
