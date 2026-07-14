@@ -2801,13 +2801,13 @@
       '<h2>Adapté à toutes les situations</h2>' +
       '</div>' +
       '<div class="ldg-usecases">' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-house-line"></i></span><h3>Vacances en famille</h3><p>Prenez en compte les enfants et les personnes à charge sans calcul compliqué.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-gift"></i></span><h3>Mariage</h3><p>Comité familial, participations inégales entre foyers : chacun contribue selon ses moyens.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-house-line"></i></span><h3>Vacances en famille</h3><p>Prenez en compte les enfants et les personnes à charge sans calcul compliqué.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-gift"></i></span><h3>Mariage</h3><p>Comité familial, participations inégales entre foyers : chacun contribue selon ses moyens.</p></div>' +
       '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-flower-lotus"></i></span><h3>Cérémonies familiales</h3><p>Baptême, cérémonie religieuse : organisez les contributions de chaque foyer sans malaise.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-hand-coins"></i></span><h3>Associations et cotisations</h3><p>Cotisation mensuelle d\'une association, collecte pour un cadeau ou un événement commun.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-heart"></i></span><h3>Couples</h3><p>Gérez facilement les dépenses partagées et les prises en charge partielles.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-buildings"></i></span><h3>Colocations</h3><p>Suivez les dépenses du quotidien et répartissez les coûts équitablement.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-airplane-tilt"></i></span><h3>Voyages entre amis</h3><p>Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(196,67,42,.14);color:#C4432A"><i class="ph-bold ph-hand-coins"></i></span><h3>Associations et cotisations</h3><p>Cotisation mensuelle d\'une association, collecte pour un cadeau ou un événement commun.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-heart"></i></span><h3>Couples</h3><p>Gérez facilement les dépenses partagées et les prises en charge partielles.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-buildings"></i></span><h3>Colocations</h3><p>Suivez les dépenses du quotidien et répartissez les coûts équitablement.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-airplane-tilt"></i></span><h3>Voyages entre amis</h3><p>Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.</p></div>' +
       '</div>' +
       '</section>' +
 
