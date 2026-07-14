@@ -28,12 +28,21 @@ PUIS `0012_rebrand_profile_colors.sql`, PUIS
 `0013_link_guest_profile_on_signup.sql`, PUIS
 `0014_payment_method_reference.sql`, PUIS
 `0015_cascade_delete_group_payments_reminders.sql`, PUIS
-`0016_group_share_link.sql`
+`0016_group_share_link.sql`, PUIS
+`0017_fix_handle_new_user_regression.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
 **Important pour `0016`** : nécessite aussi d'activer l'authentification
 anonyme (Dashboard → Authentication), cf. section 3.
+
+**`0017` est urgente si `0016` a déjà été appliquée** : le trigger que
+`0016` recréait était basé sur une copie obsolète (celle de `0001`),
+antérieure aux corrections de `0004` (colonne renommée en `share_weight`)
+et `0013` (rattachement d'un profil invité existant) — résultat, **toute
+inscription** (pas seulement le compte anonyme) échouait avec une erreur
+500 sur `/auth/v1/signup` (`column "share_percent" does not exist`).
+`0017` restaure la bonne logique.
 
 `0001_init.sql` crée :
 - `profiles`, `groups`, `group_members`, `expenses`, `expense_participants`,
@@ -241,6 +250,21 @@ Un compte anonyme peut ensuite être transformé en compte permanent
 `id`, donc tout son historique. La migration ajoute aussi un dernier repli
 `'Invité'` au trigger `handle_new_user` (un compte anonyme n'a pas d'e-mail,
 donc l'ancien repli `split_part(new.email, ...)` ne suffisait pas).
+
+⚠️ Le trigger réécrit par `0016` était basé par erreur sur une copie
+obsolète (celle de `0001`) — voir `0017` ci-dessous, qui corrige une
+régression bloquante introduite par cette erreur.
+
+`0017_fix_handle_new_user_regression.sql` corrige `handle_new_user` : la
+version de `0016` insérait dans `profiles.share_percent`, une colonne
+renommée en `share_weight` depuis `0004` — chaque inscription (anonyme ou
+non) échouait donc avec une erreur 500 sur `/auth/v1/signup` (`column
+"share_percent" does not exist`). Cette version restaure aussi le
+rattachement d'un profil "invité sans compte" existant à son nouveau
+compte (logique de `0013`, également perdue par erreur dans `0016`) et le
+lien `auth_user_id` (logique de `0004`). Seul ajout réel par rapport à
+`0013` : un dernier repli `'Invité'` si ni e-mail ni nom ne sont fournis
+(cas d'un compte anonyme).
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 
