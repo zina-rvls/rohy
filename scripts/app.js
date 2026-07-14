@@ -16,6 +16,8 @@
   var sb = window.supabaseClient;
   var THEME_KEY = 'rohy-theme';
   var UPGRADE_NUDGE_DISMISSED_KEY = 'rohy-upgrade-nudge-dismissed';
+  var FEEDBACK_LAST_SHOWN_KEY = 'rohy-feedback-last-shown';
+  var FEEDBACK_PROMPT_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
@@ -43,6 +45,17 @@
   }
   function saveUpgradeNudgeDismissed() {
     try { localStorage.setItem(UPGRADE_NUDGE_DISMISSED_KEY, '1'); } catch (err) { /* mode privé / quota */ }
+  }
+
+  // Sollicitation d'avis post-règlement (cf. maybeShowFeedbackPrompt) : ne
+  // doit pas revenir à chaque règlement, seulement de loin en loin — marqué
+  // dès l'affichage (pas seulement à la réponse), pour ne pas relancer en
+  // boucle quelqu'un qui ferme systématiquement la modale sans répondre.
+  function loadFeedbackLastShown() {
+    try { return parseInt(localStorage.getItem(FEEDBACK_LAST_SHOWN_KEY), 10) || 0; } catch (err) { return 0; }
+  }
+  function saveFeedbackLastShown() {
+    try { localStorage.setItem(FEEDBACK_LAST_SHOWN_KEY, String(Date.now())); } catch (err) { /* mode privé / quota */ }
   }
 
   // Lien d'invitation par groupe (?join=<token>, cf. "Partager le lien
@@ -81,6 +94,12 @@
       upgradeForm: { name: '', email: '', password: '' },
       upgradeError: null,
       upgradeSubmitting: false,
+      showFeedback: false,
+      feedbackContext: null,
+      feedbackRating: 0,
+      feedbackComment: '',
+      feedbackError: null,
+      feedbackSubmitting: false,
       // La racine du site (rohy-app.com) doit toujours montrer la landing en
       // premier, même pour un compte déjà connecté (nouvel onglet,
       // rechargement) — jamais directement l'app. `enterApp` (déclenché par
@@ -900,7 +919,12 @@
       if (res.error) { showToast('Erreur : ' + res.error.message); return; }
       setState({ showSettle: false, settleGroupId: null });
       celebrateSettlement();
-      loadAppData().then(function () { showToast('Paiement enregistré'); });
+      loadAppData().then(function () {
+        showToast('Paiement enregistré');
+        // Laisse d'abord voir les confettis et le toast avant d'éventuellement
+        // superposer la modale d'avis — jamais immédiatement.
+        setTimeout(maybeShowFeedbackPrompt, 1200);
+      });
     });
   }
   // Codes USSD des principaux opérateurs mobile money à Madagascar — pas de
@@ -1521,6 +1545,35 @@
     setState({ showUpgradeNudge: false });
   }
 
+  // ---------- Avis (cf. supabase/migrations/0018_feedback.sql) ----------
+  // Sans store (App Store/Play Store), pas de mécanisme de notation intégré
+  // à l'app — ce petit formulaire compense, déclenché juste après un
+  // règlement réussi (un moment de valeur, contrairement à la déconnexion
+  // qui est un moment de sortie où l'utilisateur veut juste partir), et
+  // sinon accessible à tout moment depuis le menu compte.
+  function maybeShowFeedbackPrompt() {
+    if (Date.now() - loadFeedbackLastShown() < FEEDBACK_PROMPT_COOLDOWN_MS) return;
+    saveFeedbackLastShown();
+    setState({ showFeedback: true, feedbackContext: 'settle', feedbackRating: 0, feedbackComment: '', feedbackError: null });
+  }
+  function openFeedbackFromMenu() {
+    setState({ showAccount: false, showFeedback: true, feedbackContext: 'menu', feedbackRating: 0, feedbackComment: '', feedbackError: null });
+  }
+  function setFeedbackRating(n) { setState({ feedbackRating: parseInt(n, 10) || 0, feedbackError: null }); }
+  function setFeedbackComment(v) { setStateSilent(function (s) { return { feedbackComment: v }; }); }
+  function submitFeedback() {
+    if (!state.feedbackRating) { setState({ feedbackError: 'Choisis une note avant d\'envoyer.' }); return; }
+    setState({ feedbackSubmitting: true, feedbackError: null });
+    sb.from('feedback').insert({
+      user_id: state.currentUserId, rating: state.feedbackRating,
+      comment: state.feedbackComment.trim() || null, context: state.feedbackContext,
+    }).then(function (res) {
+      if (res.error) { setState({ feedbackSubmitting: false, feedbackError: res.error.message }); return; }
+      setState({ showFeedback: false, feedbackSubmitting: false, feedbackContext: null, feedbackRating: 0, feedbackComment: '' });
+      showToast('Merci pour ton avis !');
+    });
+  }
+
   // ---------- Compte anonyme → compte permanent (cf. performJoin) ----------
   function openUpgradeAccount() {
     var cu = person(state.currentUserId);
@@ -1820,6 +1873,7 @@
       showReminderConfirm: false, showShareLink: false, shareLinkGroupId: null,
       showUpgradeAccount: false, upgradeError: null, upgradeForm: { name: '', email: '', password: '' },
       settleGroupId: null, showAddMemberForm: false,
+      showFeedback: false, feedbackContext: null, feedbackError: null,
     });
   }
 
@@ -2960,6 +3014,7 @@
       '<div class="account-dropdown-divider"></div>' +
       (state.isAnonymous ? '<button class="account-dropdown-item pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus"></i>Créer un compte</button>' : '') +
       '<button class="account-dropdown-item pressable" data-action="openAbout"><i class="ph-bold ph-info"></i>À propos</button>' +
+      '<button class="account-dropdown-item pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text"></i>Donner un avis</button>' +
       '<button class="account-dropdown-item pressable" data-action="toggleTheme"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i>' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</button>' +
       '<div class="account-dropdown-divider"></div>' +
       // Se déconnecter n'est pas une action destructive — pas de traitement
@@ -2979,6 +3034,7 @@
     if (state.showManageMembers) out += renderManageMembersModal();
     if (state.showShareLink) out += renderShareLinkModal();
     if (state.showUpgradeAccount) out += renderUpgradeAccountModal();
+    if (state.showFeedback) out += renderFeedbackModal();
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
     if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
@@ -3053,6 +3109,25 @@
       '<input class="text-input" type="password" autocomplete="new-password" data-bind="upgradePassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(f.password) + '" />' +
       '<button class="btn-primary pressable" style="margin-top:14px' + (state.upgradeSubmitting ? ';opacity:0.6' : '') + '" data-action="submitUpgradeAccount">' + (state.upgradeSubmitting ? 'Création en cours…' : 'Créer le compte') + '</button>' +
       (state.upgradeError ? '<div class="form-error">' + escapeHtml(state.upgradeError) + '</div>' : '') +
+      '</div></div>'
+    );
+  }
+
+  function renderFeedbackModal() {
+    var stars = [1, 2, 3, 4, 5].map(function (n) {
+      var filled = n <= state.feedbackRating;
+      return '<button type="button" class="feedback-star pressable" data-action="setFeedbackRating" data-id="' + n + '" aria-label="' + n + ' sur 5">' +
+        '<i class="ph-bold ' + (filled ? 'ph-star-fill' : 'ph-star') + '"></i></button>';
+    }).join('');
+    return (
+      '<div class="modal-overlay center" data-action="closeModal">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:8px">Comment se passe ton expérience avec Rohy ?</div>' +
+      '<div style="font-size:13.5px;color:var(--text-secondary);margin-bottom:18px">Ton avis nous aide à améliorer l\'app.</div>' +
+      '<div class="feedback-stars">' + stars + '</div>' +
+      '<textarea class="text-input" data-bind="feedbackComment" placeholder="Un commentaire à ajouter ? (facultatif)" rows="3" style="resize:none;font-family:inherit">' + escapeHtml(state.feedbackComment) + '</textarea>' +
+      '<button class="btn-primary pressable" style="margin-top:4px' + (state.feedbackSubmitting ? ';opacity:0.6' : '') + '" data-action="submitFeedback">' + (state.feedbackSubmitting ? 'Envoi…' : 'Envoyer') + '</button>' +
+      (state.feedbackError ? '<div class="form-error">' + escapeHtml(state.feedbackError) + '</div>' : '') +
       '</div></div>'
     );
   }
@@ -3353,6 +3428,7 @@
       '</div>' +
       (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Créer un compte</span></button>' : '') +
       '<button class="switch-user-row pressable" data-action="openAbout"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
+      '<button class="switch-user-row pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Donner un avis</span></button>' +
       '<button class="switch-user-row pressable" data-action="toggleTheme" style="margin-bottom:6px"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</span></button>' +
       '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
       '</div></div>'
@@ -3525,6 +3601,9 @@
         case 'openUpgradeAccount': openUpgradeAccount(); break;
         case 'dismissUpgradeNudge': dismissUpgradeNudge(); break;
         case 'submitUpgradeAccount': submitUpgradeAccount(); break;
+        case 'openFeedbackFromMenu': openFeedbackFromMenu(); break;
+        case 'setFeedbackRating': setFeedbackRating(id); break;
+        case 'submitFeedback': submitFeedback(); break;
         case 'openConfirmDeleteGroup': openConfirmDeleteGroup(id); break;
         case 'confirmDeleteGroup': confirmDeleteGroup(); break;
         case 'editExpense': openEditExpense(id); break;
@@ -3593,6 +3672,7 @@
         case 'upgradeName': setUpgradeName(v); break;
         case 'upgradeEmail': setUpgradeEmail(v); break;
         case 'upgradePassword': setUpgradePassword(v); break;
+        case 'feedbackComment': setFeedbackComment(v); break;
         case 'newPassword': setNewPassword(v); break;
         case 'expenseLabel': setLabel(v); break;
         case 'expenseAmount': setAmount(v); break;

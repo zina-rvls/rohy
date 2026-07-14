@@ -29,7 +29,7 @@ PUIS `0012_rebrand_profile_colors.sql`, PUIS
 `0014_payment_method_reference.sql`, PUIS
 `0015_cascade_delete_group_payments_reminders.sql`, PUIS
 `0016_group_share_link.sql`, PUIS
-`0017_fix_handle_new_user_regression.sql`
+`0017_fix_handle_new_user_regression.sql`, PUIS `0018_feedback.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -265,6 +265,12 @@ compte (logique de `0013`, également perdue par erreur dans `0016`) et le
 lien `auth_user_id` (logique de `0004`). Seul ajout réel par rapport à
 `0013` : un dernier repli `'Invité'` si ni e-mail ni nom ne sont fournis
 (cas d'un compte anonyme).
+
+`0018_feedback.sql` ajoute une table `feedback` (note 1-5 + commentaire
+facultatif + contexte `'settle'`/`'menu'`) pour recueillir des avis in-app
+sans passer par un store (App Store/Play Store) — écriture seule pour les
+utilisateurs, lue uniquement via le dashboard Supabase (SQL/Table editor,
+accès `service_role`).
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 
