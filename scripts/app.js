@@ -45,20 +45,6 @@
     try { localStorage.setItem(UPGRADE_NUDGE_DISMISSED_KEY, '1'); } catch (err) { /* mode privé / quota */ }
   }
 
-  // Détecte une session Supabase déjà persistée (clé "sb-*-auth-token") sans
-  // attendre la résolution asynchrone de l'auth : sert à savoir, dès le tout
-  // premier rendu, si on doit jouer l'écran de lancement (retour d'un compte
-  // déjà connecté) ou l'omettre (visite de la landing, cf. defaultState).
-  function hasPersistedSession() {
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && /^sb-.*-auth-token$/.test(k)) return true;
-      }
-    } catch (err) { /* mode privé / quota */ }
-    return false;
-  }
-
   // Lien d'invitation par groupe (?join=<token>, cf. "Partager le lien
   // d'invitation" dans le détail d'un groupe) : détecté dès le premier
   // rendu pour prendre le pas sur la landing/le formulaire de connexion,
@@ -71,11 +57,13 @@
 
   function defaultState() {
     return {
-      // L'écran de lancement ne sert qu'au vrai lancement de l'appli (compte
-      // déjà connecté qui revient) ou à la transition vers la page de
-      // connexion/inscription (cf. openLoginForm/ctaSignupFromAbout) — jamais
-      // à l'arrivée sur la landing, qui doit s'afficher immédiatement.
-      showSplash: hasPersistedSession(),
+      // L'écran de lancement ne sert qu'à la transition vers l'appli (cf.
+      // enterApp/tryWithoutAccount) ou vers la page de connexion/inscription
+      // (cf. openLoginForm/ctaSignupFromAbout) — jamais à l'arrivée sur la
+      // landing, qui doit s'afficher immédiatement, même si une session est
+      // déjà persistée (la racine du site affiche toujours la landing en
+      // premier, cf. enteredApp).
+      showSplash: false,
       // Lien d'invitation ouvert (cf. renderJoinScreen) : joinPreview est
       // rempli par fetchJoinPreview() une fois le nom/la devise du groupe
       // connus ; joinToken repasse à null une fois la personne bien ajoutée
@@ -3681,9 +3669,9 @@
   document.addEventListener('DOMContentLoaded', function () {
     render();
     // N'amorce le minuteur de retrait de l'écran de lancement que s'il est
-    // réellement affiché (compte déjà connecté qui revient, cf.
-    // hasPersistedSession) — sinon la landing est déjà à l'écran, il ne faut
-    // surtout pas la remplacer brièvement par l'écran de lancement.
+    // réellement affiché (transition explicite vers l'appli ou la page de
+    // connexion, cf. defaultState) — au premier chargement, showSplash est
+    // toujours false, donc rien à amorcer ici.
     if (state.showSplash) armSplashTimeout();
     if (state.joinToken) fetchJoinPreview();
     sb.auth.onAuthStateChange(function (event, session) {
