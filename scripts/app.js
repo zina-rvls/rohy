@@ -2266,6 +2266,9 @@
       feat6Title: 'Suivi des remboursements', feat6Body: 'Gardez une vue claire des règlements effectués.',
       feat7Title: 'Lien d\'invitation', feat7Body: 'Invitez sans obliger vos proches à créer un compte.',
       feat8Title: 'Devises et mobile money africains', feat8Body: 'Ariary, francs CFA, Mvola, Orange Money, Airtel Money.',
+      feat9Title: 'Export de vos données', feat9Body: 'Téléchargez les dépenses et les soldes d\'un groupe en CSV, Excel ou PDF.',
+      feat10Title: 'Rappels automatiques', feat10Body: 'Envoyez un rappel — dans l\'app et par e-mail — à qui vous doit encore de l\'argent.',
+      feat11Title: 'Simplification des dettes', feat11Body: 'Rohy regroupe les soldes entre tous vos groupes communs pour réduire le nombre de règlements.',
       compareEyebrow: 'Comparatif fonctionnel', compareH2: 'Pensé pour les situations du quotidien',
       compareColRohy: 'Rohy', compareColOthers: 'Concurrents',
       compareRow1: 'Répartition classique', compareRow2: 'Demi-parts', compareRow3: 'Enfants et personnes à charge',
@@ -2338,6 +2341,9 @@
       feat6Title: 'Reimbursement tracking', feat6Body: 'Keep a clear view of settlements made.',
       feat7Title: 'Invite link', feat7Body: 'Invite people without making them create an account.',
       feat8Title: 'African currencies and mobile money', feat8Body: 'Ariary, CFA francs, Mvola, Orange Money, Airtel Money.',
+      feat9Title: 'Export your data', feat9Body: 'Download a group\'s expenses and balances as CSV, Excel, or PDF.',
+      feat10Title: 'Automatic reminders', feat10Body: 'Send a reminder — in the app and by e-mail — to whoever still owes you money.',
+      feat11Title: 'Debt simplification', feat11Body: 'Rohy nets out balances across every group you share with someone, so fewer payments are needed to settle up.',
       compareEyebrow: 'Feature comparison', compareH2: 'Built for everyday situations',
       compareColRohy: 'Rohy', compareColOthers: 'Competitors',
       compareRow1: 'Classic even split', compareRow2: 'Half-shares', compareRow3: 'Kids and dependents',
@@ -3163,6 +3169,9 @@
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-check-circle"></i><h3>' + L.feat6Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat6Body + '</p></details>' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-link"></i><h3>' + L.feat7Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat7Body + '</p></details>' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-coins"></i><h3>' + L.feat8Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat8Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-download-simple"></i><h3>' + L.feat9Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat9Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-bell-ringing"></i><h3>' + L.feat10Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat10Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-arrows-merge"></i><h3>' + L.feat11Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat11Body + '</p></details>' +
       '</div>' +
       '<div class="ldg-section-head" style="margin-top:48px">' +
       '<span class="ldg-eyebrow">' + L.compareEyebrow + '</span>' +

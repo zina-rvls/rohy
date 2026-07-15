@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rohy - Suivi de dépenses entre amis</title>
-  <meta name="description" content="Suivi des dépenses partagées entre amis, colocataires ou en famille : qui a payé quoi, qui doit quoi à qui, et un règlement simplifié entre vous.">
+  <meta name="description" content="Rohy, l'app gratuite pour suivre les dépenses partagées entre amis, colocataires ou en famille — même avec des parts inégales (enfants, demi-parts, contributions personnalisées). Export CSV/Excel/PDF, rappels automatiques, devises et mobile money africains (Ariary, Mvola, Orange Money). Sans installation.">
+  <link rel="canonical" href="https://rohy-app.com/">
   <!-- Aperçu de partage (réseaux sociaux, messageries). og:image en URL
        absolue (nécessaire pour la plupart des plateformes, une URL relative
        ne suffit pas toujours) maintenant que le domaine définitif (cf.
@@ -21,6 +22,74 @@
   <meta name="twitter:title" content="Rohy - Suivi de dépenses entre amis">
   <meta name="twitter:description" content="Qui a payé quoi, qui doit quoi à qui — suivez vos dépenses partagées entre amis, colocataires ou en famille, et réglez-vous simplement entre vous.">
   <meta name="twitter:image" content="https://rohy-app.com/assets/og-image.png">
+  <!-- Données structurées (Schema.org) — décrivent Rohy et ses
+       fonctionnalités de façon lisible par les moteurs de recherche et les
+       assistants IA (ChatGPT, Perplexity, Copilot...) sans avoir besoin
+       d'exécuter le JavaScript de la page (cf. <noscript> ci-dessous pour
+       le même raisonnement appliqué au contenu visible). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Rohy",
+    "alternateName": "Rohy - Suivi de dépenses entre amis",
+    "url": "https://rohy-app.com/",
+    "description": "Suivi des dépenses partagées entre amis, colocataires ou en famille, même avec des parts inégales : demi-parts pour les enfants, dépenses ciblées, contributions personnalisées, export CSV/Excel/PDF, rappels automatiques, devises et mobile money africains.",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "browserRequirements": "Requires JavaScript",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "inLanguage": ["fr", "en"],
+    "screenshot": "https://rohy-app.com/assets/og-image.png",
+    "featureList": [
+      "Gestion illimitée de groupes",
+      "Répartition flexible (parts, demi-parts, contributions personnalisées)",
+      "Dépenses ciblées à certains participants",
+      "Consolidation par foyer",
+      "Historique complet avec recherche et filtres",
+      "Scan intelligent des tickets de caisse",
+      "Suivi des remboursements",
+      "Invitation par lien sans création de compte",
+      "Devises et mobile money africains (Ariary, francs CFA, Mvola, Orange Money, Airtel Money)",
+      "Export des dépenses et soldes en CSV, Excel et PDF",
+      "Rappels automatiques par e-mail",
+      "Simplification des dettes entre plusieurs groupes"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Rohy est-il gratuit ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui. Vous pouvez créer des groupes et gérer vos dépenses gratuitement." }
+      },
+      {
+        "@type": "Question",
+        "name": "Dois-je installer une application ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Non. Rohy fonctionne directement depuis votre navigateur." }
+      },
+      {
+        "@type": "Question",
+        "name": "Puis-je l'utiliser sur mobile ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui. Rohy est optimisé pour les smartphones, tablettes et ordinateurs." }
+      },
+      {
+        "@type": "Question",
+        "name": "Puis-je gérer des demi-parts ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui. Rohy a été conçu pour gérer les contributions inégales, les enfants et les personnes à charge." }
+      },
+      {
+        "@type": "Question",
+        "name": "Mes données sont-elles sécurisées ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu'aux membres de vos groupes." }
+      }
+    ]
+  }
+  </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjRkJGNkU5Ii8+PHJlY3QgeD0iMTYiIHk9IjAiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxMDAiIHJ4PSIzIiBmaWxsPSIjMEY4RjZCIiBzdHJva2U9IiMwODRiMzgiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InNxdWFyZSIvPjxyZWN0IHg9IjQyIiB5PSIwIiB3aWR0aD0iMTgiIGhlaWdodD0iMTAwIiByeD0iMyIgZmlsbD0iIzBGOEY2QiIgc3Ryb2tlPSIjMDg0YjM4IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiLz48cmVjdCB4PSI2OCIgeT0iMCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjEwMCIgcng9IjMiIGZpbGw9IiMwRjhGNkIiIHN0cm9rZT0iIzA4NGIzOCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0ic3F1YXJlIi8+PHJlY3QgeD0iMCIgeT0iMTMuNSIgd2lkdGg9IjQzLjUiIGhlaWdodD0iMTgiIHJ4PSIzIiBmaWxsPSIjMEY4RjZCIiBzdHJva2U9IiMwODRiMzgiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InNxdWFyZSIvPjxyZWN0IHg9IjU4IiB5PSIxMy41IiB3aWR0aD0iNDIiIGhlaWdodD0iMTgiIHJ4PSIzIiBmaWxsPSIjMEY4RjZCIiBzdHJva2U9IiMwODRiMzgiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InNxdWFyZSIvPjxyZWN0IHg9IjAiIHk9IjQwIiB3aWR0aD0iMTciIGhlaWdodD0iMTgiIHJ4PSIzIiBmaWxsPSIjMEY4RjZCIiBzdHJva2U9IiMwODRiMzgiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InNxdWFyZSIvPjxyZWN0IHg9IjMyIiB5PSI0MCIgd2lkdGg9IjM3IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0iIzBGOEY2QiIgc3Ryb2tlPSIjMDg0YjM4IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiLz48cmVjdCB4PSI4NSIgeT0iNDAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxOCIgcng9IjMiIGZpbGw9IiMwRjhGNkIiIHN0cm9rZT0iIzA4NGIzOCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0ic3F1YXJlIi8+PHJlY3QgeD0iMCIgeT0iNjUiIHdpZHRoPSI0My41IiBoZWlnaHQ9IjE4IiByeD0iMyIgZmlsbD0iIzBGOEY2QiIgc3Ryb2tlPSIjMDg0YjM4IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiLz48cmVjdCB4PSI1OCIgeT0iNjUiIHdpZHRoPSI0MiIgaGVpZ2h0PSIxOCIgcng9IjMiIGZpbGw9IiMwRjhGNkIiIHN0cm9rZT0iIzA4NGIzOCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0ic3F1YXJlIi8+PC9zdmc+">
   <!-- Icônes plus grandes (192/512/apple-touch) : sans elles, les navigateurs
        qui affichent une icône de raccourci plus grande que le favicon (ex.
@@ -40,6 +109,69 @@
   <div class="app-frame-wrap">
     <div id="app" class="app-frame" data-theme="light"></div>
   </div>
+  <!-- Rohy est une SPA entièrement rendue en JavaScript (#app est vide dans
+       le HTML brut) : un navigateur classique ou un moteur de recherche qui
+       exécute le JS (Googlebot) voit le contenu normalement, mais un robot
+       qui se contente de lire le HTML brut sans l'exécuter (le cas de
+       beaucoup de crawlers IA — GPTBot, ClaudeBot, PerplexityBot...) ne
+       verrait sinon qu'une page vide. Ce <noscript> reprend le même contenu
+       que la landing page rendue par renderAboutScreen() dans scripts/app.js
+       (à tenir synchronisé avec elle) : un navigateur avec JS actif ne
+       l'affiche jamais (ce n'est pas du "cloaking", juste un secours pour
+       les clients sans JS, cf. les recommandations de Google à ce sujet). -->
+  <noscript>
+    <main style="max-width:760px;margin:0 auto;padding:32px 20px;font-family:sans-serif;color:#1a1a1a;line-height:1.6">
+      <h1>Rohy — Suivi de dépenses partagées entre amis</h1>
+      <p>Rohy simplifie le partage des dépenses entre amis, en famille ou en voyage, même lorsque certains participants paient pour leurs enfants, leur conjoint, ou ne participent qu'à certaines dépenses. Application gratuite, sans installation, faite à Madagascar et utilisée dans toute l'Afrique.</p>
+
+      <h2>Le problème</h2>
+      <p>Les dépenses de groupe sont rarement aussi simples qu'un partage égal : un parent paie pour ses enfants, un couple partage certaines dépenses, certaines personnes participent à une activité et d'autres non, tout le monde ne contribue pas de la même manière. Rohy a été conçu pour gérer ces situations naturellement.</p>
+
+      <h2>Fonctionnalités principales</h2>
+      <ul>
+        <li><strong>Gestion des groupes</strong> — créez autant de groupes que nécessaire.</li>
+        <li><strong>Répartition flexible</strong> — parts, demi-parts et contributions personnalisées.</li>
+        <li><strong>Dépenses ciblées</strong> — sélectionnez précisément les participants concernés par chaque dépense.</li>
+        <li><strong>Consolidation par foyer</strong> — les membres d'un même foyer apparaissent en une seule ligne de solde.</li>
+        <li><strong>Historique complet</strong> — retrouvez, recherchez et filtrez toutes les dépenses et remboursements.</li>
+        <li><strong>Scan intelligent des tickets</strong> — ajoutez rapidement une dépense à partir d'une photo.</li>
+        <li><strong>Suivi des remboursements</strong> — gardez une vue claire des règlements effectués.</li>
+        <li><strong>Lien d'invitation</strong> — invitez sans obliger vos proches à créer un compte.</li>
+        <li><strong>Devises et mobile money africains</strong> — Ariary, francs CFA, Mvola, Orange Money, Airtel Money.</li>
+        <li><strong>Export de vos données</strong> — téléchargez les dépenses et soldes d'un groupe en CSV, Excel ou PDF.</li>
+        <li><strong>Rappels automatiques</strong> — envoyez un rappel, dans l'app et par e-mail, à qui vous doit encore de l'argent.</li>
+        <li><strong>Simplification des dettes</strong> — Rohy regroupe les soldes entre tous vos groupes communs pour réduire le nombre de règlements.</li>
+      </ul>
+
+      <h2>Comparatif fonctionnel</h2>
+      <table border="1" cellpadding="6" style="border-collapse:collapse">
+        <thead><tr><th></th><th>Rohy</th><th>Concurrents</th></tr></thead>
+        <tbody>
+          <tr><td>Répartition classique</td><td>✓</td><td>✓</td></tr>
+          <tr><td>Demi-parts</td><td>✓</td><td>Rare</td></tr>
+          <tr><td>Enfants et personnes à charge</td><td>✓</td><td>Rare</td></tr>
+          <tr><td>Contributions personnalisées</td><td>✓</td><td>Limité</td></tr>
+          <tr><td>Dépenses ciblées</td><td>✓</td><td>Limité</td></tr>
+          <tr><td>Suivi des remboursements</td><td>✓</td><td>✓</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Cas d'usage</h2>
+      <p>Vacances en famille, mariages (comité familial, participations inégales entre foyers), cérémonies familiales (baptême, cérémonie religieuse), associations et cotisations, couples, colocations, voyages entre amis.</p>
+
+      <h2>Questions fréquentes</h2>
+      <p><strong>Rohy est-il gratuit ?</strong> Oui. Vous pouvez créer des groupes et gérer vos dépenses gratuitement.</p>
+      <p><strong>Dois-je installer une application ?</strong> Non. Rohy fonctionne directement depuis votre navigateur.</p>
+      <p><strong>Puis-je l'utiliser sur mobile ?</strong> Oui. Rohy est optimisé pour les smartphones, tablettes et ordinateurs.</p>
+      <p><strong>Puis-je gérer des demi-parts ?</strong> Oui. Rohy a été conçu pour gérer les contributions inégales, les enfants et les personnes à charge.</p>
+      <p><strong>Mes données sont-elles sécurisées ?</strong> Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu'aux membres de vos groupes.</p>
+
+      <h2>Le sens de Rohy</h2>
+      <p>Rohy signifie « lien » en malgache. Parce qu'au-delà des dépenses, ce sont les liens entre les personnes qui comptent. Les comptes s'équilibrent. Les liens restent.</p>
+
+      <p><a href="https://rohy-app.com/">rohy-app.com</a> — activez JavaScript pour utiliser l'application.</p>
+    </main>
+  </noscript>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.2"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
