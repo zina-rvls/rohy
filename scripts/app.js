@@ -2290,7 +2290,7 @@
       heroH1Main: 'Clear accounts,', heroH1Sub: 'even when shares aren\'t equal.',
       heroLede: 'Rohy makes it simple to split expenses between friends, family, or on a trip — even when some people pay for their kids or partner, or only join in on certain expenses.',
       ctaSignup: '🚀 Create a free account', ctaFinal: '🚀 Get started for free', ctaWatchDemo: '▶ Watch the demo',
-      heroBadge: 'Made in Madagascar, built for communities across Africa',
+      heroBadge: 'Made in Madagascar, loved across Africa',
       heroImgAlt1: 'Rohy home screen showing the net balance and per-person balances.',
       heroImgAlt2: 'Rohy group detail on mobile: the Randria family appears as one consolidated household balance line.',
       problemEyebrow: 'The problem', problemH2: 'Group expenses are rarely as simple as splitting evenly',
