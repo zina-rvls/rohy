@@ -2699,11 +2699,6 @@
         '<div class="summary-card"><div class="summary-card-label">Restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
         '</div>' +
         (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
-      // Renvoie vers la vue "Pour équilibrer" pertinente (fiche du groupe
-      // filtré, ou accueil en vue agrégée) plutôt que de dupliquer ce calcul
-      // ici — évite à l'utilisateur de devoir revenir en arrière chercher où
-      // trouver qui doit quoi à qui après avoir consulté ses dépenses.
-      '<button class="btn-outline pressable" style="margin-bottom:14px" data-action="goSettleFromExpenses" data-id="' + (filterId || '') + '"><i class="ph-bold ph-scales" style="margin-right:6px"></i>Qui doit quoi à qui →</button>' +
       (expenses.length > 0 ?
         '<div class="pill-row" style="margin-bottom:10px">' +
         '<div class="pill' + (mineOnly ? ' active' : '') + '" data-action="toggleExpensesMineOnly"><i class="ph-bold ph-user-focus" style="margin-right:5px"></i>Me concerne uniquement</div>' +
@@ -2722,7 +2717,16 @@
         visibleExpenses.length === 0 ? '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">' +
           (searchQuery ? 'Aucune dépense ne correspond à « ' + escapeHtml(state.expensesSearchQuery) + ' ».' : 'Aucune dépense ne correspond à ces filtres.') +
           '</div>' : rows) +
-      '<button class="btn-primary pressable" style="margin-top:18px" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">Ajouter une dépense</button>'
+      // Les deux boutons côte à côte, même gabarit : "Ajouter une dépense"
+      // reste l'action par défaut (émeraude), "Qui doit quoi à qui" (fuchsia,
+      // cf. .btn-accent-fill) marque le passage à l'étape suivante une fois
+      // qu'il n'y a plus de nouvelle dépense à saisir — renvoie vers la vue
+      // "Pour équilibrer" pertinente (fiche du groupe filtré, ou accueil en
+      // vue agrégée) plutôt que de dupliquer ce calcul ici.
+      '<div style="display:flex;gap:10px;margin-top:18px">' +
+      '<button class="btn-primary pressable" style="width:auto;flex:1" data-action="openAddExpenseGlobal" data-id="' + (filterId || '') + '">Ajouter une dépense</button>' +
+      '<button class="btn-accent-fill pressable" data-action="goSettleFromExpenses" data-id="' + (filterId || '') + '">Qui doit quoi à qui →</button>' +
+      '</div>'
     );
   }
 

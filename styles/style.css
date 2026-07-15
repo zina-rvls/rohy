@@ -326,6 +326,15 @@ button { font-family: inherit; }
    tap sur tout appareil tactile (téléphone, ou tablette assez large pour
    passer les seuils desktop ci-dessous) jusqu'au tap suivant ailleurs. */
 @media (hover: hover) { .btn-primary:hover { background: var(--brand-primary-hover); } }
+/* Même gabarit que .btn-primary (utilisé côte à côte avec elle, cf.
+   "Qui doit quoi à qui" sur Dépenses), mais en fuchsia — signale une
+   action "étape suivante" plutôt que l'action par défaut de l'écran. */
+.btn-accent-fill {
+  text-align: center; padding: 14px; background: #D6247A; color: #fff; border-radius: 14px;
+  font-weight: 700; font-size: 15px; cursor: pointer; border: none; flex: 1;
+  box-shadow: 0 0 0 1px rgba(214, 36, 122, .4), 0 8px 24px rgba(214, 36, 122, .25);
+}
+@media (hover: hover) { .btn-accent-fill:hover { background: #B31D64; } }
 .form-error { text-align: center; color: var(--status-danger); font-size: 12.5px; margin-top: 10px; }
 .divider-or { display: flex; align-items: center; gap: 10px; margin: 20px 0; color: var(--text-tertiary); font-size: 12px; }
 .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
