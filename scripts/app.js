@@ -603,6 +603,10 @@
   function goHistory() { setState({ screen: 'history', navStack: [] }); }
   function goExpenses() { setState({ screen: 'expenses', navStack: [] }); }
   function openGroup(id) { navigate('groupDetail', { selectedGroupId: id, lastActiveGroupId: id }); }
+  // Depuis Dépenses (cf. renderAllExpenses) : si un filtre par groupe est
+  // actif, sa fiche a déjà sa propre section "Pour équilibrer" — sinon,
+  // direction l'accueil pour la vue agrégée tous groupes confondus.
+  function goSettleFromExpenses(groupId) { if (groupId) { openGroup(groupId); } else { goHome(); } }
   function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
   function openAbout() { navigate('about', { showAccount: false }); }
   // Avant connexion, `render()` affiche la landing ou renderLogin() selon
@@ -844,6 +848,7 @@
         // sans avoir à aller fouiller dans les logs de la Edge Function.
         var suffix = '';
         if (d.emailSent) suffix = ' (e-mail envoyé)';
+        else if (d.emailSkippedReason === 'no_email') suffix = ' (rappel gardé dans l\'app uniquement — aucun e-mail connu pour ' + p.name + ')';
         else if (d.emailSkippedReason === 'not_configured') suffix = ' (e-mail non envoyé : clé Resend absente côté serveur)';
         else if (d.emailError) suffix = ' (e-mail refusé par Resend : ' + String(d.emailError).slice(0, 150) + ')';
         loadAppData().then(function () {
@@ -2694,6 +2699,11 @@
         '<div class="summary-card"><div class="summary-card-label">Restant dû</div><div class="summary-card-value" style="color:var(--status-danger)">' + fmtC(totalRemaining) + '</div></div>' +
         '</div>' +
         (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
+      // Renvoie vers la vue "Pour équilibrer" pertinente (fiche du groupe
+      // filtré, ou accueil en vue agrégée) plutôt que de dupliquer ce calcul
+      // ici — évite à l'utilisateur de devoir revenir en arrière chercher où
+      // trouver qui doit quoi à qui après avoir consulté ses dépenses.
+      '<button class="btn-outline pressable" style="margin-bottom:14px" data-action="goSettleFromExpenses" data-id="' + (filterId || '') + '"><i class="ph-bold ph-scales" style="margin-right:6px"></i>Qui doit quoi à qui →</button>' +
       (expenses.length > 0 ?
         '<div class="pill-row" style="margin-bottom:10px">' +
         '<div class="pill' + (mineOnly ? ' active' : '') + '" data-action="toggleExpensesMineOnly"><i class="ph-bold ph-user-focus" style="margin-right:5px"></i>Me concerne uniquement</div>' +
@@ -3567,6 +3577,7 @@
         case 'goHome': goHome(); break;
         case 'goGroups': goGroups(); break;
         case 'goExpenses': goExpenses(); break;
+        case 'goSettleFromExpenses': goSettleFromExpenses(id || null); break;
         case 'goHistory': goHistory(); break;
         case 'goBack': goBack(); break;
         case 'toggleTheme': toggleTheme(); break;

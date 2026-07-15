@@ -176,6 +176,22 @@ button { font-family: inherit; }
     grid-column: 1 / -1;
     grid-row: 1 / -1;
   }
+  /* .toast est positionné en absolute (left/right: 20px) directement dans
+     .app-frame (cf. renderApp) : sans ce recentrage, il s'étire sur toute
+     la largeur du grid desktop (colonne du menu latéral comprise) au lieu
+     de rester une bulle de la largeur d'une carte de formulaire. Anime
+     avec sa propre keyframe (et non popIn, partagée avec les modales) pour
+     inclure le translateX(-50%) de recentrage tout du long de l'animation
+     — sans ça, popIn écraserait ce transform pendant les 0,22s de
+     l'animation, avant de sauter à la bonne position une fois terminée. */
+  .toast {
+    left: 50%; right: auto; width: 100%; max-width: 420px;
+    animation: toastPopInCentered .22s cubic-bezier(.3, .7, .4, 1);
+  }
+  @keyframes toastPopInCentered {
+    from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(.98); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  }
 }
 
 .pressable { cursor: pointer; }
