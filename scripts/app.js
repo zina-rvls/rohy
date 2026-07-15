@@ -2391,7 +2391,7 @@
       '<div class="about-standalone-screen">' +
       '<nav class="ldg-nav">' +
       '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
-      '<div class="ldg-nav-actions">' + hamburger + (state.loggedIn ? '' : loginBtn) + ctaBtn + '</div>' +
+      '<div class="ldg-nav-actions">' + (state.loggedIn ? '' : loginBtn) + ctaBtn + hamburger + '</div>' +
       mobileMenu +
       '</nav>' +
       renderAboutScreen() +
@@ -3038,7 +3038,7 @@
     var ctaRow =
       '<div class="ldg-ctas">' +
       (showCtas ? '<button class="btn-primary pressable" data-action="' + ctaAction + '">' + ctaLabel + '</button>' : '') +
-      '<a class="btn-outline" href="#ldg-demo" style="flex:none;width:auto;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">' + L.ctaWatchDemo + '</a>' +
+      '<a class="btn-outline ldg-demo-link" href="#ldg-demo" style="flex:none;width:auto;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">' + L.ctaWatchDemo + '</a>' +
       '</div>';
     return (
       '<div class="about-screen">' +
@@ -3155,14 +3155,14 @@
       '<h2>' + L.featuresH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-feat-rows">' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-users-three"></i><div><h3>' + L.feat1Title + '</h3><p>' + L.feat1Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-percent"></i><div><h3>' + L.feat2Title + '</h3><p>' + L.feat2Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-target"></i><div><h3>' + L.feat3Title + '</h3><p>' + L.feat3Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-clock-counter-clockwise"></i><div><h3>' + L.feat4Title + '</h3><p>' + L.feat4Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-camera"></i><div><h3>' + L.feat5Title + '</h3><p>' + L.feat5Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-check-circle"></i><div><h3>' + L.feat6Title + '</h3><p>' + L.feat6Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-link"></i><div><h3>' + L.feat7Title + '</h3><p>' + L.feat7Body + '</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-coins"></i><div><h3>' + L.feat8Title + '</h3><p>' + L.feat8Body + '</p></div></div>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-users-three"></i><h3>' + L.feat1Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat1Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-percent"></i><h3>' + L.feat2Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat2Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-target"></i><h3>' + L.feat3Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat3Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-clock-counter-clockwise"></i><h3>' + L.feat4Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat4Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-camera"></i><h3>' + L.feat5Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat5Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-check-circle"></i><h3>' + L.feat6Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat6Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-link"></i><h3>' + L.feat7Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat7Body + '</p></details>' +
+      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-coins"></i><h3>' + L.feat8Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat8Body + '</p></details>' +
       '</div>' +
       '<div class="ldg-section-head" style="margin-top:48px">' +
       '<span class="ldg-eyebrow">' + L.compareEyebrow + '</span>' +

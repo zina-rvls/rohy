@@ -561,9 +561,9 @@ button { font-family: inherit; }
 .ldg-ctas .btn-primary, .ldg-ctas .btn-outline { flex: none; width: auto; padding: 13px 22px; }
 .ldg-final .ldg-ctas { justify-content: center; margin-bottom: 0; }
 .ldg-hero-badge {
-  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
-  color: var(--text-secondary); background: var(--surface-raised); border: 1px solid var(--border-subtle);
-  padding: 8px 16px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700;
+  color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 4px;
 }
 .ldg-flag-mg { flex: none; border-radius: 2px; }
 .ldg-hero-stack { position: relative; }
@@ -604,6 +604,7 @@ button { font-family: inherit; }
      boutons de poids égal, cause du "on ne sait plus quel est le CTA". */
   .ldg-nav-login-inline { display: none; }
   .ldg-hamburger { display: flex; }
+  .ldg-demo-link { display: none !important; }
 }
 .ldg-mobile-menu-overlay { position: fixed; inset: 0; z-index: 39; background: rgba(10,11,14,.15); }
 .ldg-mobile-menu {
@@ -728,11 +729,17 @@ button { font-family: inherit; }
 /* Fonctionnalités principales : rangées compactes en 2 colonnes */
 .ldg-feat-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; margin-top: 8px; }
 @media (max-width: 700px) { .ldg-feat-rows { grid-template-columns: 1fr; } }
-.ldg-feat-row { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; border-top: 1px solid var(--border-subtle); }
+.ldg-feat-row { padding: 14px 0; border-top: 1px solid var(--border-subtle); }
 .ldg-feat-rows > .ldg-feat-row:nth-child(-n+2) { border-top: none; }
-.ldg-feat-row .ph-bold { font-size: 18px; color: var(--brand-primary); flex: none; margin-top: 2px; }
-.ldg-feat-row h3 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0 0 4px; color: var(--text-primary); }
-.ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.ldg-feat-row summary {
+  display: flex; align-items: center; gap: 14px; cursor: pointer; list-style: none;
+}
+.ldg-feat-row summary::-webkit-details-marker { display: none; }
+.ldg-feat-row summary .ph-bold:first-child { font-size: 18px; color: var(--brand-primary); flex: none; }
+.ldg-feat-row summary h3 { flex: 1; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0; color: var(--text-primary); }
+.ldg-feat-row summary .caret { transition: transform .2s ease; color: var(--text-tertiary); font-size: 13px; flex: none; }
+.ldg-feat-row[open] summary .caret { transform: rotate(180deg); }
+.ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0 32px; }
 
 /* Exemple concret */
 .ldg-example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
