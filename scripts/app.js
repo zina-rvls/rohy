@@ -38,6 +38,14 @@
     try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* mode privé / quota */ }
   }
 
+  var LANDING_LANG_KEY = 'rohy-landing-lang';
+  function loadLandingLang() {
+    try { return localStorage.getItem(LANDING_LANG_KEY) || 'fr'; } catch (err) { return 'fr'; }
+  }
+  function saveLandingLang(lang) {
+    try { localStorage.setItem(LANDING_LANG_KEY, lang); } catch (err) { /* mode privé / quota */ }
+  }
+
   // Relance "Créer un compte" (cf. tryWithoutAccount) : une fois refermée,
   // ne doit plus jamais réapparaître sur cet appareil — persistée en local
   // plutôt qu'en mémoire, pour survivre à un rechargement de page.
@@ -125,6 +133,7 @@
       screen: 'home',
       navStack: [],
       theme: loadTheme(),
+      landingLang: loadLandingLang(),
       loggedIn: false,
       dataLoading: false,
       loginMode: 'password',
@@ -730,6 +739,16 @@
       var next = s.theme === 'dark' ? 'light' : 'dark';
       saveTheme(next);
       return { theme: next };
+    });
+  }
+
+  // Bascule FR/EN de la landing (cf. LANDING_I18N) — persistée comme le
+  // thème, pour rester dans la langue choisie d'une visite à l'autre.
+  function toggleLandingLang() {
+    setState(function (s) {
+      var next = s.landingLang === 'en' ? 'fr' : 'en';
+      saveLandingLang(next);
+      return { landingLang: next };
     });
   }
 
@@ -2187,19 +2206,177 @@
   // (navStack), indisponible avant connexion. La landing est la racine de
   // l'app tant qu'on n'est pas connecté (comme Notion) : nav avec
   // connexion/inscription plutôt qu'un simple bouton retour.
+  // Traductions de la landing (cf. toggleLandingLang) : objectif élargir la
+  // cible au-delà du public francophone tout en restant sur le marché
+  // africain — le "Made in Madagascar" et les témoignages/exemples
+  // malgaches sont donc conservés tels quels en anglais (authenticité,
+  // ancrage du produit), seul le texte est traduit.
+  var LANDING_I18N = {
+    fr: {
+      navLogin: 'Connexion', navSignup: '🚀 Essayer Rohy gratuitement', navOpenApp: '🚀 Ouvrir l\'app',
+      heroEyebrow: 'Suivi de dépenses partagées',
+      heroH1Main: 'Les comptes clairs,', heroH1Sub: 'même quand les parts sont inégales.',
+      heroLede: 'Rohy simplifie le partage des dépenses entre amis, en famille ou en voyage, même lorsque certains participants paient pour leurs enfants, leur conjoint ou ne participent qu\'à certaines dépenses.',
+      ctaSignup: '🚀 Créer un compte gratuitement', ctaFinal: '🚀 Commencer gratuitement', ctaWatchDemo: '▶ Voir la démo',
+      heroBadge: 'Conçu à Madagascar pour les groupes d\'amis, les familles et les voyageurs',
+      heroImgAlt1: 'Écran d\'accueil Rohy montrant le solde net et les soldes par personne.',
+      heroImgAlt2: 'Détail d\'un groupe Rohy sur mobile : Famille Randria apparaît comme un foyer consolidé en une seule ligne de solde.',
+      problemEyebrow: 'Le problème', problemH2: 'Les dépenses de groupe sont rarement aussi simples qu\'un partage égal',
+      problem1: 'Un parent paie pour ses enfants.', problem2: 'Un couple partage certaines dépenses.',
+      problem3: 'Certaines personnes participent à une activité et d\'autres non.', problem4: 'Tout le monde ne contribue pas de la même manière.',
+      problemFooter: 'Résultat : les calculs deviennent vite compliqués. Rohy a été conçu pour gérer ces situations naturellement.',
+      differenceEyebrow: 'Pourquoi Rohy est différent', differenceH2: 'Conçu pour la vraie vie',
+      mech1Title: 'Les enfants et personnes à charge', mech1Body: 'Attribuez des demi-parts ou rattachez plusieurs personnes à un même participant.',
+      mech2Title: 'Les contributions personnalisées', mech2Body: 'Chaque membre peut participer selon sa situation grâce à un système de parts flexible.',
+      mech3Title: 'Les dépenses ciblées', mech3Body: 'Une dépense peut concerner uniquement certains participants du groupe.',
+      mech4Title: 'Les calculs automatiques', mech4Body: 'Rohy s\'occupe des calculs pour que chacun sache exactement qui doit combien à qui.',
+      exampleEyebrow: 'Exemple concret', exampleH2: 'Un week-end entre amis et en famille',
+      exampleP: 'Rohy calcule automatiquement la contribution de chacun en tenant compte des parts attribuées. Plus besoin de calculer manuellement.',
+      exampleIgTitle: 'Loyer de la villa', exampleShare: 'part', exampleCovered: 'à charge',
+      exampleFoot: 'Part calculée automatiquement, à chaque dépense.',
+      howEyebrow: 'Comment ça marche', howH2: 'En 3 étapes',
+      step1Title: 'Créez votre groupe', step1Body: 'Voyage, colocation, week-end ou dépenses familiales.', step1Alt: 'Formulaire de création d\'un nouveau groupe.',
+      step2Title: 'Ajoutez les dépenses', step2Body: 'Indiquez qui a payé et qui participe à chaque dépense.', step2Alt: 'Formulaire d\'ajout de dépense.',
+      step3Title: 'Laissez Rohy calculer', step3Body: 'Les soldes et remboursements sont calculés automatiquement.', step3Alt: 'Détail d\'un groupe Rohy montrant les soldes et suggestions de règlement.',
+      usecasesEyebrow: 'Cas d\'usage', usecasesH2: 'Adapté à toutes les situations',
+      uc1Title: 'Vacances en famille', uc1Body: 'Prenez en compte les enfants et les personnes à charge sans calcul compliqué.',
+      uc2Title: 'Mariage', uc2Body: 'Comité familial, participations inégales entre foyers : chacun contribue selon ses moyens.',
+      uc3Title: 'Cérémonies familiales', uc3Body: 'Baptême, cérémonie religieuse : organisez les contributions de chaque foyer sans malaise.',
+      uc4Title: 'Associations et cotisations', uc4Body: 'Cotisation mensuelle d\'une association, collecte pour un cadeau ou un événement commun.',
+      uc5Title: 'Couples', uc5Body: 'Gérez facilement les dépenses partagées et les prises en charge partielles.',
+      uc6Title: 'Colocations', uc6Body: 'Suivez les dépenses du quotidien et répartissez les coûts équitablement.',
+      uc7Title: 'Voyages entre amis', uc7Body: 'Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.',
+      demoEyebrow: 'Démonstration', demoH2: 'Voyez Rohy en action',
+      demoP: 'Créez un groupe, ajoutez vos dépenses, et laissez Rohy calculer automatiquement les remboursements.',
+      demoAlt: 'Détail d\'un groupe Rohy, montrant le tableau payé/part/solde et les suggestions de règlement.',
+      featuresEyebrow: 'Fonctionnalités principales', featuresH2: 'Tout ce qu\'il faut, rien de superflu',
+      feat1Title: 'Gestion des groupes', feat1Body: 'Créez autant de groupes que nécessaire.',
+      feat2Title: 'Répartition flexible', feat2Body: 'Parts, demi-parts et contributions personnalisées.',
+      feat3Title: 'Dépenses ciblées', feat3Body: 'Sélectionnez précisément les participants concernés.',
+      feat4Title: 'Historique complet', feat4Body: 'Retrouvez toutes les dépenses et remboursements.',
+      feat5Title: 'Scan intelligent des tickets', feat5Body: 'Ajoutez rapidement vos dépenses à partir d\'une photo.',
+      feat6Title: 'Suivi des remboursements', feat6Body: 'Gardez une vue claire des règlements effectués.',
+      feat7Title: 'Lien d\'invitation', feat7Body: 'Invitez sans obliger vos proches à créer un compte.',
+      feat8Title: 'Devises et mobile money africains', feat8Body: 'Ariary, francs CFA, Mvola, Orange Money, Airtel Money.',
+      compareEyebrow: 'Comparatif fonctionnel', compareH2: 'Pensé pour les situations du quotidien',
+      compareColRohy: 'Rohy', compareColOthers: 'Concurrents',
+      compareRow1: 'Répartition classique', compareRow2: 'Demi-parts', compareRow3: 'Enfants et personnes à charge',
+      compareRow4: 'Contributions personnalisées', compareRow5: 'Dépenses ciblées', compareRow6: 'Suivi des remboursements',
+      compareRare: 'Rare', compareLimited: 'Limité',
+      testimonialsEyebrow: 'Témoignages', testimonialsH2: 'Ils utilisent déjà Rohy pour leurs dépenses de groupe',
+      t1Quote: 'Pour la première fois, nous avons pu gérer facilement les dépenses du groupe sans passer des heures à refaire les calculs.', t1Meta: 'Week-end à Mahambo, 8 participants',
+      t2Quote: 'La gestion des demi-parts pour les enfants nous a énormément simplifié la vie.', t2Meta: 'Voyage à Nosy Be, 6 adultes et 2 enfants',
+      t3Quote: 'Tout le monde sait exactement ce qu\'il doit. Plus de discussions interminables à la fin du mois.', t3Meta: 'Colocation à Antananarivo, 4 colocataires',
+      faqEyebrow: 'Questions fréquentes', faqH2: 'Tout ce qu\'il faut savoir avant de commencer',
+      faq1Q: 'Rohy est-il gratuit ?', faq1A: 'Oui. Vous pouvez créer des groupes et gérer vos dépenses gratuitement.',
+      faq2Q: 'Dois-je installer une application ?', faq2A: 'Non. Rohy fonctionne directement depuis votre navigateur.',
+      faq3Q: 'Puis-je l\'utiliser sur mobile ?', faq3A: 'Oui. Rohy est optimisé pour les smartphones, tablettes et ordinateurs.',
+      faq4Q: 'Puis-je gérer des demi-parts ?', faq4A: 'Oui. Rohy a été conçu pour gérer les contributions inégales, les enfants et les personnes à charge.',
+      faq5Q: 'Mes données sont-elles sécurisées ?', faq5A: 'Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu\'aux membres de vos groupes.',
+      meaningEyebrow: 'Le sens de Rohy',
+      meaningLine1Pre: 'Rohy signifie ', meaningLine1Strong: '« lien »', meaningLine1Post: ' en malgache.',
+      meaningLine2: 'Parce qu\'au-delà des dépenses, ce sont les liens entre les personnes qui comptent.',
+      meaningClosing: 'Les comptes s\'équilibrent. Les liens restent.',
+      finalH2: 'Prêt à simplifier vos dépenses de groupe ?', finalP: 'Créez votre premier groupe gratuitement et laissez Rohy faire les calculs à votre place.',
+      footerTagline: 'Suivi de dépenses partagées entre amis, colocataires ou en famille, pensé pour les foyers, pas seulement pour diviser par deux.',
+      footerCol1: 'Découvrir', footerLinkProblem: 'Le problème', footerLinkDifference: 'Pourquoi Rohy est différent', footerLinkHow: 'Comment ça marche', footerLinkUsecases: 'Cas d\'usage',
+      footerCol2: 'En savoir plus', footerLinkTestimonials: 'Témoignages', footerLinkFaq: 'FAQ',
+      footerBtnSignup: 'Créer un compte', footerBtnLogin: 'Connexion',
+      footerBottom: '© 2026 Rohy, « lien » en malgache.',
+    },
+    en: {
+      navLogin: 'Log in', navSignup: '🚀 Try Rohy for free', navOpenApp: '🚀 Open the app',
+      heroEyebrow: 'Shared expense tracking',
+      heroH1Main: 'Clear accounts,', heroH1Sub: 'even when shares aren\'t equal.',
+      heroLede: 'Rohy makes it simple to split expenses between friends, family, or on a trip — even when some people pay for their kids or partner, or only join in on certain expenses.',
+      ctaSignup: '🚀 Create a free account', ctaFinal: '🚀 Get started for free', ctaWatchDemo: '▶ Watch the demo',
+      heroBadge: 'Made in Madagascar, built for communities across Africa',
+      heroImgAlt1: 'Rohy home screen showing the net balance and per-person balances.',
+      heroImgAlt2: 'Rohy group detail on mobile: the Randria family appears as one consolidated household balance line.',
+      problemEyebrow: 'The problem', problemH2: 'Group expenses are rarely as simple as splitting evenly',
+      problem1: 'A parent pays for their kids.', problem2: 'A couple shares some expenses.',
+      problem3: 'Some people join an activity, others don\'t.', problem4: 'Not everyone contributes the same way.',
+      problemFooter: 'The result: the math gets complicated fast. Rohy was built to handle these situations naturally.',
+      differenceEyebrow: 'Why Rohy is different', differenceH2: 'Built for real life',
+      mech1Title: 'Kids and dependents', mech1Body: 'Assign half-shares or link several people to the same participant.',
+      mech2Title: 'Custom contributions', mech2Body: 'Every member can contribute based on their situation, with a flexible share system.',
+      mech3Title: 'Targeted expenses', mech3Body: 'An expense can involve only some of the group\'s participants.',
+      mech4Title: 'Automatic calculations', mech4Body: 'Rohy handles the math so everyone knows exactly who owes what to whom.',
+      exampleEyebrow: 'A real example', exampleH2: 'A weekend with friends and family',
+      exampleP: 'Rohy automatically calculates each person\'s contribution based on assigned shares. No more manual math.',
+      exampleIgTitle: 'Villa rental', exampleShare: 'share', exampleCovered: 'covered',
+      exampleFoot: 'Share calculated automatically, for every expense.',
+      howEyebrow: 'How it works', howH2: 'In 3 steps',
+      step1Title: 'Create your group', step1Body: 'Trip, roommates, weekend, or family expenses.', step1Alt: 'New group creation form.',
+      step2Title: 'Add expenses', step2Body: 'Say who paid and who\'s in on each expense.', step2Alt: 'Add expense form.',
+      step3Title: 'Let Rohy do the math', step3Body: 'Balances and reimbursements are calculated automatically.', step3Alt: 'Rohy group detail showing balances and settlement suggestions.',
+      usecasesEyebrow: 'Use cases', usecasesH2: 'Built for every situation',
+      uc1Title: 'Family vacations', uc1Body: 'Account for kids and dependents without complicated math.',
+      uc2Title: 'Weddings', uc2Body: 'Family committee, uneven contributions between households — everyone chips in based on what they can.',
+      uc3Title: 'Family ceremonies', uc3Body: 'Baptisms, religious ceremonies: organize contributions from each household without awkwardness.',
+      uc4Title: 'Associations and dues', uc4Body: 'Monthly association dues, a collection for a gift or a shared event.',
+      uc5Title: 'Couples', uc5Body: 'Easily manage shared expenses and partial coverage.',
+      uc6Title: 'Roommates', uc6Body: 'Track everyday expenses and split costs fairly.',
+      uc7Title: 'Trips with friends', uc7Body: 'Lodging, restaurants, activities, fuel — keep a clear view of the group\'s spending.',
+      demoEyebrow: 'Demo', demoH2: 'See Rohy in action',
+      demoP: 'Create a group, add your expenses, and let Rohy automatically calculate reimbursements.',
+      demoAlt: 'Rohy group detail, showing the paid/share/balance table and settlement suggestions.',
+      featuresEyebrow: 'Key features', featuresH2: 'Everything you need, nothing you don\'t',
+      feat1Title: 'Group management', feat1Body: 'Create as many groups as you need.',
+      feat2Title: 'Flexible splitting', feat2Body: 'Shares, half-shares, and custom contributions.',
+      feat3Title: 'Targeted expenses', feat3Body: 'Select exactly which participants are involved.',
+      feat4Title: 'Full history', feat4Body: 'Find every expense and reimbursement.',
+      feat5Title: 'Smart receipt scan', feat5Body: 'Add expenses quickly from a photo.',
+      feat6Title: 'Reimbursement tracking', feat6Body: 'Keep a clear view of settlements made.',
+      feat7Title: 'Invite link', feat7Body: 'Invite people without making them create an account.',
+      feat8Title: 'African currencies and mobile money', feat8Body: 'Ariary, CFA francs, Mvola, Orange Money, Airtel Money.',
+      compareEyebrow: 'Feature comparison', compareH2: 'Built for everyday situations',
+      compareColRohy: 'Rohy', compareColOthers: 'Competitors',
+      compareRow1: 'Classic even split', compareRow2: 'Half-shares', compareRow3: 'Kids and dependents',
+      compareRow4: 'Custom contributions', compareRow5: 'Targeted expenses', compareRow6: 'Reimbursement tracking',
+      compareRare: 'Rare', compareLimited: 'Limited',
+      testimonialsEyebrow: 'Testimonials', testimonialsH2: 'Already using Rohy for their group expenses',
+      t1Quote: 'For the first time, we could easily manage the group\'s expenses without spending hours redoing the math.', t1Meta: 'Weekend in Mahambo, 8 people',
+      t2Quote: 'Handling half-shares for the kids made our life so much easier.', t2Meta: 'Trip to Nosy Be, 6 adults and 2 kids',
+      t3Quote: 'Everyone knows exactly what they owe. No more endless discussions at the end of the month.', t3Meta: 'Roommates in Antananarivo, 4 flatmates',
+      faqEyebrow: 'Frequently asked questions', faqH2: 'Everything you need to know before you start',
+      faq1Q: 'Is Rohy free?', faq1A: 'Yes. You can create groups and manage your expenses for free.',
+      faq2Q: 'Do I need to install an app?', faq2A: 'No. Rohy runs directly from your browser.',
+      faq3Q: 'Can I use it on mobile?', faq3A: 'Yes. Rohy is optimized for smartphones, tablets, and computers.',
+      faq4Q: 'Can I manage half-shares?', faq4A: 'Yes. Rohy was built to handle uneven contributions, kids, and dependents.',
+      faq5Q: 'Is my data secure?', faq5A: 'Yes. Your data is stored securely and only accessible to members of your groups.',
+      meaningEyebrow: 'The meaning of Rohy',
+      meaningLine1Pre: 'Rohy means ', meaningLine1Strong: '"link"', meaningLine1Post: ' in Malagasy.',
+      meaningLine2: 'Because beyond the expenses, it\'s the bonds between people that matter.',
+      meaningClosing: 'The accounts balance out. The bonds remain.',
+      finalH2: 'Ready to simplify your group expenses?', finalP: 'Create your first group for free and let Rohy do the math for you.',
+      footerTagline: 'Shared expense tracking for friends, roommates, or family — built for households, not just splitting in two.',
+      footerCol1: 'Discover', footerLinkProblem: 'The problem', footerLinkDifference: 'Why Rohy is different', footerLinkHow: 'How it works', footerLinkUsecases: 'Use cases',
+      footerCol2: 'Learn more', footerLinkTestimonials: 'Testimonials', footerLinkFaq: 'FAQ',
+      footerBtnSignup: 'Create an account', footerBtnLogin: 'Log in',
+      footerBottom: '© 2026 Rohy, "link" in Malagasy.',
+    },
+  };
+  function landingT() { return LANDING_I18N[state.landingLang] || LANDING_I18N.fr; }
+
   function renderAboutFromLogin() {
     // Déjà connecté (racine du site rouverte dans un nouvel onglet, ou après
     // rechargement) : plus besoin du bouton "Connexion", et le CTA principal
     // doit mener dans l'app plutôt qu'à l'inscription (cf. enterApp).
+    var L = landingT();
     var navActions = state.loggedIn ?
-      '<button class="btn-primary pressable" data-action="enterApp">🚀 Ouvrir l\'app</button>' :
-      '<button class="btn-outline pressable" data-action="openLoginForm">Connexion</button>' +
-      '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">🚀 Essayer Rohy gratuitement</button>';
+      '<button class="btn-primary pressable" data-action="enterApp">' + L.navOpenApp + '</button>' :
+      '<button class="btn-outline pressable" data-action="openLoginForm">' + L.navLogin + '</button>' +
+      '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">' + L.navSignup + '</button>';
+    // Bascule FR/EN : affiche la langue vers laquelle basculer (pas la
+    // langue courante), même logique que le bouton mode clair/sombre.
+    var langToggle = '<button class="btn-outline pressable" style="padding:9px 12px;font-weight:800" data-action="toggleLandingLang">' +
+      (state.landingLang === 'en' ? 'FR' : 'EN') + '</button>';
     return (
       '<div class="about-standalone-screen">' +
       '<nav class="ldg-nav">' +
       '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
-      '<div class="ldg-nav-actions">' + navActions + '</div>' +
+      '<div class="ldg-nav-actions">' + langToggle + navActions + '</div>' +
       '</nav>' +
       renderAboutScreen() +
       '</div>'
@@ -2838,13 +3015,14 @@
     // defaultState), ou depuis le menu compte une fois dans l'app (cf.
     // openAbout) : les CTA n'ont de sens que dans les deux premiers cas, et
     // pointent vers l'inscription si anonyme, vers l'app si déjà connecté.
+    var L = landingT();
     var showCtas = !state.loggedIn || !state.enteredApp;
     var ctaAction = state.loggedIn ? 'enterApp' : 'ctaSignupFromAbout';
-    var ctaLabel = state.loggedIn ? '🚀 Ouvrir l\'app' : '🚀 Créer un compte gratuitement';
+    var ctaLabel = state.loggedIn ? L.navOpenApp : L.ctaSignup;
     var ctaRow =
       '<div class="ldg-ctas">' +
       (showCtas ? '<button class="btn-primary pressable" data-action="' + ctaAction + '">' + ctaLabel + '</button>' : '') +
-      '<a class="btn-outline" href="#ldg-demo" style="flex:none;width:auto;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">▶ Voir la démo</a>' +
+      '<a class="btn-outline" href="#ldg-demo" style="flex:none;width:auto;padding:13px 22px;text-decoration:none;display:inline-flex;align-items:center">' + L.ctaWatchDemo + '</a>' +
       '</div>';
     return (
       '<div class="about-screen">' +
@@ -2853,180 +3031,180 @@
       '<header class="ldg-hero">' +
       '<div class="ldg-hero-grid">' +
       '<div class="ldg-hero-copy">' +
-      '<span class="ldg-eyebrow">Suivi de dépenses partagées</span>' +
-      '<h1>Les comptes clairs,' +
-      '<span class="ldg-h1-sub">même quand les parts sont inégales.</span>' +
+      '<span class="ldg-eyebrow">' + L.heroEyebrow + '</span>' +
+      '<h1>' + L.heroH1Main +
+      '<span class="ldg-h1-sub">' + L.heroH1Sub + '</span>' +
       '</h1>' +
-      '<p class="ldg-lede">Rohy simplifie le partage des dépenses entre amis, en famille ou en voyage, même lorsque certains participants paient pour leurs enfants, leur conjoint ou ne participent qu\'à certaines dépenses.</p>' +
+      '<p class="ldg-lede">' + L.heroLede + '</p>' +
       ctaRow +
-      '<div class="ldg-hero-badge"><svg class="ldg-flag-mg" viewBox="0 0 30 20" width="18" height="12" aria-hidden="true"><rect width="30" height="20" fill="#fff"></rect><rect x="12" width="18" height="10" fill="#FC3D32"></rect><rect x="12" y="10" width="18" height="10" fill="#007E3A"></rect></svg> Conçu à Madagascar pour les groupes d\'amis, les familles et les voyageurs</div>' +
+      '<div class="ldg-hero-badge"><svg class="ldg-flag-mg" viewBox="0 0 30 20" width="18" height="12" aria-hidden="true"><rect width="30" height="20" fill="#fff"></rect><rect x="12" width="18" height="10" fill="#FC3D32"></rect><rect x="12" y="10" width="18" height="10" fill="#007E3A"></rect></svg> ' + L.heroBadge + '</div>' +
       '</div>' +
       '<div class="ldg-hero-stack">' +
-      '<div class="ldg-phone back"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="Écran d\'accueil Rohy montrant le solde net et les soldes par personne."></div></div>' +
-      '<div class="ldg-phone"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy sur mobile : Famille Randria apparaît comme un foyer consolidé en une seule ligne de solde."></div></div>' +
+      '<div class="ldg-phone back"><div class="ldg-screen"><img src="assets/landing/01-home-mobile.png" alt="' + escapeHtml(L.heroImgAlt1) + '"></div></div>' +
+      '<div class="ldg-phone"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="' + escapeHtml(L.heroImgAlt2) + '"></div></div>' +
       '</div>' +
       '</div>' +
       '</header>' +
 
       '<section class="ldg-section" id="ldg-probleme">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Le problème</span>' +
-      '<h2>Les dépenses de groupe sont rarement aussi simples qu\'un partage égal</h2>' +
+      '<span class="ldg-eyebrow">' + L.problemEyebrow + '</span>' +
+      '<h2>' + L.problemH2 + '</h2>' +
       '</div>' +
       '<ul class="ldg-problem-list" style="max-width:60ch">' +
-      '<li><p style="margin:0">Un parent paie pour ses enfants.</p></li>' +
-      '<li><p style="margin:0">Un couple partage certaines dépenses.</p></li>' +
-      '<li><p style="margin:0">Certaines personnes participent à une activité et d\'autres non.</p></li>' +
-      '<li><p style="margin:0">Tout le monde ne contribue pas de la même manière.</p></li>' +
+      '<li><p style="margin:0">' + L.problem1 + '</p></li>' +
+      '<li><p style="margin:0">' + L.problem2 + '</p></li>' +
+      '<li><p style="margin:0">' + L.problem3 + '</p></li>' +
+      '<li><p style="margin:0">' + L.problem4 + '</p></li>' +
       '</ul>' +
-      '<p style="font-size:14.5px;color:var(--text-secondary);max-width:60ch;margin-top:24px">Résultat : les calculs deviennent vite compliqués. Rohy a été conçu pour gérer ces situations naturellement.</p>' +
+      '<p style="font-size:14.5px;color:var(--text-secondary);max-width:60ch;margin-top:24px">' + L.problemFooter + '</p>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-difference">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Pourquoi Rohy est différent</span>' +
-      '<h2>Conçu pour la vraie vie</h2>' +
+      '<span class="ldg-eyebrow">' + L.differenceEyebrow + '</span>' +
+      '<h2>' + L.differenceH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-mechlist">' +
-      '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-baby"></i></span><h3>Les enfants et personnes à charge</h3><p>Attribuez des demi-parts ou rattachez plusieurs personnes à un même participant.</p></div>' +
-      '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-scales"></i></span><h3>Les contributions personnalisées</h3><p>Chaque membre peut participer selon sa situation grâce à un système de parts flexible.</p></div>' +
-      '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-target"></i></span><h3>Les dépenses ciblées</h3><p>Une dépense peut concerner uniquement certains participants du groupe.</p></div>' +
-      '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-calculator"></i></span><h3>Les calculs automatiques</h3><p>Rohy s\'occupe des calculs pour que chacun sache exactement qui doit combien à qui.</p></div>' +
+      '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-baby"></i></span><h3>' + L.mech1Title + '</h3><p>' + L.mech1Body + '</p></div>' +
+      '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-scales"></i></span><h3>' + L.mech2Title + '</h3><p>' + L.mech2Body + '</p></div>' +
+      '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-target"></i></span><h3>' + L.mech3Title + '</h3><p>' + L.mech3Body + '</p></div>' +
+      '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-calculator"></i></span><h3>' + L.mech4Title + '</h3><p>' + L.mech4Body + '</p></div>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section ldg-example" id="ldg-exemple">' +
       '<div class="ldg-example-grid">' +
       '<div class="ldg-section-head" style="margin-bottom:0">' +
-      '<span class="ldg-eyebrow">Exemple concret</span>' +
-      '<h2>Un week-end entre amis et en famille</h2>' +
-      '<p>Rohy calcule automatiquement la contribution de chacun en tenant compte des parts attribuées. Plus besoin de calculer manuellement.</p>' +
+      '<span class="ldg-eyebrow">' + L.exampleEyebrow + '</span>' +
+      '<h2>' + L.exampleH2 + '</h2>' +
+      '<p>' + L.exampleP + '</p>' +
       '</div>' +
       '<div class="ldg-infographic">' +
-      '<div class="ldg-ig-head"><span class="ldg-ig-icon"><i class="ph-bold ph-receipt"></i></span><span class="ldg-ig-title">Loyer de la villa</span></div>' +
+      '<div class="ldg-ig-head"><span class="ldg-ig-icon"><i class="ph-bold ph-receipt"></i></span><span class="ldg-ig-title">' + L.exampleIgTitle + '</span></div>' +
       '<div class="ldg-ig-total">2 000 000 Ar</div>' +
-      '<div class="ldg-ig-row"><span class="ldg-ig-name">Hery<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
-      '<div class="ldg-ig-row"><span class="ldg-ig-name">Voahirana<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
-      '<div class="ldg-ig-row"><span class="ldg-ig-name">Lala<span class="ldg-ig-part">· 1 part</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
-      '<div class="ldg-ig-row charge" style="background:rgba(214,36,122,.12)"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 part</span><span class="ldg-ig-tag" style="color:#D6247A;background:rgba(214,36,122,.16)">à charge</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
-      '<div class="ldg-ig-foot">Part calculée automatiquement, à chaque dépense.</div>' +
+      '<div class="ldg-ig-row"><span class="ldg-ig-name">Hery<span class="ldg-ig-part">· 1 ' + L.exampleShare + '</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
+      '<div class="ldg-ig-row"><span class="ldg-ig-name">Voahirana<span class="ldg-ig-part">· 1 ' + L.exampleShare + '</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
+      '<div class="ldg-ig-row"><span class="ldg-ig-name">Lala<span class="ldg-ig-part">· 1 ' + L.exampleShare + '</span></span><span class="ldg-ig-amount">571 429 Ar</span></div>' +
+      '<div class="ldg-ig-row charge" style="background:rgba(214,36,122,.12)"><span class="ldg-ig-name">Mialy<span class="ldg-ig-part">· 0,5 ' + L.exampleShare + '</span><span class="ldg-ig-tag" style="color:#D6247A;background:rgba(214,36,122,.16)">' + L.exampleCovered + '</span></span><span class="ldg-ig-amount">285 714 Ar</span></div>' +
+      '<div class="ldg-ig-foot">' + L.exampleFoot + '</div>' +
       '</div>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-comment">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Comment ça marche</span>' +
-      '<h2>En 3 étapes</h2>' +
+      '<span class="ldg-eyebrow">' + L.howEyebrow + '</span>' +
+      '<h2>' + L.howH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-steps">' +
-      '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>Créez votre groupe</h3><p>Voyage, colocation, week-end ou dépenses familiales.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/07-create-group-mobile.png" alt="Formulaire de création d\'un nouveau groupe."></div></div></div>' +
-      '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>Ajoutez les dépenses</h3><p>Indiquez qui a payé et qui participe à chaque dépense.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/04-add-expense-mobile.png" alt="Formulaire d\'ajout de dépense."></div></div></div>' +
-      '<div class="ldg-step"><span class="ldg-step-num">3</span><h3>Laissez Rohy calculer</h3><p>Les soldes et remboursements sont calculés automatiquement.</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="Détail d\'un groupe Rohy montrant les soldes et suggestions de règlement."></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">1</span><h3>' + L.step1Title + '</h3><p>' + L.step1Body + '</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/07-create-group-mobile.png" alt="' + escapeHtml(L.step1Alt) + '"></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">2</span><h3>' + L.step2Title + '</h3><p>' + L.step2Body + '</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/04-add-expense-mobile.png" alt="' + escapeHtml(L.step2Alt) + '"></div></div></div>' +
+      '<div class="ldg-step"><span class="ldg-step-num">3</span><h3>' + L.step3Title + '</h3><p>' + L.step3Body + '</p><div class="ldg-phone sm"><div class="ldg-screen"><img src="assets/landing/02-group-detail-mobile.png" alt="' + escapeHtml(L.step3Alt) + '"></div></div></div>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-usecases">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Cas d\'usage</span>' +
-      '<h2>Adapté à toutes les situations</h2>' +
+      '<span class="ldg-eyebrow">' + L.usecasesEyebrow + '</span>' +
+      '<h2>' + L.usecasesH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-usecases">' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-house-line"></i></span><h3>Vacances en famille</h3><p>Prenez en compte les enfants et les personnes à charge sans calcul compliqué.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-gift"></i></span><h3>Mariage</h3><p>Comité familial, participations inégales entre foyers : chacun contribue selon ses moyens.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-flower-lotus"></i></span><h3>Cérémonies familiales</h3><p>Baptême, cérémonie religieuse : organisez les contributions de chaque foyer sans malaise.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(196,67,42,.14);color:#C4432A"><i class="ph-bold ph-hand-coins"></i></span><h3>Associations et cotisations</h3><p>Cotisation mensuelle d\'une association, collecte pour un cadeau ou un événement commun.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-heart"></i></span><h3>Couples</h3><p>Gérez facilement les dépenses partagées et les prises en charge partielles.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-buildings"></i></span><h3>Colocations</h3><p>Suivez les dépenses du quotidien et répartissez les coûts équitablement.</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-airplane-tilt"></i></span><h3>Voyages entre amis</h3><p>Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-house-line"></i></span><h3>' + L.uc1Title + '</h3><p>' + L.uc1Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-gift"></i></span><h3>' + L.uc2Title + '</h3><p>' + L.uc2Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-flower-lotus"></i></span><h3>' + L.uc3Title + '</h3><p>' + L.uc3Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(196,67,42,.14);color:#C4432A"><i class="ph-bold ph-hand-coins"></i></span><h3>' + L.uc4Title + '</h3><p>' + L.uc4Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-heart"></i></span><h3>' + L.uc5Title + '</h3><p>' + L.uc5Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-buildings"></i></span><h3>' + L.uc6Title + '</h3><p>' + L.uc6Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-airplane-tilt"></i></span><h3>' + L.uc7Title + '</h3><p>' + L.uc7Body + '</p></div>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-demo">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Démonstration</span>' +
-      '<h2>Voyez Rohy en action</h2>' +
-      '<p>Créez un groupe, ajoutez vos dépenses, et laissez Rohy calculer automatiquement les remboursements.</p>' +
+      '<span class="ldg-eyebrow">' + L.demoEyebrow + '</span>' +
+      '<h2>' + L.demoH2 + '</h2>' +
+      '<p>' + L.demoP + '</p>' +
       '</div>' +
       '<div class="ldg-laptop" style="max-width:720px;margin:0 auto">' +
       '<div class="ldg-browser"><div class="ldg-browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">rohy-app.com</span></div>' +
-      '<img src="assets/landing/06-group-detail-desktop.png" alt="Détail d\'un groupe Rohy, montrant le tableau payé/part/solde et les suggestions de règlement."></div>' +
+      '<img src="assets/landing/06-group-detail-desktop.png" alt="' + escapeHtml(L.demoAlt) + '"></div>' +
       '<div class="ldg-laptop-base"></div>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-features">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Fonctionnalités principales</span>' +
-      '<h2>Tout ce qu\'il faut, rien de superflu</h2>' +
+      '<span class="ldg-eyebrow">' + L.featuresEyebrow + '</span>' +
+      '<h2>' + L.featuresH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-feat-rows">' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-users-three"></i><div><h3>Gestion des groupes</h3><p>Créez autant de groupes que nécessaire.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-percent"></i><div><h3>Répartition flexible</h3><p>Parts, demi-parts et contributions personnalisées.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-target"></i><div><h3>Dépenses ciblées</h3><p>Sélectionnez précisément les participants concernés.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-clock-counter-clockwise"></i><div><h3>Historique complet</h3><p>Retrouvez toutes les dépenses et remboursements.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-camera"></i><div><h3>Scan intelligent des tickets</h3><p>Ajoutez rapidement vos dépenses à partir d\'une photo.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-check-circle"></i><div><h3>Suivi des remboursements</h3><p>Gardez une vue claire des règlements effectués.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-link"></i><div><h3>Lien d\'invitation</h3><p>Invitez sans obliger vos proches à créer un compte.</p></div></div>' +
-      '<div class="ldg-feat-row"><i class="ph-bold ph-coins"></i><div><h3>Devises et mobile money africains</h3><p>Ariary, francs CFA, Mvola, Orange Money, Airtel Money.</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-users-three"></i><div><h3>' + L.feat1Title + '</h3><p>' + L.feat1Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-percent"></i><div><h3>' + L.feat2Title + '</h3><p>' + L.feat2Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-target"></i><div><h3>' + L.feat3Title + '</h3><p>' + L.feat3Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-clock-counter-clockwise"></i><div><h3>' + L.feat4Title + '</h3><p>' + L.feat4Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-camera"></i><div><h3>' + L.feat5Title + '</h3><p>' + L.feat5Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-check-circle"></i><div><h3>' + L.feat6Title + '</h3><p>' + L.feat6Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-link"></i><div><h3>' + L.feat7Title + '</h3><p>' + L.feat7Body + '</p></div></div>' +
+      '<div class="ldg-feat-row"><i class="ph-bold ph-coins"></i><div><h3>' + L.feat8Title + '</h3><p>' + L.feat8Body + '</p></div></div>' +
       '</div>' +
       '<div class="ldg-section-head" style="margin-top:48px">' +
-      '<span class="ldg-eyebrow">Comparatif fonctionnel</span>' +
-      '<h2>Pensé pour les situations du quotidien</h2>' +
+      '<span class="ldg-eyebrow">' + L.compareEyebrow + '</span>' +
+      '<h2>' + L.compareH2 + '</h2>' +
       '</div>' +
       '<table class="ldg-compare">' +
-      '<thead><tr><th></th><th>Rohy</th><th>Concurrents</th></tr></thead>' +
+      '<thead><tr><th></th><th>' + L.compareColRohy + '</th><th>' + L.compareColOthers + '</th></tr></thead>' +
       '<tbody>' +
-      '<tr><td>Répartition classique</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
-      '<tr><td>Demi-parts</td><td class="yes">✓</td><td class="no">Rare</td></tr>' +
-      '<tr><td>Enfants et personnes à charge</td><td class="yes">✓</td><td class="no">Rare</td></tr>' +
-      '<tr><td>Contributions personnalisées</td><td class="yes">✓</td><td class="no">Limité</td></tr>' +
-      '<tr><td>Dépenses ciblées</td><td class="yes">✓</td><td class="no">Limité</td></tr>' +
-      '<tr><td>Suivi des remboursements</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
+      '<tr><td>' + L.compareRow1 + '</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
+      '<tr><td>' + L.compareRow2 + '</td><td class="yes">✓</td><td class="no">' + L.compareRare + '</td></tr>' +
+      '<tr><td>' + L.compareRow3 + '</td><td class="yes">✓</td><td class="no">' + L.compareRare + '</td></tr>' +
+      '<tr><td>' + L.compareRow4 + '</td><td class="yes">✓</td><td class="no">' + L.compareLimited + '</td></tr>' +
+      '<tr><td>' + L.compareRow5 + '</td><td class="yes">✓</td><td class="no">' + L.compareLimited + '</td></tr>' +
+      '<tr><td>' + L.compareRow6 + '</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
       '</tbody>' +
       '</table>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-avis">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Témoignages</span>' +
-      '<h2>Ils utilisent déjà Rohy pour leurs dépenses de groupe</h2>' +
+      '<span class="ldg-eyebrow">' + L.testimonialsEyebrow + '</span>' +
+      '<h2>' + L.testimonialsH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-testimonials">' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Pour la première fois, nous avons pu gérer facilement les dépenses du groupe sans passer des heures à refaire les calculs. »</p><div class="ldg-testimonial-author"><span class="ldg-avatar">T</span><div><div class="ldg-testimonial-name">Tiana</div><div class="ldg-testimonial-meta">Week-end à Mahambo, 8 participants</div></div></div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« La gestion des demi-parts pour les enfants nous a énormément simplifié la vie. »</p><div class="ldg-testimonial-author"><span class="ldg-avatar" style="background:#D6247A">R</span><div><div class="ldg-testimonial-name">Ravaka</div><div class="ldg-testimonial-meta">Voyage à Nosy Be, 6 adultes et 2 enfants</div></div></div></div>' +
-      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« Tout le monde sait exactement ce qu\'il doit. Plus de discussions interminables à la fin du mois. »</p><div class="ldg-testimonial-author"><span class="ldg-avatar" style="background:#8a6a30">D</span><div><div class="ldg-testimonial-name">Dina</div><div class="ldg-testimonial-meta">Colocation à Antananarivo, 4 colocataires</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« ' + L.t1Quote + ' »</p><div class="ldg-testimonial-author"><span class="ldg-avatar">T</span><div><div class="ldg-testimonial-name">Tiana</div><div class="ldg-testimonial-meta">' + L.t1Meta + '</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« ' + L.t2Quote + ' »</p><div class="ldg-testimonial-author"><span class="ldg-avatar" style="background:#D6247A">R</span><div><div class="ldg-testimonial-name">Ravaka</div><div class="ldg-testimonial-meta">' + L.t2Meta + '</div></div></div></div>' +
+      '<div class="ldg-testimonial"><i class="ph-bold ph-quotes"></i><p class="quote">« ' + L.t3Quote + ' »</p><div class="ldg-testimonial-author"><span class="ldg-avatar" style="background:#8a6a30">D</span><div><div class="ldg-testimonial-name">Dina</div><div class="ldg-testimonial-meta">' + L.t3Meta + '</div></div></div></div>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-faq">' +
       '<div class="ldg-section-head">' +
-      '<span class="ldg-eyebrow">Questions fréquentes</span>' +
-      '<h2>Tout ce qu\'il faut savoir avant de commencer</h2>' +
+      '<span class="ldg-eyebrow">' + L.faqEyebrow + '</span>' +
+      '<h2>' + L.faqH2 + '</h2>' +
       '</div>' +
       '<div class="ldg-faq-list">' +
-      '<details class="ldg-faq-item"><summary>Rohy est-il gratuit ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Vous pouvez créer des groupes et gérer vos dépenses gratuitement.</p></details>' +
-      '<details class="ldg-faq-item"><summary>Dois-je installer une application ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Non. Rohy fonctionne directement depuis votre navigateur.</p></details>' +
-      '<details class="ldg-faq-item"><summary>Puis-je l\'utiliser sur mobile ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Rohy est optimisé pour les smartphones, tablettes et ordinateurs.</p></details>' +
-      '<details class="ldg-faq-item"><summary>Puis-je gérer des demi-parts ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Rohy a été conçu pour gérer les contributions inégales, les enfants et les personnes à charge.</p></details>' +
-      '<details class="ldg-faq-item"><summary>Mes données sont-elles sécurisées ?<i class="ph-bold ph-caret-down caret"></i></summary><p>Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu\'aux membres de vos groupes.</p></details>' +
+      '<details class="ldg-faq-item"><summary>' + L.faq1Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq1A + '</p></details>' +
+      '<details class="ldg-faq-item"><summary>' + L.faq2Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq2A + '</p></details>' +
+      '<details class="ldg-faq-item"><summary>' + L.faq3Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq3A + '</p></details>' +
+      '<details class="ldg-faq-item"><summary>' + L.faq4Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq4A + '</p></details>' +
+      '<details class="ldg-faq-item"><summary>' + L.faq5Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq5A + '</p></details>' +
       '</div>' +
       '</section>' +
 
       '<section class="ldg-section ldg-meaning" id="ldg-sens">' +
       '<div class="ldg-meaning-inner">' +
-      '<span class="ldg-eyebrow">Le sens de Rohy</span>' +
-      '<p class="ldg-meaning-line">Rohy signifie <strong>« lien »</strong> en malgache.</p>' +
-      '<p class="ldg-meaning-line">Parce qu\'au-delà des dépenses, ce sont les liens entre les personnes qui comptent.</p>' +
-      '<p class="ldg-meaning-closing">Les comptes s\'équilibrent. Les liens restent.</p>' +
+      '<span class="ldg-eyebrow">' + L.meaningEyebrow + '</span>' +
+      '<p class="ldg-meaning-line">' + L.meaningLine1Pre + '<strong>' + L.meaningLine1Strong + '</strong>' + L.meaningLine1Post + '</p>' +
+      '<p class="ldg-meaning-line">' + L.meaningLine2 + '</p>' +
+      '<p class="ldg-meaning-closing">' + L.meaningClosing + '</p>' +
       '</div>' +
       '</section>' +
 
       '<div class="ldg-final">' +
-      '<h2>Prêt à simplifier vos dépenses de groupe ?</h2>' +
-      '<p>Créez votre premier groupe gratuitement et laissez Rohy faire les calculs à votre place.</p>' +
+      '<h2>' + L.finalH2 + '</h2>' +
+      '<p>' + L.finalP + '</p>' +
       '<div class="ldg-ctas">' +
-      (showCtas ? '<button class="btn-primary pressable" data-action="' + ctaAction + '">' + (state.loggedIn ? ctaLabel : '🚀 Commencer gratuitement') + '</button>' : '') +
+      (showCtas ? '<button class="btn-primary pressable" data-action="' + ctaAction + '">' + (state.loggedIn ? ctaLabel : L.ctaFinal) + '</button>' : '') +
       '</div>' +
       '</div>' +
 
@@ -3037,18 +3215,18 @@
       '<div class="about-logo" style="margin-bottom:8px">' + logoMark(24, '#0F8F6B', '#084b38') + '</div>' +
       '<div class="about-name" style="font-size:17px">Rohy</div>' +
       '</div>' +
-      '<p>Suivi de dépenses partagées entre amis, colocataires ou en famille, pensé pour les foyers, pas seulement pour diviser par deux.</p>' +
+      '<p>' + L.footerTagline + '</p>' +
       '</div>' +
       '<div class="ldg-footer-links">' +
-      '<div class="ldg-footer-col"><h4>Découvrir</h4><a href="#ldg-probleme">Le problème</a><a href="#ldg-difference">Pourquoi Rohy est différent</a><a href="#ldg-comment">Comment ça marche</a><a href="#ldg-usecases">Cas d\'usage</a></div>' +
-      '<div class="ldg-footer-col"><h4>En savoir plus</h4><a href="#ldg-avis">Témoignages</a><a href="#ldg-faq">FAQ</a></div>' +
+      '<div class="ldg-footer-col"><h4>' + L.footerCol1 + '</h4><a href="#ldg-probleme">' + L.footerLinkProblem + '</a><a href="#ldg-difference">' + L.footerLinkDifference + '</a><a href="#ldg-comment">' + L.footerLinkHow + '</a><a href="#ldg-usecases">' + L.footerLinkUsecases + '</a></div>' +
+      '<div class="ldg-footer-col"><h4>' + L.footerCol2 + '</h4><a href="#ldg-avis">' + L.footerLinkTestimonials + '</a><a href="#ldg-faq">' + L.footerLinkFaq + '</a></div>' +
       (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4>' + (state.loggedIn ?
-        '<button type="button" data-action="enterApp">Ouvrir l\'app</button>' :
-        '<button type="button" data-action="ctaSignupFromAbout">Créer un compte</button><button type="button" data-action="openLoginForm">Connexion</button>') + '</div>' : '') +
+        '<button type="button" data-action="enterApp">' + L.navOpenApp.replace('🚀 ', '') + '</button>' :
+        '<button type="button" data-action="ctaSignupFromAbout">' + L.footerBtnSignup + '</button><button type="button" data-action="openLoginForm">' + L.footerBtnLogin + '</button>') + '</div>' : '') +
       '</div>' +
       '</div>' +
       '<div class="ldg-footer-bottom">' +
-      '<span>© 2026 Rohy, « lien » en malgache.</span>' +
+      '<span>' + L.footerBottom + '</span>' +
       '</div>' +
       '</footer>' +
 
@@ -3665,6 +3843,7 @@
         case 'goHistory': goHistory(); break;
         case 'goBack': goBack(); break;
         case 'toggleTheme': toggleTheme(); break;
+        case 'toggleLandingLang': toggleLandingLang(); break;
         case 'openPerson': openPerson(id); break;
         case 'openGroup': openGroup(id); break;
         case 'remind': openReminderConfirm(id, groupId || null); break;
@@ -3904,7 +4083,7 @@
         // defaultState() l'effacerait et l'écran resterait bloqué sur
         // "Chargement du lien d'invitation…" indéfiniment.
         state = Object.assign({}, defaultState(), {
-          theme: theme, showSplash: wasLoggedIn ? false : state.showSplash,
+          theme: theme, landingLang: state.landingLang, showSplash: wasLoggedIn ? false : state.showSplash,
           joinPreview: state.joinPreview, joinNameInput: state.joinNameInput,
           joinError: state.joinError, joinSubmitting: state.joinSubmitting,
         });
