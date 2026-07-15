@@ -14,6 +14,13 @@
   var calc = window.RohyCalc;
   var seed = window.RohyData;
   var sb = window.supabaseClient;
+  // URL publique fixe plutôt que window.location.origin/pathname : dans le
+  // shell natif Capacitor, l'origine de la webview est capacitor://localhost
+  // (iOS) ou https://localhost (Android), inutilisable comme cible d'un
+  // lien envoyé par e-mail (magic link, réinitialisation de mot de passe)
+  // ou partagé (lien d'invitation à un groupe) — équivalent à
+  // window.location.origin + window.location.pathname sur le web déployé.
+  var APP_URL = 'https://rohy-app.com/';
   var THEME_KEY = 'rohy-theme';
   var UPGRADE_NUDGE_DISMISSED_KEY = 'rohy-upgrade-nudge-dismissed';
   var FEEDBACK_LAST_SHOWN_KEY = 'rohy-feedback-last-shown';
@@ -811,7 +818,7 @@
     setState({ loginError: null });
     sb.auth.signInWithOtp({
       email: f.email.trim(),
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+      options: { emailRedirectTo: APP_URL },
     }).then(function (res) {
       if (res.error) { setState({ loginError: res.error.message }); return; }
       setState({ magicSent: true });
@@ -823,7 +830,7 @@
     if (!f.email.trim() || f.email.indexOf('@') === -1) { setState({ loginError: 'Entre un e-mail valide.' }); return; }
     setState({ loginError: null });
     sb.auth.resetPasswordForEmail(f.email.trim(), {
-      redirectTo: window.location.origin + window.location.pathname,
+      redirectTo: APP_URL,
     }).then(function (res) {
       if (res.error) { setState({ loginError: res.error.message }); return; }
       setState({ resetSent: true });
@@ -1586,7 +1593,7 @@
   function copyShareLink() {
     var g = group(state.shareLinkGroupId);
     if (!g || !g.shareToken) return;
-    var url = window.location.origin + window.location.pathname + '?join=' + g.shareToken;
+    var url = APP_URL + '?join=' + g.shareToken;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(function () { showToast('Lien copié'); }).catch(function () { showToast("Impossible de copier — sélectionne et copie-le manuellement."); });
     } else {
@@ -3370,7 +3377,7 @@
   function renderShareLinkModal() {
     var g = group(state.shareLinkGroupId);
     if (!g) return '';
-    var url = g.shareToken ? (window.location.origin + window.location.pathname + '?join=' + g.shareToken) : '';
+    var url = g.shareToken ? (APP_URL + '?join=' + g.shareToken) : '';
     return (
       '<div class="modal-overlay center" data-action="closeModal">' +
       '<div class="modal-card" data-stop-click>' +

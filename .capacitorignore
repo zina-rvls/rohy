@@ -1,0 +1,12 @@
+node_modules
+.git
+ios
+android
+supabase
+tests
+package.json
+package-lock.json
+capacitor.config.json
+.capacitorignore
+README.md
+CNAME

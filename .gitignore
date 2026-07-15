@@ -1,0 +1,19 @@
+node_modules/
+
+# Généré par `npm run build:www` à partir des fichiers web à la racine —
+# jamais la source de vérité, inutile à committer (cf. tools/build-www.js).
+www/
+
+# Android (Gradle)
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/*.iml
+android/.idea/
+
+# iOS (Xcode)
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/DerivedData/
+ios/App/Pods/
