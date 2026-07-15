@@ -190,6 +190,7 @@
       showAddMemberForm: false,
       addingMember: false,
       households: [],
+      currencyRates: {},
       newHouseholdName: '',
       addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre', splitMode: 'default', splitValues: {} },
@@ -260,6 +261,14 @@
     var sign = n < 0 ? '-' : '';
     var v = Math.abs(n).toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
     return sign + v + ' ' + currencySymbolFor(currencyCode);
+  }
+  // Montant d'une dépense pour l'affichage : montant converti dans la
+  // devise du groupe, plus le montant d'origine entre parenthèses si la
+  // dépense a été payée dans une devise différente (cf. migration 0019).
+  function expenseAmountLabel(e, groupCurrency) {
+    var main = escapeHtml(fmtIn(e.amount, groupCurrency));
+    if (!e.originalCurrency) return main;
+    return main + '<div class="expense-amount-original">' + escapeHtml(fmtIn(e.originalAmount, e.originalCurrency)) + '</div>';
   }
   // Marque Rohy (motif tissé) — géométrie fixe (10 rectangles arrondis sur
   // un viewBox 100x100), reprise telle quelle de la brand sheet. Fill/stroke
@@ -375,6 +384,7 @@
       var st = statuses[e.id];
       return [
         fmtDate(e.date), e.label, cat ? cat.label : 'Autre', e.amount,
+        e.originalCurrency ? (e.originalAmount + ' ' + e.originalCurrency + ' (taux ' + e.exchangeRate + ')') : '',
         person(e.paidBy).name,
         e.participants.map(function (pid) { return person(pid).name; }).join(', '),
         st ? st.status : '',
@@ -389,7 +399,7 @@
 
     return {
       group: g,
-      expenses: { header: ['Date', 'Libellé', 'Catégorie', 'Montant (' + g.currency + ')', 'Payé par', 'Participants', 'Statut'], rows: expenseRows },
+      expenses: { header: ['Date', 'Libellé', 'Catégorie', 'Montant (' + g.currency + ')', 'Devise d\'origine', 'Payé par', 'Participants', 'Statut'], rows: expenseRows },
       balances: { header: ['Personne', 'Solde net (' + g.currency + ')'], rows: balanceRows },
       settlements: { header: ['De', 'Vers', 'Montant (' + g.currency + ')'], rows: settlementRows },
     };
@@ -561,12 +571,13 @@
       sb.from('payments').select('*'),
       sb.from('reminders').select('*'),
       sb.from('households').select('*'),
+      sb.from('group_currency_rates').select('*'),
     ]).then(function (results) {
       var err = firstErrorOf(results);
       if (err) throw err;
       var profileRows = results[0].data, groupRows = results[1].data, memberRows = results[2].data,
         expenseRows = results[3].data, participantRows = results[4].data, paymentRows = results[5].data,
-        reminderRows = results[6].data, householdRows = results[7].data;
+        reminderRows = results[6].data, householdRows = results[7].data, currencyRateRows = results[8].data;
 
       var people = profileRows.map(function (p) {
         return {
@@ -585,8 +596,14 @@
         return {
           id: g.id, name: g.name, icon: g.icon, currency: g.currency, adminId: g.admin_id,
           shareToken: g.share_token || null,
+          freezeCurrencyRates: !!g.freeze_currency_rates,
           memberIds: memberRows.filter(function (m) { return m.group_id === g.id; }).map(function (m) { return m.user_id; }),
         };
+      });
+      var currencyRates = {};
+      currencyRateRows.forEach(function (r) {
+        if (!currencyRates[r.group_id]) currencyRates[r.group_id] = {};
+        currencyRates[r.group_id][r.currency] = Number(r.rate);
       });
       var expenses = expenseRows.map(function (e) {
         var parts = participantRows.filter(function (p) { return p.expense_id === e.id; });
@@ -602,6 +619,9 @@
           paidBy: e.paid_by, date: e.expense_date, participants: parts.map(function (p) { return p.user_id; }), overrides: overrides,
           splitMode: e.split_mode || 'default', splitValues: splitValues,
           receiptPath: e.receipt_path || null,
+          originalCurrency: e.original_currency || null,
+          originalAmount: e.original_amount != null ? Number(e.original_amount) : null,
+          exchangeRate: e.exchange_rate != null ? Number(e.exchange_rate) : null,
         };
       });
       var payments = paymentRows.map(function (p) {
@@ -614,7 +634,7 @@
         return { id: r.id, fromPersonId: r.from_user, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message, groupId: r.group_id || undefined };
       });
 
-      setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, households: households, dataLoading: false });
+      setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, households: households, currencyRates: currencyRates, dataLoading: false });
     }).catch(function (err) {
       setState({ dataLoading: false });
       showToast('Erreur de chargement : ' + (err && err.message ? err.message : 'inconnue'));
@@ -1045,6 +1065,7 @@
         participantIds: g.memberIds.slice(), overrides: overrides, fullyPaid: true, paidExternal: '', category: 'autre',
         splitMode: 'default', splitValues: {},
         receiptPath: null, receiptFile: null, receiptRemove: false, scanning: false, scanError: null,
+        currency: g.currency, foreignAmount: '', exchangeRate: '', rateLoading: false, rateError: null, freezeRates: !!g.freezeCurrencyRates,
       },
     });
   }
@@ -1059,6 +1080,7 @@
   function openEditExpense(expenseId) {
     var e = state.expenses.find(function (x) { return x.id === expenseId; });
     if (!e) return;
+    var g = group(e.groupId);
     var fullyPaid = (e.paidExternal != null ? e.paidExternal : e.amount) >= e.amount - 0.005;
     var splitValues = {};
     Object.keys(e.splitValues || {}).forEach(function (pid) { splitValues[pid] = String(e.splitValues[pid]).replace('.', ','); });
@@ -1072,6 +1094,13 @@
         category: categoryForIcon(e.icon),
         splitMode: e.splitMode || 'default', splitValues: splitValues,
         receiptPath: e.receiptPath || null, receiptFile: null, receiptRemove: false, scanning: false, scanError: null,
+        // Modifier une dépense déjà convertie réaffiche le taux réellement
+        // utilisé à l'époque (cf. migration 0019) plutôt que d'aller
+        // rechercher un nouveau taux du jour — l'historique ne doit pas
+        // bouger tant que la devise/le montant d'origine ne changent pas.
+        currency: e.originalCurrency || (g && g.currency), foreignAmount: e.originalAmount != null ? String(e.originalAmount).replace('.', ',') : '',
+        exchangeRate: e.exchangeRate != null ? String(e.exchangeRate).replace('.', ',') : '',
+        rateLoading: false, rateError: null, freezeRates: !!(g && g.freezeCurrencyRates),
       },
     });
   }
@@ -1092,6 +1121,104 @@
       loadAppData().then(function () { showToast('Marqué comme réglé en totalité'); });
     });
   }
+  // ---------- Conversion de devise par dépense ----------
+  // API gratuite, sans clé, sans limite de débit, servie depuis jsdelivr —
+  // déjà un CDN de confiance ici (supabase-js/exceljs/jspdf y sont chargés
+  // dans index.html) — donc aucune nouvelle dépendance à faire approuver.
+  // https://github.com/fawazahmed0/exchange-api
+  function fetchLiveExchangeRate(fromCode, toCode) {
+    var from = fromCode.toLowerCase(), to = toCode.toLowerCase();
+    var url = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/' + from + '.json';
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, 6000) : null;
+    return fetch(url, controller ? { signal: controller.signal } : {}).then(function (res) {
+      if (timer) clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (data) {
+      var rate = data && data[from] ? data[from][to] : null;
+      if (!rate || !isFinite(rate) || rate <= 0) throw new Error('Devise non supportée');
+      return rate;
+    }).catch(function () {
+      if (timer) clearTimeout(timer);
+      // Échec silencieux : l'appelant retombe sur le dernier taux connu du
+      // groupe, ou laisse le champ vide pour une saisie manuelle (cf.
+      // selectExpenseCurrency/refreshExchangeRate) — jamais bloquant pour
+      // la suite du formulaire.
+      return null;
+    });
+  }
+  // Recalcule le montant en devise du groupe (f.amount, ce que consomme
+  // calc.js sans le savoir) à partir du montant payé dans la devise
+  // d'origine et du taux — appelé à chaque frappe dans l'un ou l'autre champ
+  // pour garder les deux synchronisés en continu.
+  function recomputeConvertedAmount(form) {
+    var fa = parseFloat((form.foreignAmount || '').replace(',', '.'));
+    var rate = parseFloat((form.exchangeRate || '').replace(',', '.'));
+    if (!isNaN(fa) && !isNaN(rate) && fa > 0 && rate > 0) {
+      return Object.assign({}, form, { amount: String(Math.round(fa * rate * 100) / 100).replace('.', ',') });
+    }
+    return form;
+  }
+  function applyFetchedRate(rate, rateError) {
+    setState(function (s) {
+      var form = Object.assign({}, s.form, { exchangeRate: String(rate).replace('.', ','), rateLoading: false, rateError: rateError || null });
+      return { form: recomputeConvertedAmount(form) };
+    });
+  }
+  function selectExpenseCurrency(code) {
+    var g = group(state.form.groupId);
+    var groupCur = g && g.currency;
+    if (!g || code === groupCur) {
+      setState(function (s) { return { form: Object.assign({}, s.form, { currency: code, foreignAmount: '', exchangeRate: '', rateError: null, rateLoading: false }) }; });
+      return;
+    }
+    var stored = (state.currencyRates[g.id] || {})[code];
+    var useStored = g.freezeCurrencyRates && stored;
+    setState(function (s) { return { form: Object.assign({}, s.form, { currency: code, rateError: null, rateLoading: !useStored }) }; });
+    if (useStored) { applyFetchedRate(stored); return; }
+    var groupId = g.id;
+    fetchLiveExchangeRate(code, groupCur).then(function (rate) {
+      // Le groupe/la devise a pu changer pendant l'attente réseau — on
+      // ignore alors ce résultat devenu obsolète plutôt que d'écraser un
+      // champ qui ne correspond plus à la sélection actuelle.
+      if (state.form.groupId !== groupId || state.form.currency !== code) return;
+      if (rate) { applyFetchedRate(rate); }
+      else if (stored) { applyFetchedRate(stored, 'Taux du jour indisponible — dernier taux connu repris, modifiable.'); }
+      else { setState(function (s) { return { form: Object.assign({}, s.form, { rateLoading: false, rateError: 'Taux automatique indisponible — saisis-le manuellement.' }) }; }); }
+    });
+  }
+  function refreshExchangeRate() {
+    var f = state.form;
+    var g = group(f.groupId);
+    if (!g || f.currency === g.currency) return;
+    setState(function (s) { return { form: Object.assign({}, s.form, { rateLoading: true, rateError: null }) }; });
+    var groupId = g.id, code = f.currency;
+    fetchLiveExchangeRate(code, g.currency).then(function (rate) {
+      if (state.form.groupId !== groupId || state.form.currency !== code) return;
+      if (rate) { applyFetchedRate(rate); }
+      else { setState(function (s) { return { form: Object.assign({}, s.form, { rateLoading: false, rateError: 'Taux du jour indisponible.' }) }; }); }
+    });
+  }
+  function toggleFreezeCurrencyRates() {
+    var g = group(state.form.groupId);
+    if (!g) return;
+    var next = !g.freezeCurrencyRates;
+    sb.from('groups').update({ freeze_currency_rates: next }).eq('id', g.id).then(function (res) {
+      if (res.error) { showToast('Erreur : ' + res.error.message); return; }
+      setState(function (s) {
+        var groups = s.groups.map(function (gg) { return gg.id === g.id ? Object.assign({}, gg, { freezeCurrencyRates: next }) : gg; });
+        return { groups: groups, form: Object.assign({}, s.form, { freezeRates: next }) };
+      });
+    });
+  }
+  // setState (pas silencieux) : contrairement aux autres champs texte de ce
+  // formulaire, l'aperçu "≈ montant converti" affiché juste en dessous doit
+  // suivre chaque frappe — même compromis déjà fait pour setSplitValue (le
+  // reste à répartir affiché en direct).
+  function setForeignAmount(v) { setState(function (s) { return { form: recomputeConvertedAmount(Object.assign({}, s.form, { foreignAmount: v })) }; }); }
+  function setExchangeRate(v) { setState(function (s) { return { form: recomputeConvertedAmount(Object.assign({}, s.form, { exchangeRate: v })) }; }); }
+
   function toggleFullyPaid() { setState(function (s) { return { form: Object.assign({}, s.form, { fullyPaid: !s.form.fullyPaid }) }; }); }
   function setPaidExternal(v) { setStateSilent(function (s) { return { form: Object.assign({}, s.form, { paidExternal: v }) }; }); }
   function setLabel(v) { setStateSilent(function (s) { return { form: Object.assign({}, s.form, { label: v }) }; }); }
@@ -1106,7 +1233,18 @@
     // (montants/pourcentages/parts) saisie pour l'ancien groupe n'a plus de
     // sens, on repart du mode par défaut plutôt que de garder des valeurs
     // orphelines.
-    setState(function (s) { return { form: Object.assign({}, s.form, { groupId: groupId, participantIds: g.memberIds.slice(), overrides: overrides, splitMode: 'default', splitValues: {} }) }; });
+    setState(function (s) {
+      return {
+        form: Object.assign({}, s.form, {
+          groupId: groupId, participantIds: g.memberIds.slice(), overrides: overrides, splitMode: 'default', splitValues: {},
+          // Un taux de change saisi pour l'ancien groupe n'a pas de raison de
+          // s'appliquer à un autre groupe (devise différente possible, taux
+          // gelé propre à chaque groupe) — on repart de la devise du
+          // nouveau groupe, comme à l'ouverture du formulaire.
+          currency: g.currency, foreignAmount: '', exchangeRate: '', rateError: null, rateLoading: false, freezeRates: !!g.freezeCurrencyRates,
+        }),
+      };
+    });
   }
   function selectPayer(pid) { setState(function (s) { return { form: Object.assign({}, s.form, { paidBy: pid }) }; }); }
   function toggleParticipant(pid) {
@@ -1273,12 +1411,22 @@
 
   function submitExpense() {
     var f = state.form;
-    var amt = parseFloat((f.amount || '').replace(',', '.'));
+    var g = group(f.groupId);
+    var isForeign = !!(g && f.currency && f.currency !== g.currency);
+    var originalAmount = null, exchangeRateVal = null, amt;
+    if (isForeign) {
+      originalAmount = parseFloat((f.foreignAmount || '').replace(',', '.'));
+      exchangeRateVal = parseFloat((f.exchangeRate || '').replace(',', '.'));
+      if (!originalAmount || originalAmount <= 0) { setState({ formError: 'Montant payé invalide.' }); return; }
+      if (!exchangeRateVal || exchangeRateVal <= 0) { setState({ formError: 'Taux de change invalide.' }); return; }
+      amt = Math.round(originalAmount * exchangeRateVal * 100) / 100;
+    } else {
+      amt = parseFloat((f.amount || '').replace(',', '.'));
+    }
     if (!f.label.trim()) { setState({ formError: 'Ajoute une description.' }); return; }
     if (!amt || amt <= 0) { setState({ formError: 'Montant invalide.' }); return; }
     if (!f.date) { setState({ formError: 'Choisis une date.' }); return; }
     if (f.participantIds.length === 0) { setState({ formError: 'Sélectionne au moins un participant.' }); return; }
-    var g = group(f.groupId);
     var target = splitTarget(f);
     if (target && !target.ok) {
       var targetLabel = f.splitMode === 'percent' ? '100 %' : fmtIn(target.target, g && g.currency);
@@ -1303,13 +1451,30 @@
         return { expense_id: expenseId, user_id: pid, override_responsible_id: f.overrides[pid] || null, split_value: splitValueFor(pid) };
       });
     };
+    // Conserve le dernier taux utilisé pour cette devise dans ce groupe —
+    // sert de repli hors-ligne et de pré-remplissage la prochaine fois
+    // (immédiatement si "geler les taux" est actif, cf. selectExpenseCurrency).
+    // Best-effort, ne bloque jamais la sauvegarde de la dépense elle-même.
+    var cacheExchangeRate = function () {
+      if (!isForeign) return;
+      sb.from('group_currency_rates').upsert(
+        { group_id: f.groupId, currency: f.currency, rate: exchangeRateVal, updated_at: new Date().toISOString() },
+        { onConflict: 'group_id,currency' }
+      );
+    };
+    var currencyFields = {
+      original_currency: isForeign ? f.currency : null,
+      original_amount: isForeign ? originalAmount : null,
+      exchange_rate: isForeign ? exchangeRateVal : null,
+    };
 
     if (f.editingId) {
-      sb.from('expenses').update({
+      sb.from('expenses').update(Object.assign({
         group_id: f.groupId, label: f.label.trim(), icon: iconForCategory(f.category), amount: amt, paid_external: paidExternal, expense_date: f.date, paid_by: f.paidBy,
         split_mode: f.splitMode,
-      }).eq('id', f.editingId).then(function (res) {
+      }, currencyFields)).eq('id', f.editingId).then(function (res) {
         if (res.error) { setState({ formError: res.error.message }); return; }
+        cacheExchangeRate();
         sb.from('expense_participants').delete().eq('expense_id', f.editingId).then(function () {
           sb.from('expense_participants').insert(participantRowsFor(f.editingId)).then(function (insRes) {
             if (insRes.error) { showToast('Erreur : ' + insRes.error.message); return; }
@@ -1325,11 +1490,12 @@
       return;
     }
 
-    sb.from('expenses').insert({
+    sb.from('expenses').insert(Object.assign({
       group_id: f.groupId, label: f.label.trim(), icon: iconForCategory(f.category), amount: amt, paid_external: paidExternal, paid_by: f.paidBy, expense_date: f.date,
       split_mode: f.splitMode,
-    }).select().single().then(function (res) {
+    }, currencyFields)).select().single().then(function (res) {
       if (res.error) { setState({ formError: res.error.message }); return; }
+      cacheExchangeRate();
       sb.from('expense_participants').insert(participantRowsFor(res.data.id)).then(function (insRes) {
         if (insRes.error) { showToast('Erreur : ' + insRes.error.message); return; }
         persistReceiptChange(res.data.id, f.groupId).then(function (recRes) {
@@ -2827,7 +2993,7 @@
           '<div style="flex:1;min-width:0">' +
           '<div class="expense-label">' + escapeHtml(e.label) + (e.receiptPath ? ' <i class="ph-bold ph-paperclip" style="font-size:12px;color:var(--text-tertiary)"></i>' : '') + '</div>' +
           '<div class="expense-subtitle">Payé par ' + escapeHtml(person(e.paidBy).name) + ' · ' + fmtDate(e.date) + ' · ' + e.participants.length + ' pers.</div>' +
-          '</div><div class="expense-amount">' + fmtIn(e.amount, g.currency) + '</div></div>'
+          '</div><div class="expense-amount">' + expenseAmountLabel(e, g.currency) + '</div></div>'
         );
       }).join('');
 
@@ -2951,7 +3117,7 @@
           '<div class="due-external">acompte versé ' + fmtIn(paidExternal, cur) + ' · reste ' + fmtIn(dueExternal, cur) + ' à verser au bailleur</div>' +
           '<button class="mark-paid-link" data-action="markPaidFull" data-id="' + e.id + '">Marquer réglé en totalité →</button>' : '') +
         '</div>' +
-        '<div class="expense-amount">' + fmtIn(e.amount, cur) + '</div>' +
+        '<div class="expense-amount">' + expenseAmountLabel(e, cur) + '</div>' +
         '</div>'
       );
     }).join('');
@@ -3515,6 +3681,42 @@
     );
   }
 
+  // Devise + montant d'une dépense : soit le simple champ "Montant"
+  // habituel (devise du groupe, inchangé), soit — si une devise différente
+  // est choisie — le montant réellement payé dans cette devise, le taux de
+  // change (pré-rempli, toujours modifiable), le montant converti en aperçu,
+  // et l'option pour geler ce taux pour tout le groupe (cf. migration 0019).
+  function renderExpenseCurrencyFields(f, currentGroup) {
+    var groupCur = currentGroup && currentGroup.currency;
+    var currencyPicker =
+      '<div class="field-label">Devise de la dépense</div>' +
+      '<select class="text-input select-native" data-bind-change="expenseCurrency">' + currencyOptionsHtml(f.currency || groupCur) + '</select>';
+    var isForeignCur = !!(groupCur && f.currency && f.currency !== groupCur);
+    if (!isForeignCur) {
+      return (
+        currencyPicker +
+        '<div class="field-label">Montant (' + currencySymbolFor(groupCur) + ')</div>' +
+        '<input class="text-input" data-bind="expenseAmount" placeholder="0,00" inputmode="decimal" value="' + escapeHtml(f.amount) + '" />'
+      );
+    }
+    var convertedPreview = fmtIn(parseFloat((f.amount || '').replace(',', '.')) || 0, groupCur);
+    return (
+      currencyPicker +
+      '<div class="field-label">Montant payé (' + currencySymbolFor(f.currency) + ')</div>' +
+      '<input class="text-input" data-bind="expenseForeignAmount" placeholder="0,00" inputmode="decimal" value="' + escapeHtml(f.foreignAmount) + '" />' +
+      '<div class="field-label" style="display:flex;align-items:center;justify-content:space-between">' +
+      '<span>Taux (1 ' + f.currency + ' = ? ' + groupCur + ')</span>' +
+      '<span class="select-all-link pressable" data-action="refreshExchangeRate">' + (f.rateLoading ? 'Recherche...' : 'Actualiser') + '</span>' +
+      '</div>' +
+      '<input class="text-input" data-bind="expenseExchangeRate" placeholder="Ex : 4800" inputmode="decimal" value="' + escapeHtml(f.exchangeRate) + '" />' +
+      (f.rateError ? '<div class="form-error" style="margin-top:-8px">' + escapeHtml(f.rateError) + '</div>' : '') +
+      '<div style="font-size:12.5px;color:var(--text-tertiary);margin:6px 0 14px">≈ ' + convertedPreview + '</div>' +
+      '<div class="checkbox-row" style="border-top:none;margin-bottom:14px" data-action="toggleFreezeCurrencyRates">' +
+      '<div class="checkbox' + (f.freezeRates ? ' checked' : '') + '">' + (f.freezeRates ? '<i class="ph-bold ph-check"></i>' : '') + '</div>' +
+      '<div style="font-size:13px;color:var(--text-primary)">Garder ce taux pour toutes les dépenses de ce groupe en ' + escapeHtml(f.currency) + '</div></div>'
+    );
+  }
+
   function renderAddExpenseModal() {
     var f = state.form;
     var currentGroup = f.groupId ? group(f.groupId) : state.groups[0];
@@ -3577,8 +3779,7 @@
       '<div class="pill-row">' + seed.EXPENSE_CATEGORIES.map(function (c) {
         return '<div class="pill' + (f.category === c.id ? ' active' : '') + '" data-action="setCategory" data-id="' + c.id + '"><i class="' + c.icon + '" style="margin-right:5px"></i>' + escapeHtml(c.label) + '</div>';
       }).join('') + '</div>' +
-      '<div class="field-label">Montant (' + currencySymbolFor(currentGroup && currentGroup.currency) + ')</div>' +
-      '<input class="text-input" data-bind="expenseAmount" placeholder="0,00" inputmode="decimal" value="' + escapeHtml(f.amount) + '" />' +
+      renderExpenseCurrencyFields(f, currentGroup) +
       '<div class="field-label">Date</div>' +
       '<input class="text-input" type="date" data-bind="expenseDate" value="' + escapeHtml(f.date) + '" />' +
       '<div class="checkbox-row" style="border-top:none;margin-bottom:16px" data-action="toggleFullyPaid">' +
@@ -3935,6 +4136,8 @@
         case 'toggleParticipant': toggleParticipant(id); break;
         case 'toggleAllParticipants': toggleAllParticipants(); break;
         case 'toggleFullyPaid': toggleFullyPaid(); break;
+        case 'refreshExchangeRate': refreshExchangeRate(); break;
+        case 'toggleFreezeCurrencyRates': toggleFreezeCurrencyRates(); break;
         case 'setCategory': setCategory(id); break;
         case 'setSplitMode': setSplitMode(id); break;
         case 'submitExpense': submitExpense(); break;
@@ -3987,6 +4190,8 @@
         case 'newPassword': setNewPassword(v); break;
         case 'expenseLabel': setLabel(v); break;
         case 'expenseAmount': setAmount(v); break;
+        case 'expenseForeignAmount': setForeignAmount(v); break;
+        case 'expenseExchangeRate': setExchangeRate(v); break;
         case 'expenseDate': setDate(v); break;
         case 'paidExternal': setPaidExternal(v); break;
         case 'groupName': setGroupName(v); break;
@@ -4035,6 +4240,7 @@
         case 'memberEmail': setMemberEmail(id, el.value); break;
         case 'addMemberGuardian': setAddMemberGuardian(el.value); break;
         case 'groupCurrency': setGroupCurrency(el.value); break;
+        case 'expenseCurrency': selectExpenseCurrency(el.value); break;
         case 'expensesSort': setExpensesSort(el.value); break;
         case 'settlePaymentMethod': setSettlePaymentMethod(el.value); break;
         default: break;

@@ -117,6 +117,22 @@ node tests/calc.test.js
   qui en utilisent couramment au quotidien — la plupart des francs
   africains (FCFA, Ariary, franc guinéen, rwandais...) s'affichent donc
   sans décimales.
+- Une dépense peut être payée dans une devise différente de celle du groupe
+  (ex. billet d'avion payé en euros dans un groupe suivi en ariary, cf.
+  migration `0019_expense_currency_conversion.sql`) : `expenses.amount`
+  continue de représenter le montant dans la devise du groupe (aucun
+  changement pour `scripts/calc.js`) ; `original_currency`/`original_amount`/
+  `exchange_rate` ne sont que des métadonnées d'affichage et d'historique,
+  figées au moment de la dépense (jamais recalculées après coup, même si le
+  taux du jour ou le taux "gelé" du groupe changent ensuite). Le taux est
+  pré-rempli automatiquement via une API de change gratuite et sans clé
+  (`@fawazahmed0/currency-api`, servie depuis jsdelivr — déjà un CDN de
+  confiance ici), mais toujours modifiable, et retombe sur une saisie
+  manuelle si la requête échoue (hors ligne, devise non supportée...). Un
+  groupe peut activer "geler les taux de change" pour réutiliser le dernier
+  taux connu d'une devise plutôt que d'aller en rechercher un nouveau à
+  chaque dépense (table `group_currency_rates`, un taux par devise et par
+  groupe).
 - Dans le détail d'un groupe, les membres qui partagent un même foyer sont
   fusionnés en une seule ligne consolidée (payé/part/solde sommés, noms
   listés en sous-titre) plutôt que d'apparaître individuellement ; les

@@ -493,7 +493,8 @@ button { font-family: inherit; }
 .expense-icon { width: 34px; height: 34px; border-radius: 12px; background: var(--surface-overlay); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 15px; flex-shrink: 0; }
 .expense-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .expense-subtitle { font-size: 11.5px; color: var(--text-tertiary); }
-.expense-amount { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px; color: var(--text-primary); }
+.expense-amount { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px; color: var(--text-primary); text-align: right; }
+.expense-amount-original { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
 
 /* --- Person detail --- */
 .person-header { text-align: center; padding: 20px 0 6px; }

@@ -29,7 +29,8 @@ PUIS `0012_rebrand_profile_colors.sql`, PUIS
 `0014_payment_method_reference.sql`, PUIS
 `0015_cascade_delete_group_payments_reminders.sql`, PUIS
 `0016_group_share_link.sql`, PUIS
-`0017_fix_handle_new_user_regression.sql`, PUIS `0018_feedback.sql`
+`0017_fix_handle_new_user_regression.sql`, PUIS `0018_feedback.sql`, PUIS
+`0019_expense_currency_conversion.sql`
 (ou, avec la CLI Supabase installée : `supabase link --project-ref <ref>`
 puis `supabase db push`).
 
@@ -271,6 +272,15 @@ facultatif + contexte `'settle'`/`'menu'`) pour recueillir des avis in-app
 sans passer par un store (App Store/Play Store) — écriture seule pour les
 utilisateurs, lue uniquement via le dashboard Supabase (SQL/Table editor,
 accès `service_role`).
+
+`0019_expense_currency_conversion.sql` ajoute la conversion de devise par
+dépense : `expenses.original_currency`/`original_amount`/`exchange_rate`
+(métadonnées d'affichage et d'historique, `amount` reste dans la devise du
+groupe et alimente `scripts/calc.js` sans changement), `groups.freeze_currency_rates`
+(option pour réutiliser le dernier taux connu d'une devise plutôt que d'en
+rechercher un nouveau à chaque dépense), et la table `group_currency_rates`
+(un taux par devise et par groupe, RLS identique aux autres tables scopées
+par groupe).
 
 ## 6. Déployer la fonction de lecture de ticket (scan-receipt)
 
