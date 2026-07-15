@@ -134,6 +134,7 @@
       navStack: [],
       theme: loadTheme(),
       landingLang: loadLandingLang(),
+      showLandingMobileMenu: false,
       loggedIn: false,
       dataLoading: false,
       loginMode: 'password',
@@ -751,6 +752,13 @@
       return { landingLang: next };
     });
   }
+
+  // Menu ☰ de la nav mobile de la landing (cf. renderAboutFromLogin) : ne
+  // regroupe que "Connexion" — le CTA principal reste seul et fixe dans la
+  // barre (façon notion.com), le sélecteur de langue vit dans le pied de
+  // page plutôt qu'ici, pour ne pas reproduire l'encombrement d'origine.
+  function toggleLandingMobileMenu() { setState(function (s) { return { showLandingMobileMenu: !s.showLandingMobileMenu }; }); }
+  function closeLandingMobileMenu() { setState({ showLandingMobileMenu: false }); }
 
   // ---------- Auth ----------
   function toggleLoginMode() { setState(function (s) { return { loginMode: s.loginMode === 'password' ? 'magic' : 'password', loginError: null, magicSent: false }; }); }
@@ -2364,19 +2372,27 @@
     // rechargement) : plus besoin du bouton "Connexion", et le CTA principal
     // doit mener dans l'app plutôt qu'à l'inscription (cf. enterApp).
     var L = landingT();
-    var navActions = state.loggedIn ?
+    // Bouton "Connexion" rendu deux fois — une fois visible en ligne (nav
+    // desktop), une fois dans le menu ☰ (nav mobile, cf. CSS qui bascule
+    // l'affichage de l'un ou l'autre selon la largeur) — plutôt qu'une seule
+    // version déplacée en JS selon la taille d'écran.
+    var loginBtn = '<button class="btn-outline pressable ldg-nav-login-inline" data-action="openLoginForm">' + L.navLogin + '</button>';
+    var ctaBtn = state.loggedIn ?
       '<button class="btn-primary pressable" data-action="enterApp">' + L.navOpenApp + '</button>' :
-      '<button class="btn-outline pressable" data-action="openLoginForm">' + L.navLogin + '</button>' +
       '<button class="btn-primary pressable" data-action="ctaSignupFromAbout">' + L.navSignup + '</button>';
-    // Bascule FR/EN : affiche la langue vers laquelle basculer (pas la
-    // langue courante), même logique que le bouton mode clair/sombre.
-    var langToggle = '<button class="btn-outline pressable" style="padding:9px 12px;font-weight:800" data-action="toggleLandingLang">' +
-      (state.landingLang === 'en' ? 'FR' : 'EN') + '</button>';
+    var hamburger = state.loggedIn ? '' :
+      '<button class="icon-btn ldg-hamburger pressable" data-action="toggleLandingMobileMenu" aria-label="Menu"><i class="ph-bold ph-list"></i></button>';
+    var mobileMenu = (state.showLandingMobileMenu && !state.loggedIn) ?
+      '<div class="ldg-mobile-menu-overlay" data-action="closeLandingMobileMenu"></div>' +
+      '<div class="ldg-mobile-menu" data-stop-click>' +
+      '<button class="pressable" data-action="openLoginForm">' + L.navLogin + '</button>' +
+      '</div>' : '';
     return (
       '<div class="about-standalone-screen">' +
       '<nav class="ldg-nav">' +
       '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
-      '<div class="ldg-nav-actions">' + langToggle + navActions + '</div>' +
+      '<div class="ldg-nav-actions">' + hamburger + (state.loggedIn ? '' : loginBtn) + ctaBtn + '</div>' +
+      mobileMenu +
       '</nav>' +
       renderAboutScreen() +
       '</div>'
@@ -3227,6 +3243,7 @@
       '</div>' +
       '<div class="ldg-footer-bottom">' +
       '<span>' + L.footerBottom + '</span>' +
+      '<button class="ldg-footer-lang pressable" data-action="toggleLandingLang">' + (state.landingLang === 'en' ? 'FR' : 'EN') + '</button>' +
       '</div>' +
       '</footer>' +
 
@@ -3844,6 +3861,8 @@
         case 'goBack': goBack(); break;
         case 'toggleTheme': toggleTheme(); break;
         case 'toggleLandingLang': toggleLandingLang(); break;
+        case 'toggleLandingMobileMenu': toggleLandingMobileMenu(); break;
+        case 'closeLandingMobileMenu': closeLandingMobileMenu(); break;
         case 'openPerson': openPerson(id); break;
         case 'openGroup': openGroup(id); break;
         case 'remind': openReminderConfirm(id, groupId || null); break;

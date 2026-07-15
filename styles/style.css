@@ -203,7 +203,13 @@ button { font-family: inherit; }
    même comportement de défilement que .login-screen, mais sans son
    max-width de 400px pensé pour une carte de formulaire, la landing ayant
    besoin de toute la largeur disponible (cf. règle desktop plus haut). */
-.about-standalone-screen { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+/* overflow-x + overscroll-behavior-x : ce conteneur (pas <body>, qui ne
+   scrolle jamais lui-même dans l'architecture app-frame) est le vrai
+   contexte de défilement de la landing — sans ces deux règles, un swipe
+   horizontal pouvait quand même faire "rebondir" toute la page latéralement
+   sur mobile, même règle déjà posée sur html/body plus haut mais qui ne
+   s'applique pas à l'intérieur d'un conteneur avec son propre scroll. */
+.about-standalone-screen { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; overscroll-behavior-x: none; }
 .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 14px; }
 /* --- Écran de lancement --- */
 .splash-screen { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--surface-canvas); padding: 0 24px; }
@@ -385,7 +391,7 @@ button { font-family: inherit; }
 .top-bar-wordmark { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: var(--text-primary); }
 
 /* --- Content --- */
-.content { flex: 1; overflow-y: auto; padding: 18px 20px 90px; }
+.content { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior-x: none; padding: 18px 20px 90px; }
 .section-label { color: var(--text-tertiary); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
 .select-all-link { text-transform: none; letter-spacing: normal; font-size: 12px; font-weight: 700; color: var(--brand-secondary); cursor: pointer; }
 
@@ -522,6 +528,11 @@ button { font-family: inherit; }
 
 /* --- À propos / landing --- */
 .about-screen { padding: 0 0 40px; max-width: 1080px; margin: 0 auto; }
+@media (max-width: 700px) {
+  /* Compense la hauteur de .ldg-nav, passée en position: fixed ci-dessus —
+     sans ça, le haut du hero se retrouve caché derrière la nav. */
+  .about-screen { padding-top: 62px; }
+}
 .ldg-container { padding: 0 24px; }
 .ldg-section { padding: 56px 0; border-top: 1px solid var(--border-subtle); }
 .ldg-section:first-of-type { border-top: none; }
@@ -571,11 +582,41 @@ button { font-family: inherit; }
 .ldg-nav-brand { display: flex; align-items: center; gap: 9px; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 17px; color: var(--text-primary); }
 .ldg-nav-actions { display: flex; align-items: center; gap: 10px; }
 .ldg-nav-actions .btn-outline, .ldg-nav-actions .btn-primary { flex: none; width: auto; padding: 9px 16px; font-size: 13.5px; }
-@media (max-width: 480px) {
-  .ldg-nav { flex-wrap: wrap; justify-content: center; gap: 10px; padding: 14px 16px; }
-  .ldg-nav-brand { flex: 1 0 100%; justify-content: center; }
-  .ldg-nav-actions { flex: 1 0 100%; justify-content: center; }
+/* Masqué par défaut (desktop) : le menu ☰ n'existe que sur mobile, cf.
+   media query plus bas — desktop garde Connexion visible en ligne. */
+.ldg-hamburger { display: none; }
+@media (max-width: 700px) {
+  /* Repère fixe façon notion.com : logo toujours en haut à gauche, un seul
+     CTA net toujours visible en haut à droite pendant le défilement d'une
+     landing longue, plutôt que la nav qui disparaissait avec le contenu.
+     padding-top équivalent sur .about-screen (cf. plus bas) pour compenser
+     la hauteur retirée du flux normal. */
+  .ldg-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+    background: var(--surface-canvas); box-shadow: 0 1px 0 var(--border-subtle);
+    flex-wrap: nowrap; justify-content: space-between; padding: 12px 16px;
+  }
+  .ldg-nav-brand { flex: none; justify-content: flex-start; font-size: 15px; }
+  .ldg-nav-actions { flex: none; justify-content: flex-end; gap: 6px; }
+  .ldg-nav-actions .btn-primary { padding: 8px 14px; }
+  /* Le bouton "Connexion" en ligne cède la place au menu ☰ (cf.
+     .ldg-mobile-menu) — un seul CTA nettement identifiable plutôt que 2-3
+     boutons de poids égal, cause du "on ne sait plus quel est le CTA". */
+  .ldg-nav-login-inline { display: none; }
+  .ldg-hamburger { display: flex; }
 }
+.ldg-mobile-menu-overlay { position: fixed; inset: 0; z-index: 39; background: rgba(10,11,14,.15); }
+.ldg-mobile-menu {
+  position: fixed; top: 58px; right: 16px; z-index: 41; min-width: 170px;
+  background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 6px; animation: popIn .15s ease;
+}
+.ldg-mobile-menu button {
+  display: block; width: 100%; text-align: left; padding: 11px 12px; border-radius: 10px;
+  border: none; background: none; font-size: 14px; font-weight: 700; color: var(--text-primary);
+  cursor: pointer; font-family: inherit;
+}
+@media (hover: hover) { .ldg-mobile-menu button:hover { background: var(--surface-overlay); } }
 /* Device frames */
 .ldg-phone {
   width: 240px; margin: 0 auto; position: relative;
@@ -776,6 +817,11 @@ button { font-family: inherit; }
 }
 .ldg-footer-col a:hover, .ldg-footer-col button:hover { color: var(--text-primary); }
 .ldg-footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 20px; }
+.ldg-footer-lang {
+  background: none; border: 1px solid var(--border-default); border-radius: 999px; padding: 4px 12px;
+  font-size: 11.5px; font-weight: 800; color: var(--text-secondary); cursor: pointer; font-family: inherit;
+}
+@media (hover: hover) { .ldg-footer-lang:hover { color: var(--text-primary); border-color: var(--text-tertiary); } }
 
 /* --- À propos (legacy prose, kept for reference inside the new landing) --- */
 .about-hero { display: flex; flex-direction: column; align-items: center; text-align: center; }
