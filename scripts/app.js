@@ -482,7 +482,10 @@
       doc.text('Rohy', 30, 19);
       doc.setFontSize(11);
       doc.setTextColor(20, 22, 27);
-      doc.text(d.group.name, 30, 25);
+      // x:14 (marge de gauche, comme le reste du document) et non plus 30
+      // (aligné sur le wordmark) — place le nom du groupe sous le logo, pas
+      // à côté du mot "Rohy".
+      doc.text(d.group.name, 14, 25);
       doc.setDrawColor(15, 143, 107);
       doc.setLineWidth(0.5);
       doc.line(14, 28, 196, 28);
@@ -1582,7 +1585,15 @@
   // l'autorise déjà à le lire), tant qu'il n'a pas été ignoré.
   function mostRecentReminderForMe() {
     var dismissed = loadDismissedReminderIds();
-    var mine = state.reminders.filter(function (r) { return r.toPersonId === state.currentUserId && dismissed.indexOf(r.id) === -1; });
+    var debts = computeDebts();
+    var mine = state.reminders.filter(function (r) {
+      if (r.toPersonId !== state.currentUserId || dismissed.indexOf(r.id) !== -1) return false;
+      // Un rappel dont la dette est déjà soldée (solde revenu à jour depuis)
+      // n'a plus lieu d'être affiché — même logique que .reminder-preview
+      // sur la fiche d'un membre.
+      if (!r.fromPersonId) return true;
+      return pairNet(state.currentUserId, r.fromPersonId, debts) < -0.5;
+    });
     if (!mine.length) return null;
     return mine.slice().sort(function (a, b) { return b.date.localeCompare(a.date); })[0];
   }
@@ -2383,11 +2394,10 @@
 
     return (
       renderGroupFilterPills(filterId, 'setHomeGroupFilter') +
-      '<button class="current-user-row pressable" data-action="openAccount">' +
+      '<div class="current-user-row">' +
       '<div class="avatar avatar-26" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:13px;color:var(--text-secondary)">Bonjour, <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
-      '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
-      '</button>' +
+      '</div>' +
       (receivedReminder ?
         '<div class="warning-banner" style="position:relative;padding-right:44px">' +
         '<div class="warning-banner-title"><i class="ph-bold ph-bell-ringing"></i> Rappel reçu</div>' +
@@ -2669,7 +2679,10 @@
       (bal > 0.5 ? '<button class="btn-danger-fill pressable" data-action="remind" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '"><i class="ph-bold ph-bell-ringing" style="margin-right:6px"></i>Envoyer un rappel</button>' : '') +
       '<button class="btn-outline-flex pressable" data-action="openSettle" data-id="' + p.id + '" data-group-id="' + (filterId || '') + '">Enregistrer un paiement</button>' +
       '</div>' +
-      (lastReminder ? '<div class="reminder-preview">' + escapeHtml(lastReminder.message) + '</div>' : '') +
+      // bal > 0.5 : une fois le solde revenu à jour, le message d'un ancien
+      // rappel ("tu me dois encore X") devient faux et trompeur — inutile
+      // de le garder affiché juste parce qu'un rappel a existé un jour.
+      (lastReminder && bal > 0.5 ? '<div class="reminder-preview">' + escapeHtml(lastReminder.message) + '</div>' : '') +
       '<div class="section-label">Dépenses concernées</div>' +
       relatedExpenses.map(function (e) {
         var eg = group(e.groupId);

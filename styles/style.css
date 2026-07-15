@@ -390,8 +390,10 @@ button { font-family: inherit; }
 .select-all-link { text-transform: none; letter-spacing: normal; font-size: 12px; font-weight: 700; color: var(--brand-secondary); cursor: pointer; }
 
 /* --- Home --- */
-.current-user-row { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 16px; width: fit-content; border: none; background: none; padding: 0; }
-.current-user-row:active { opacity: .7; }
+/* Simple en-tête de salutation, non cliquable — l'accès au compte reste
+   disponible via l'avatar de la barre du haut (.account-icon-btn) ou le
+   menu latéral desktop (.sidebar-account), cf. renderTopBar. */
+.current-user-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; width: fit-content; }
 .avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 700; color: #0B1210; flex-shrink: 0; }
 .avatar-26 { width: 26px; height: 26px; font-size: 10px; }
 .avatar-30 { width: 30px; height: 30px; font-size: 12px; }
