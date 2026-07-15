@@ -18,6 +18,7 @@
   var UPGRADE_NUDGE_DISMISSED_KEY = 'rohy-upgrade-nudge-dismissed';
   var FEEDBACK_LAST_SHOWN_KEY = 'rohy-feedback-last-shown';
   var FEEDBACK_PROMPT_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+  var REMINDERS_DISMISSED_KEY = 'rohy-reminders-dismissed';
 
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
@@ -56,6 +57,21 @@
   }
   function saveFeedbackLastShown() {
     try { localStorage.setItem(FEEDBACK_LAST_SHOWN_KEY, String(Date.now())); } catch (err) { /* mode privé / quota */ }
+  }
+
+  // Bannière "rappel reçu" sur l'accueil (cf. renderHome) : un rappel
+  // ignoré ne doit plus jamais réapparaître, mais un NOUVEAU rappel (autre
+  // id) doit bien s'afficher malgré un ignoré précédent — d'où une liste
+  // d'ids plutôt qu'un simple booléen comme pour la relance de compte.
+  function loadDismissedReminderIds() {
+    try { return JSON.parse(localStorage.getItem(REMINDERS_DISMISSED_KEY) || '[]'); } catch (err) { return []; }
+  }
+  function saveDismissedReminderId(id) {
+    try {
+      var ids = loadDismissedReminderIds();
+      if (ids.indexOf(id) === -1) ids.push(id);
+      localStorage.setItem(REMINDERS_DISMISSED_KEY, JSON.stringify(ids.slice(-50)));
+    } catch (err) { /* mode privé / quota */ }
   }
 
   // Lien d'invitation par groupe (?join=<token>, cf. "Partager le lien
@@ -575,7 +591,7 @@
         };
       });
       var reminders = reminderRows.map(function (r) {
-        return { id: r.id, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message, groupId: r.group_id || undefined };
+        return { id: r.id, fromPersonId: r.from_user, toPersonId: r.to_user, amount: Number(r.amount), date: r.reminder_date, message: r.message, groupId: r.group_id || undefined };
       });
 
       setState({ people: people, groups: groups, expenses: expenses, payments: payments, reminders: reminders, households: households, dataLoading: false });
@@ -620,6 +636,10 @@
   // defaultState) vers l'app pour un compte déjà connecté — même moment de
   // transition qu'un vrai lancement d'appli, donc même écran de lancement.
   function enterApp() { setState({ enteredApp: true, showSplash: true }); armSplashTimeout(); }
+  // Symétrique d'enterApp : clic sur le logo depuis l'intérieur de l'app —
+  // repasse par la landing (session conservée, juste enteredApp à false)
+  // plutôt que de déconnecter ; "Ouvrir l'app" y ramène directement.
+  function exitToLanding() { setState({ enteredApp: false, screen: 'home', navStack: [] }); }
 
   // Symétrique du lien d'invitation (cf. plus bas) : jusqu'ici, seul
   // l'invité pouvait rejoindre un groupe sans compte — l'organisateur devait
@@ -877,6 +897,13 @@
     var groupId = state.reminderGroupId;
     var p = person(personId);
     var draft = (state.reminderEmailDraft || '').trim();
+    // Garde-fou en plus du bouton désactivé côté rendu (cf.
+    // renderReminderConfirmModal) : un invité sans compte ni e-mail n'a
+    // aucun moyen de voir un rappel envoyé sans en avoir renseigné un.
+    if (!p.hasAccount && !p.email && draft.indexOf('@') === -1) {
+      showToast('Ajoute un e-mail valide pour envoyer ce rappel.');
+      return;
+    }
     if (!p.hasAccount && draft && draft !== (p.email || '')) {
       if (draft.indexOf('@') === -1) { showToast('Entre un e-mail valide.'); return; }
       sb.from('profiles').update({ email: draft }).eq('id', personId).then(function (res) {
@@ -1550,6 +1577,20 @@
     setState({ showUpgradeNudge: false });
   }
 
+  // Bannière "rappel reçu" sur l'accueil (cf. renderHome) : le plus récent
+  // rappel où l'utilisateur connecté est destinataire (RLS reminders_select
+  // l'autorise déjà à le lire), tant qu'il n'a pas été ignoré.
+  function mostRecentReminderForMe() {
+    var dismissed = loadDismissedReminderIds();
+    var mine = state.reminders.filter(function (r) { return r.toPersonId === state.currentUserId && dismissed.indexOf(r.id) === -1; });
+    if (!mine.length) return null;
+    return mine.slice().sort(function (a, b) { return b.date.localeCompare(a.date); })[0];
+  }
+  function dismissReminderBanner(id) {
+    saveDismissedReminderId(id);
+    render();
+  }
+
   // ---------- Avis (cf. supabase/migrations/0018_feedback.sql) ----------
   // Sans store (App Store/Play Store), pas de mécanisme de notation intégré
   // à l'app — ce petit formulaire compense, déclenché juste après un
@@ -2210,8 +2251,8 @@
     return (
       '<div class="top-bar">' +
       (showBack ? '<button class="icon-btn pressable" data-action="goBack" aria-label="Retour"><i class="ph-bold ph-arrow-left"></i></button>' :
-        isHome ? '<div class="top-bar-wordmark">' + logoMarkMulti(26) + '<span>Rohy</span></div>' :
-        '<div class="top-bar-logo">' + logoMark(20, '#0F8F6B', '#084b38') + '</div>') +
+        isHome ? '<div class="top-bar-wordmark pressable" data-action="exitToLanding">' + logoMarkMulti(26) + '<span>Rohy</span></div>' :
+        '<div class="top-bar-logo pressable" data-action="exitToLanding">' + logoMark(20, '#0F8F6B', '#084b38') + '</div>') +
       '<div style="flex:1">' +
       '<div class="top-title' + (isHome ? ' home-title' : '') + '">' + escapeHtml(title) + '</div>' +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
@@ -2276,6 +2317,7 @@
   function renderHome() {
     var moi = state.currentUserId;
     var cu = person(moi);
+    var receivedReminder = mostRecentReminderForMe();
     var filterId = state.homeGroupFilter && group(state.homeGroupFilter) ? state.homeGroupFilter : null;
     var filterGroup = filterId ? group(filterId) : null;
     var fmtC = function (n) { return fmtIn(n, filterGroup ? filterGroup.currency : null); };
@@ -2346,6 +2388,15 @@
       '<div style="font-size:13px;color:var(--text-secondary)">Bonjour, <b style="color:var(--text-primary);font-weight:700">' + escapeHtml(cu.name) + '</b></div>' +
       '<i class="ph-bold ph-caret-down" style="font-size:11px;color:var(--text-tertiary)"></i>' +
       '</button>' +
+      (receivedReminder ?
+        '<div class="warning-banner" style="position:relative;padding-right:44px">' +
+        '<div class="warning-banner-title"><i class="ph-bold ph-bell-ringing"></i> Rappel reçu</div>' +
+        '<div class="warning-banner-body">' +
+        (receivedReminder.fromPersonId && person(receivedReminder.fromPersonId) ? escapeHtml(person(receivedReminder.fromPersonId).name) + ' t\'a envoyé un rappel : ' : '') +
+        '« ' + escapeHtml(receivedReminder.message) + ' »' +
+        '</div>' +
+        '<button class="icon-btn pressable" style="position:absolute;top:10px;right:10px;width:28px;height:28px" data-action="dismissReminderBanner" data-id="' + receivedReminder.id + '" aria-label="Ignorer"><i class="ph-bold ph-x"></i></button>' +
+        '</div>' : '') +
       (state.groups.length === 0 ?
         '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px">Crée un groupe et invite des amis pour commencer à suivre vos dépenses.</div>' +
         '<button class="btn-primary pressable" data-action="openAddGroup">Créer un groupe</button>' :
@@ -2747,7 +2798,14 @@
     });
     state.reminders.forEach(function (r) {
       var rg = r.groupId ? group(r.groupId) : null;
-      items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: 'Rappel envoyé à ' + escapeHtml(person(r.toPersonId).name) + (rg ? ' · ' + escapeHtml(rg.name) : ''), amountLabel: null, color: null });
+      // Écrit du point de vue de la personne qui consulte : « tu as reçu »
+      // quand elle est destinataire, « rappel envoyé à » sinon — un même
+      // rappel restant visible aux deux (cf. policy RLS reminders_select),
+      // le texte générique côté expéditeur sonnait faux pour le destinataire.
+      var reminderText = r.toPersonId === state.currentUserId
+        ? 'Tu as reçu un rappel' + (r.fromPersonId && person(r.fromPersonId) ? ' de ' + escapeHtml(person(r.fromPersonId).name) : '')
+        : 'Rappel envoyé à ' + escapeHtml(person(r.toPersonId).name);
+      items.push({ date: r.date, icon: 'ph-bold ph-bell-ringing', iconBg: 'var(--status-danger-bg)', iconColor: 'var(--status-danger)', text: reminderText + (rg ? ' · ' + escapeHtml(rg.name) : ''), amountLabel: null, color: null });
     });
     return items.sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (h) {
       return (
@@ -2991,7 +3049,7 @@
     var cu = person(state.currentUserId);
     return (
       '<div class="bottom-nav">' +
-      '<div class="sidebar-brand">' + logoMark(24, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
+      '<div class="sidebar-brand pressable" data-action="exitToLanding">' + logoMark(24, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
       '<button class="nav-item" data-action="goHome" style="color:' + color(state.screen === 'home') + '"><i class="ph-bold ph-house" style="font-size:20px"></i><div class="nav-item-label">Accueil</div></button>' +
       '<button class="nav-item" data-action="goGroups" style="color:' + color(state.screen === 'groups' || state.screen === 'groupDetail') + '"><i class="ph-bold ph-users-three" style="font-size:20px"></i><div class="nav-item-label">Groupes</div></button>' +
       '<button class="nav-item" data-action="goExpenses" style="color:' + color(state.screen === 'expenses') + '"><i class="ph-bold ph-receipt" style="font-size:20px"></i><div class="nav-item-label">Dépenses</div></button>' +
@@ -3061,6 +3119,15 @@
     if (!p) return '';
     var data = computeReminderMessage(state.reminderPersonId, state.reminderGroupId);
     var hasEmail = !!p.email;
+    var draft = (state.reminderEmailDraft || '').trim();
+    var draftValid = draft.indexOf('@') !== -1;
+    // Un rappel sans e-mail ne sert à personne côté invité sans compte (pas
+    // de session à lui pour le retrouver dans l'app) — on bloque donc
+    // l'envoi tant qu'un e-mail valide n'est pas renseigné, plutôt que de
+    // laisser croire qu'un simple clic "prévient" réellement la personne.
+    // Cas différent pour un compte existant sans e-mail (rare, ex. compte
+    // anonyme) : rien à saisir ici pour son compte, donc pas de blocage.
+    var canSend = hasEmail || p.hasAccount || draftValid;
     return (
       '<div class="modal-overlay center" data-action="closeReminderConfirm">' +
       '<div class="modal-card" data-stop-click>' +
@@ -3070,11 +3137,11 @@
         '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:18px">Un e-mail sera aussi envoyé à ' + escapeHtml(p.email) + '.</div>' :
         p.hasAccount ?
           '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:18px">Cette personne n\'a pas d\'e-mail connu — le rappel restera uniquement dans l\'app.</div>' :
-          '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:8px">Aucun e-mail renseigné pour cette personne — le rappel restera uniquement dans l\'app, sauf si tu en ajoutes un :</div>' +
-          '<input class="text-input" type="email" data-bind="reminderEmailDraft" placeholder="E-mail (facultatif)" value="' + escapeHtml(state.reminderEmailDraft || '') + '" />') +
+          '<div style="font-size:12.5px;color:var(--text-tertiary);margin-bottom:8px">Cette personne n\'a pas de compte — sans e-mail, elle n\'a aucun moyen de voir ce rappel. Ajoute-en un pour continuer :</div>' +
+          '<input class="text-input" type="email" data-bind="reminderEmailDraft" placeholder="E-mail (requis)" value="' + escapeHtml(state.reminderEmailDraft || '') + '" />') +
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="closeReminderConfirm">Annuler</button>' +
-      '<button class="btn-confirm pressable" data-action="confirmSendReminder">Envoyer le rappel</button>' +
+      '<button class="btn-confirm pressable" style="' + (canSend ? '' : 'opacity:.5;cursor:not-allowed') + '"' + (canSend ? '' : ' disabled') + ' data-action="confirmSendReminder">Envoyer le rappel</button>' +
       '</div></div></div>'
     );
   }
@@ -3596,6 +3663,7 @@
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
         case 'enterApp': enterApp(); break;
+        case 'exitToLanding': exitToLanding(); break;
         case 'tryWithoutAccount': tryWithoutAccount(); break;
         case 'performJoin': performJoin(); break;
         case 'cancelJoin': cancelJoin(); break;
@@ -3615,6 +3683,7 @@
         case 'copyShareLink': copyShareLink(); break;
         case 'openUpgradeAccount': openUpgradeAccount(); break;
         case 'dismissUpgradeNudge': dismissUpgradeNudge(); break;
+        case 'dismissReminderBanner': dismissReminderBanner(id); break;
         case 'submitUpgradeAccount': submitUpgradeAccount(); break;
         case 'openFeedbackFromMenu': openFeedbackFromMenu(); break;
         case 'setFeedbackRating': setFeedbackRating(id); break;
@@ -3697,7 +3766,20 @@
         case 'settleAmount': setSettleAmount(v); break;
         case 'settleReference': setSettleReference(v); break;
         case 'expensesSearch': setExpensesSearch(v); break;
-        case 'reminderEmailDraft': setReminderEmailDraft(v); break;
+        case 'reminderEmailDraft':
+          setReminderEmailDraft(v);
+          // Bascule le bouton d'envoi directement en DOM (comme le reste de
+          // ce champ, cf. setStateSilent) plutôt qu'un rendu complet — sans
+          // ça, l'état activé/désactivé du bouton ne suivrait la frappe
+          // qu'au prochain rendu déclenché par autre chose.
+          var confirmBtn = root.querySelector('[data-action="confirmSendReminder"]');
+          if (confirmBtn) {
+            var canSendNow = v.trim().indexOf('@') !== -1;
+            confirmBtn.disabled = !canSendNow;
+            confirmBtn.style.opacity = canSendNow ? '' : '.5';
+            confirmBtn.style.cursor = canSendNow ? '' : 'not-allowed';
+          }
+          break;
         case 'manageMembersSearch': setManageMembersSearch(v); break;
         case 'splitValue': setSplitValue(id, v); break;
         case 'inviteeName': setInviteeName(parseInt(id, 10), v); break;
