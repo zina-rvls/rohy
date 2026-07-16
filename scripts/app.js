@@ -2290,6 +2290,43 @@
   // faire plus bas dans la liste.
   var lastModalScrollTop = null;
 
+  // Scroll-reveal de la landing (cf. sections [data-reveal] dans
+  // renderAboutScreen) : ces deux variables vivent hors de render() et
+  // survivent donc à chaque reconstruction complète du DOM (innerHTML) —
+  // sans quoi une section déjà révélée réapparaîtrait masquée puis rejouerait
+  // son animation à la moindre action sans rapport (changer de langue,
+  // ouvrir un menu...) qui déclenche un nouveau render().
+  var scrollRevealedIds = Object.create(null);
+  var scrollRevealObserver = null;
+
+  function initScrollReveal(root) {
+    var els = root.querySelectorAll('[data-reveal]');
+    if (!els.length) return;
+    if (scrollRevealObserver) scrollRevealObserver.disconnect();
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (var i = 0; i < els.length; i++) els[i].classList.add('reveal-visible');
+      return;
+    }
+    scrollRevealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var revealId = entry.target.getAttribute('data-reveal');
+        scrollRevealedIds[revealId] = true;
+        entry.target.classList.remove('reveal-hidden');
+        entry.target.classList.add('reveal-visible');
+        scrollRevealObserver.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    els.forEach(function (el) {
+      if (scrollRevealedIds[el.getAttribute('data-reveal')]) {
+        el.classList.add('reveal-visible');
+      } else {
+        el.classList.add('reveal-hidden');
+        scrollRevealObserver.observe(el);
+      }
+    });
+  }
+
   function render() {
     var root = document.getElementById('app');
     // Le chargement de session/données continue en arrière-plan pendant
@@ -2360,6 +2397,7 @@
     // ('granted' ou 'denied'), cf. acceptAnalytics/declineAnalytics.
     root.innerHTML = mainHtml + (state.analyticsConsent === null ? renderConsentBanner() : '');
     bindEvents(root);
+    initScrollReveal(root);
     restoreFocus(root, focusInfo);
     var newModalSheet = root.querySelector('.modal-sheet');
     if (newModalSheet && lastModalScrollTop != null) newModalSheet.scrollTop = lastModalScrollTop;
@@ -3469,7 +3507,7 @@
       '</div>' +
       '</header>' +
 
-      '<section class="ldg-section" id="ldg-probleme">' +
+      '<section class="ldg-section" id="ldg-probleme" data-reveal="ldg-probleme">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.problemEyebrow + '</span>' +
       '<h2>' + L.problemH2 + '</h2>' +
@@ -3483,7 +3521,7 @@
       '<p style="font-size:14.5px;color:var(--text-secondary);max-width:60ch;margin-top:24px">' + L.problemFooter + '</p>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-difference">' +
+      '<section class="ldg-section" id="ldg-difference" data-reveal="ldg-difference">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.differenceEyebrow + '</span>' +
       '<h2>' + L.differenceH2 + '</h2>' +
@@ -3508,7 +3546,7 @@
       '</table>' +
       '</section>' +
 
-      '<section class="ldg-section ldg-example" id="ldg-exemple">' +
+      '<section class="ldg-section ldg-example" id="ldg-exemple" data-reveal="ldg-exemple">' +
       '<div class="ldg-example-grid">' +
       '<div class="ldg-section-head" style="margin-bottom:0">' +
       '<span class="ldg-eyebrow">' + L.exampleEyebrow + '</span>' +
@@ -3527,7 +3565,7 @@
       '</div>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-comment">' +
+      '<section class="ldg-section" id="ldg-comment" data-reveal="ldg-comment">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.howEyebrow + '</span>' +
       '<h2>' + L.howH2 + '</h2>' +
@@ -3539,7 +3577,7 @@
       '</div>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-usecases">' +
+      '<section class="ldg-section" id="ldg-usecases" data-reveal="ldg-usecases">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.usecasesEyebrow + '</span>' +
       '<h2>' + L.usecasesH2 + '</h2>' +
@@ -3552,7 +3590,7 @@
       '</div>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-demo">' +
+      '<section class="ldg-section" id="ldg-demo" data-reveal="ldg-demo">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.demoEyebrow + '</span>' +
       '<h2>' + L.demoH2 + '</h2>' +
@@ -3565,7 +3603,7 @@
       '</div>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-features">' +
+      '<section class="ldg-section" id="ldg-features" data-reveal="ldg-features">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.featuresEyebrow + '</span>' +
       '<h2>' + L.featuresH2 + '</h2>' +
@@ -3584,7 +3622,7 @@
       '</div>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-avis">' +
+      '<section class="ldg-section" id="ldg-avis" data-reveal="ldg-avis">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.testimonialsEyebrow + '</span>' +
       '<h2>' + L.testimonialsH2 + '</h2>' +
@@ -3596,7 +3634,7 @@
       '</div>' +
       '</section>' +
 
-      '<section class="ldg-section" id="ldg-faq">' +
+      '<section class="ldg-section" id="ldg-faq" data-reveal="ldg-faq">' +
       '<div class="ldg-section-head">' +
       '<span class="ldg-eyebrow">' + L.faqEyebrow + '</span>' +
       '<h2>' + L.faqH2 + '</h2>' +
@@ -3610,7 +3648,7 @@
       '</div>' +
       '</section>' +
 
-      '<div class="ldg-final">' +
+      '<div class="ldg-final" data-reveal="ldg-final">' +
       '<h2>' + L.finalH2 + '</h2>' +
       '<p>' + L.finalP + '</p>' +
       '<div class="ldg-ctas">' +

@@ -597,6 +597,14 @@ button { font-family: inherit; }
 .ldg-section-head h2 { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(22px, 3.4vw, 28px); margin: 0 0 10px; color: var(--text-primary); }
 .ldg-section-head p { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
+/* Scroll-reveal (voir initScrollReveal dans app.js) : chaque section de la
+   landing porte data-reveal="<id>" ; l'observateur bascule .reveal-hidden en
+   .reveal-visible au premier passage dans le viewport, une seule fois par
+   section (identifiant conservé en mémoire entre les rendus complets du
+   DOM). Le fondu/montée est volontairement discret (16px, ~500ms). */
+.reveal-hidden { opacity: 0; transform: translateY(16px); }
+.reveal-visible { opacity: 1; transform: translateY(0); transition: opacity .55s ease, transform .55s cubic-bezier(.2, .7, .3, 1); }
+
 .ldg-privacy .ldg-section { max-width: 68ch; margin: 0 auto; border-top: none; padding: 40px 0; }
 .ldg-privacy h1 { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(26px, 4vw, 34px); margin: 0 0 6px; color: var(--text-primary); }
 .ldg-privacy h2 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 17px; margin: 32px 0 10px; color: var(--text-primary); }
@@ -793,13 +801,18 @@ button { font-family: inherit; }
 .ldg-feat-rows > .ldg-feat-row:nth-child(-n+2) { border-top: none; }
 .ldg-feat-row summary {
   display: flex; align-items: center; gap: 14px; cursor: pointer; list-style: none;
+  border-radius: 10px; padding: 6px 10px; margin: -6px -10px;
 }
 .ldg-feat-row summary::-webkit-details-marker { display: none; }
 .ldg-feat-row summary .ph-bold:first-child { font-size: 18px; color: var(--brand-primary); flex: none; }
 .ldg-feat-row summary h3 { flex: 1; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0; color: var(--text-primary); }
 .ldg-feat-row summary .caret { transition: transform .2s ease; color: var(--text-tertiary); font-size: 13px; flex: none; }
 .ldg-feat-row[open] summary .caret { transform: rotate(180deg); }
-@media (hover: hover) { .ldg-feat-row summary:hover h3 { color: var(--brand-primary); } }
+/* Le titre était déjà accompagné d'une icône verte en permanence : un simple
+   changement de couleur du texte au survol passait inaperçu. On ajoute donc
+   un fond de ligne (cohérent avec .checkbox-row/.group-card ailleurs dans
+   l'appli) pour un retour beaucoup plus visible. */
+@media (hover: hover) { .ldg-feat-row summary:hover { background: var(--surface-overlay); } .ldg-feat-row summary:hover h3 { color: var(--brand-primary); } }
 .ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0 32px; }
 
 /* Exemple concret */
