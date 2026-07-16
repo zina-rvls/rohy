@@ -554,6 +554,13 @@ button { font-family: inherit; }
 .ldg-section-head h2 { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(22px, 3.4vw, 28px); margin: 0 0 10px; color: var(--text-primary); }
 .ldg-section-head p { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
+.ldg-privacy .ldg-section { max-width: 68ch; margin: 0 auto; border-top: none; padding: 40px 0; }
+.ldg-privacy h1 { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(26px, 4vw, 34px); margin: 0 0 6px; color: var(--text-primary); }
+.ldg-privacy h2 { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 17px; margin: 32px 0 10px; color: var(--text-primary); }
+.ldg-privacy p { font-size: 14.5px; line-height: 1.6; color: var(--text-secondary); margin: 0 0 10px; }
+.ldg-privacy-list { margin: 0 0 10px; padding-left: 20px; }
+.ldg-privacy-list li { font-size: 14.5px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 6px; }
+
 /* Hero : texte à gauche, mockups à droite (cf. référence fournie). */
 .ldg-hero { padding: 28px 0 8px; }
 .ldg-hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; }

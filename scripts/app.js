@@ -665,6 +665,19 @@
   function goSettleFromExpenses(groupId) { if (groupId) { openGroup(groupId); } else { goHome(); } }
   function openPerson(id) { navigate('person', { selectedPersonId: id, personGroupFilter: state.homeGroupFilter }); }
   function openAbout() { navigate('about', { showAccount: false }); }
+  // Même distinction qu'openAbout ci-dessus, mais accessible aussi AVANT
+  // connexion (lien "Confidentialité" du pied de page de la landing) : dans
+  // ce cas navigate() ne suffit pas (render() ignore state.screen tant que
+  // !enteredApp, cf. plus bas) — on bascule directement l'écran, que
+  // render() intercepte en priorité pour cet état précis.
+  function openPrivacy() {
+    if (state.loggedIn && state.enteredApp) { navigate('privacy', { showAccount: false }); }
+    else { setState({ screen: 'privacy' }); }
+  }
+  function closePrivacyScreen() {
+    if (state.loggedIn && state.enteredApp) { goBack(); }
+    else { setState({ screen: 'home' }); }
+  }
   // Avant connexion, `render()` affiche la landing ou renderLogin() selon
   // `state.showLoginForm`, quel que soit `state.screen` (cf. plus bas) :
   // `navigate('about', ...)` ne suffit donc pas depuis cette zone — état
@@ -2207,6 +2220,14 @@
       // le reste, connecté ou non — se referme de lui-même une fois la
       // personne ajoutée au groupe (performJoin remet joinToken à null).
       root.innerHTML = renderJoinScreen();
+    } else if (state.screen === 'privacy' && (!state.loggedIn || !state.enteredApp)) {
+      // Politique de confidentialité ouverte depuis la landing (avant
+      // connexion, ou connecté mais pas encore entré dans l'app) : même cas
+      // que renderAboutFromLogin ci-dessous, qui ignore state.screen — celui-
+      // ci doit donc être intercepté ici pour ne pas être écrasé par
+      // renderAboutFromLogin(). Une fois entré dans l'app, ce même écran est
+      // servi normalement par renderContent() (case 'privacy').
+      root.innerHTML = renderPrivacyStandalone();
     } else if (!state.loggedIn) {
       root.innerHTML = state.showLoginForm ? renderLogin() : renderAboutFromLogin();
     } else if (!state.enteredApp) {
@@ -2538,6 +2559,88 @@
   };
   function landingT() { return LANDING_I18N[state.landingLang] || LANDING_I18N.fr; }
 
+  // Politique de confidentialité — reflète les traitements réels de l'app
+  // (cf. commentaires dans supabase/functions/scan-receipt et send-reminder
+  // pour les sous-traitants concernés). Réutilise state.landingLang comme le
+  // reste de la landing plutôt qu'un réglage de langue séparé.
+  var PRIVACY_I18N = {
+    fr: {
+      title: 'Politique de confidentialité',
+      updated: 'Dernière mise à jour : juillet 2026.',
+      s1Title: 'Responsable du traitement',
+      s1Body: 'Rohy est édité par Malagasy Wonders, responsable du traitement des données décrites ci-dessous. Pour toute question ou pour exercer tes droits, contacte-nous à contact@rohy-app.com.',
+      s2Title: 'Données que nous traitons',
+      s2Items: [
+        'Ton nom, ton adresse e-mail et, si tu en crées un, ton mot de passe (haché, jamais stocké en clair).',
+        'Les groupes que tu crées ou rejoins, et les dépenses que tu y ajoutes : libellé, montant, date, catégorie, qui a payé, qui participe.',
+        'Les photos de tickets/factures que tu choisis de joindre ou de scanner.',
+        'L\'adresse e-mail des personnes à qui tu envoies un rappel de paiement.',
+      ],
+      s3Title: 'Pourquoi nous les traitons, et sur quelle base',
+      s3Items: [
+        'Faire fonctionner le service (créer un compte, suivre des dépenses, calculer les soldes) — exécution du contrat qui nous lie à toi en utilisant Rohy.',
+        'Lire automatiquement le contenu d\'un ticket scanné pour pré-remplir le formulaire — exécution du contrat, déclenchée uniquement quand tu choisis d\'utiliser cette fonctionnalité.',
+        'Envoyer un rappel de paiement par e-mail — déclenché uniquement par ton action explicite (le bouton "Envoyer un rappel").',
+        'Mesurer la fréquentation du site — intérêt légitime à comprendre l\'usage de Rohy, via une mesure d\'audience qui ne dépose pas de cookie de suivi individuel (cf. section Cookies ci-dessous).',
+      ],
+      s4Title: 'Avec qui ces données sont partagées',
+      s4Intro: 'Nous faisons appel aux prestataires suivants pour faire fonctionner Rohy. Tous sont situés hors de l\'Union européenne (États-Unis) ; leurs transferts de données sont encadrés par les clauses contractuelles types de la Commission européenne ou un mécanisme équivalent.',
+      s4Items: [
+        'Supabase, Inc. — hébergement de la base de données, authentification, stockage des reçus.',
+        'Cloudflare, Inc. — mesure d\'audience du site (sans cookie de suivi individuel).',
+        'Resend — envoi des e-mails de rappel de paiement.',
+        'Anthropic PBC — lecture automatique du contenu des tickets scannés.',
+      ],
+      s5Title: 'Combien de temps nous les gardons',
+      s5Body: 'Tes données sont conservées tant que ton compte est actif. Tu peux demander leur suppression à tout moment (cf. "Tes droits" ci-dessous) ; elles sont alors supprimées, sous réserve des durées de conservation légales qui pourraient s\'appliquer.',
+      s6Title: 'Sécurité',
+      s6Body: 'Les échanges avec Rohy sont chiffrés (HTTPS). L\'accès aux données est cloisonné par des règles strictes côté base de données : chacun ne peut voir et modifier que les groupes dont il est membre.',
+      s7Title: 'Tes droits',
+      s7Body: 'Tu disposes d\'un droit d\'accès, de rectification, d\'effacement, de portabilité et d\'opposition sur tes données. Pour les exercer, écris-nous à contact@rohy-app.com. Tu disposes aussi du droit d\'introduire une réclamation auprès de l\'autorité de protection des données de ton pays de résidence (la CNIL en France).',
+      s8Title: 'Cookies et traceurs',
+      s8Body: 'Rohy n\'utilise aucun cookie publicitaire ou de profilage. La mesure d\'audience (Cloudflare Web Analytics) est conçue pour fonctionner sans cookie de suivi individuel.',
+      backLabel: '← Retour',
+    },
+    en: {
+      title: 'Privacy policy',
+      updated: 'Last updated: July 2026.',
+      s1Title: 'Data controller',
+      s1Body: 'Rohy is published by Malagasy Wonders, the controller for the data described below. For any question or to exercise your rights, contact us at contact@rohy-app.com.',
+      s2Title: 'Data we process',
+      s2Items: [
+        'Your name, e-mail address, and, if you create one, your password (hashed, never stored in plain text).',
+        'The groups you create or join, and the expenses you add there: label, amount, date, category, who paid, who\'s involved.',
+        'Photos of receipts/invoices you choose to attach or scan.',
+        'The e-mail address of people you send a payment reminder to.',
+      ],
+      s3Title: 'Why we process it, and on what basis',
+      s3Items: [
+        'Running the service (creating an account, tracking expenses, computing balances) — performance of the contract you enter into by using Rohy.',
+        'Automatically reading a scanned receipt to pre-fill the form — performance of the contract, only triggered when you choose to use this feature.',
+        'Sending a payment reminder by e-mail — only triggered by your explicit action (the "Send a reminder" button).',
+        'Measuring site traffic — legitimate interest in understanding how Rohy is used, via an analytics tool that does not set individual tracking cookies (see Cookies below).',
+      ],
+      s4Title: 'Who this data is shared with',
+      s4Intro: 'We rely on the following providers to run Rohy. All are located outside the European Union (United States); their data transfers are governed by the European Commission\'s standard contractual clauses or an equivalent mechanism.',
+      s4Items: [
+        'Supabase, Inc. — database hosting, authentication, receipt storage.',
+        'Cloudflare, Inc. — site traffic measurement (no individual tracking cookie).',
+        'Resend — sending payment reminder e-mails.',
+        'Anthropic PBC — automatically reading the content of scanned receipts.',
+      ],
+      s5Title: 'How long we keep it',
+      s5Body: 'Your data is kept as long as your account is active. You can request its deletion at any time (see "Your rights" below); it is then deleted, subject to any legal retention periods that may apply.',
+      s6Title: 'Security',
+      s6Body: 'Exchanges with Rohy are encrypted (HTTPS). Access to data is strictly compartmentalized at the database level: each person can only see and modify the groups they belong to.',
+      s7Title: 'Your rights',
+      s7Body: 'You have the right to access, rectify, erase, port, and object to your data. To exercise these rights, write to us at contact@rohy-app.com. You also have the right to lodge a complaint with the data protection authority in your country of residence.',
+      s8Title: 'Cookies and trackers',
+      s8Body: 'Rohy uses no advertising or profiling cookies. Our traffic measurement tool (Cloudflare Web Analytics) is designed to work without individual tracking cookies.',
+      backLabel: '← Back',
+    },
+  };
+  function privacyT() { return PRIVACY_I18N[state.landingLang] || PRIVACY_I18N.fr; }
+
   function renderAboutFromLogin() {
     // Déjà connecté (racine du site rouverte dans un nouvel onglet, ou après
     // rechargement) : plus besoin du bouton "Connexion", et le CTA principal
@@ -2655,6 +2758,7 @@
       case 'expenses': return renderAllExpenses();
       case 'history': return renderHistory();
       case 'about': return renderAboutScreen();
+      case 'privacy': return renderPrivacyScreen();
       default: return '';
     }
   }
@@ -3402,7 +3506,7 @@
       '</div>' +
       '<div class="ldg-footer-links">' +
       '<div class="ldg-footer-col"><h4>' + L.footerCol1 + '</h4><a href="#ldg-probleme">' + L.footerLinkProblem + '</a><a href="#ldg-difference">' + L.footerLinkDifference + '</a><a href="#ldg-comment">' + L.footerLinkHow + '</a><a href="#ldg-usecases">' + L.footerLinkUsecases + '</a></div>' +
-      '<div class="ldg-footer-col"><h4>' + L.footerCol2 + '</h4><a href="#ldg-avis">' + L.footerLinkTestimonials + '</a><a href="#ldg-faq">' + L.footerLinkFaq + '</a></div>' +
+      '<div class="ldg-footer-col"><h4>' + L.footerCol2 + '</h4><a href="#ldg-avis">' + L.footerLinkTestimonials + '</a><a href="#ldg-faq">' + L.footerLinkFaq + '</a><button type="button" data-action="openPrivacy">' + privacyT().title + '</button></div>' +
       (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4>' + (state.loggedIn ?
         '<button type="button" data-action="enterApp">' + L.navOpenApp.replace('🚀 ', '') + '</button>' :
         '<button type="button" data-action="ctaSignupFromAbout">' + L.footerBtnSignup + '</button><button type="button" data-action="openLoginForm">' + L.footerBtnLogin + '</button>') + '</div>' : '') +
@@ -3415,6 +3519,48 @@
       '</footer>' +
 
       '</div>' +
+      '</div>'
+    );
+  }
+
+  // Contenu de la politique de confidentialité seul (repris dans le shell
+  // "landing" avant connexion, cf. renderPrivacyStandalone, et dans le
+  // contenu principal de l'app une fois connecté, cf. renderContent).
+  function renderPrivacyScreen() {
+    var L = privacyT();
+    var listItems = function (items) { return '<ul class="ldg-privacy-list">' + items.map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('') + '</ul>'; };
+    return (
+      '<div class="about-screen ldg-privacy">' +
+      '<section class="ldg-section">' +
+      '<h1>' + escapeHtml(L.title) + '</h1>' +
+      '<p style="color:var(--text-tertiary);font-size:13px">' + escapeHtml(L.updated) + '</p>' +
+      '<h2>' + escapeHtml(L.s1Title) + '</h2><p>' + escapeHtml(L.s1Body) + '</p>' +
+      '<h2>' + escapeHtml(L.s2Title) + '</h2>' + listItems(L.s2Items) +
+      '<h2>' + escapeHtml(L.s3Title) + '</h2>' + listItems(L.s3Items) +
+      '<h2>' + escapeHtml(L.s4Title) + '</h2><p>' + escapeHtml(L.s4Intro) + '</p>' + listItems(L.s4Items) +
+      '<h2>' + escapeHtml(L.s5Title) + '</h2><p>' + escapeHtml(L.s5Body) + '</p>' +
+      '<h2>' + escapeHtml(L.s6Title) + '</h2><p>' + escapeHtml(L.s6Body) + '</p>' +
+      '<h2>' + escapeHtml(L.s7Title) + '</h2><p>' + escapeHtml(L.s7Body) + '</p>' +
+      '<h2>' + escapeHtml(L.s8Title) + '</h2><p>' + escapeHtml(L.s8Body) + '</p>' +
+      '</section>' +
+      '</div>'
+    );
+  }
+  // Shell de nav minimal (logo + retour), utilisé quand la politique de
+  // confidentialité est ouverte avant connexion ou avant "Ouvrir l'app" —
+  // dans les deux cas, render() affiche cet écran à la place de la landing
+  // habituelle tant que state.screen === 'privacy' (cf. render()). Une fois
+  // dans l'app, c'est renderContent() (case 'privacy') qui sert le même
+  // renderPrivacyScreen() dans le chrome habituel (sidebar/bottom-nav).
+  function renderPrivacyStandalone() {
+    var L = privacyT();
+    return (
+      '<div class="about-standalone-screen">' +
+      '<nav class="ldg-nav">' +
+      '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
+      '<button class="btn-outline pressable" data-action="closePrivacyScreen">' + escapeHtml(L.backLabel) + '</button>' +
+      '</nav>' +
+      renderPrivacyScreen() +
       '</div>'
     );
   }
@@ -3461,6 +3607,7 @@
       '<div class="account-dropdown-divider"></div>' +
       (state.isAnonymous ? '<button class="account-dropdown-item pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus"></i>Créer un compte</button>' : '') +
       '<button class="account-dropdown-item pressable" data-action="openAbout"><i class="ph-bold ph-info"></i>À propos</button>' +
+      '<button class="account-dropdown-item pressable" data-action="openPrivacy"><i class="ph-bold ph-shield-check"></i>Confidentialité</button>' +
       '<button class="account-dropdown-item pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text"></i>Donner un avis</button>' +
       '<button class="account-dropdown-item pressable" data-action="toggleTheme"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '"></i>' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</button>' +
       '<div class="account-dropdown-divider"></div>' +
@@ -3948,6 +4095,7 @@
       '</div>' +
       (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Créer un compte</span></button>' : '') +
       '<button class="switch-user-row pressable" data-action="openAbout"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
+      '<button class="switch-user-row pressable" data-action="openPrivacy"><i class="ph-bold ph-shield-check" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Confidentialité</span></button>' +
       '<button class="switch-user-row pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Donner un avis</span></button>' +
       '<button class="switch-user-row pressable" data-action="toggleTheme" style="margin-bottom:6px"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</span></button>' +
       '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
@@ -4101,6 +4249,8 @@
         case 'confirmSendReminder': confirmSendReminder(); break;
         case 'openAccount': openAccount(); break;
         case 'openAbout': openAbout(); break;
+        case 'openPrivacy': openPrivacy(); break;
+        case 'closePrivacyScreen': closePrivacyScreen(); break;
         case 'openLoginForm': openLoginForm(); break;
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
