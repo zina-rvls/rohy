@@ -2421,10 +2421,7 @@
       step3Title: 'Laissez Rohy calculer', step3Body: 'Les soldes et remboursements sont calculés automatiquement.', step3Alt: 'Détail d\'un groupe Rohy montrant les soldes et suggestions de règlement.',
       usecasesEyebrow: 'Cas d\'usage', usecasesH2: 'Adapté à toutes les situations',
       uc1Title: 'Vacances en famille', uc1Body: 'Prenez en compte les enfants et les personnes à charge sans calcul compliqué.',
-      uc2Title: 'Mariage', uc2Body: 'Comité familial, participations inégales entre foyers : chacun contribue selon ses moyens.',
-      uc3Title: 'Cérémonies familiales', uc3Body: 'Baptême, cérémonie religieuse : organisez les contributions de chaque foyer sans malaise.',
-      uc4Title: 'Associations et cotisations', uc4Body: 'Cotisation mensuelle d\'une association, collecte pour un cadeau ou un événement commun.',
-      uc5Title: 'Couples', uc5Body: 'Gérez facilement les dépenses partagées et les prises en charge partielles.',
+      uc2Title: 'Événements familiaux', uc2Body: 'Mariage, baptême, cérémonie religieuse, cotisation d\'association : comité familial, participations inégales entre foyers, chacun contribue selon ses moyens.',
       uc6Title: 'Colocations', uc6Body: 'Suivez les dépenses du quotidien et répartissez les coûts équitablement.',
       uc7Title: 'Voyages entre amis', uc7Body: 'Hébergement, restaurants, activités, carburant : gardez une vision claire des dépenses du groupe.',
       demoEyebrow: 'Démonstration', demoH2: 'Voyez Rohy en action',
@@ -2432,8 +2429,6 @@
       demoAlt: 'Détail d\'un groupe Rohy, montrant le tableau payé/part/solde et les suggestions de règlement.',
       featuresEyebrow: 'Fonctionnalités principales', featuresH2: 'Tout ce qu\'il faut, rien de superflu',
       feat1Title: 'Gestion des groupes', feat1Body: 'Créez autant de groupes que nécessaire.',
-      feat2Title: 'Répartition flexible', feat2Body: 'Parts, demi-parts et contributions personnalisées.',
-      feat3Title: 'Dépenses ciblées', feat3Body: 'Sélectionnez précisément les participants concernés.',
       feat4Title: 'Historique complet', feat4Body: 'Retrouvez toutes les dépenses et remboursements.',
       feat5Title: 'Scan intelligent des tickets', feat5Body: 'Ajoutez rapidement vos dépenses à partir d\'une photo.',
       feat6Title: 'Suivi des remboursements', feat6Body: 'Gardez une vue claire des règlements effectués.',
@@ -2443,7 +2438,7 @@
       feat10Title: 'Rappels automatiques', feat10Body: 'Envoyez un rappel — dans l\'app et par e-mail — à qui vous doit encore de l\'argent.',
       feat11Title: 'Simplification des dettes', feat11Body: 'Rohy regroupe les soldes entre tous vos groupes communs pour réduire le nombre de règlements.',
       feat12Title: 'Conversion de devise', feat12Body: 'Payez une dépense dans une autre devise que celle du groupe (ex. un billet d\'avion en euros) : le taux se pré-remplit automatiquement et reste modifiable.',
-      compareEyebrow: 'Comparatif fonctionnel', compareH2: 'Pensé pour les situations du quotidien',
+      compareEyebrow: 'Rohy vs. les autres apps',
       compareColRohy: 'Rohy', compareColOthers: 'Concurrents',
       compareRow1: 'Répartition classique', compareRow2: 'Demi-parts', compareRow3: 'Enfants et personnes à charge',
       compareRow4: 'Contributions personnalisées', compareRow5: 'Dépenses ciblées', compareRow6: 'Suivi des remboursements',
@@ -2497,10 +2492,7 @@
       step3Title: 'Let Rohy do the math', step3Body: 'Balances and reimbursements are calculated automatically.', step3Alt: 'Rohy group detail showing balances and settlement suggestions.',
       usecasesEyebrow: 'Use cases', usecasesH2: 'Built for every situation',
       uc1Title: 'Family vacations', uc1Body: 'Account for kids and dependents without complicated math.',
-      uc2Title: 'Weddings', uc2Body: 'Family committee, uneven contributions between households — everyone chips in based on what they can.',
-      uc3Title: 'Family ceremonies', uc3Body: 'Baptisms, religious ceremonies: organize contributions from each household without awkwardness.',
-      uc4Title: 'Associations and dues', uc4Body: 'Monthly association dues, a collection for a gift or a shared event.',
-      uc5Title: 'Couples', uc5Body: 'Easily manage shared expenses and partial coverage.',
+      uc2Title: 'Family events', uc2Body: 'Weddings, baptisms, religious ceremonies, association dues: family committee, uneven contributions between households, everyone chips in based on what they can.',
       uc6Title: 'Roommates', uc6Body: 'Track everyday expenses and split costs fairly.',
       uc7Title: 'Trips with friends', uc7Body: 'Lodging, restaurants, activities, fuel — keep a clear view of the group\'s spending.',
       demoEyebrow: 'Demo', demoH2: 'See Rohy in action',
@@ -2508,8 +2500,6 @@
       demoAlt: 'Rohy group detail, showing the paid/share/balance table and settlement suggestions.',
       featuresEyebrow: 'Key features', featuresH2: 'Everything you need, nothing you don\'t',
       feat1Title: 'Group management', feat1Body: 'Create as many groups as you need.',
-      feat2Title: 'Flexible splitting', feat2Body: 'Shares, half-shares, and custom contributions.',
-      feat3Title: 'Targeted expenses', feat3Body: 'Select exactly which participants are involved.',
       feat4Title: 'Full history', feat4Body: 'Find every expense and reimbursement.',
       feat5Title: 'Smart receipt scan', feat5Body: 'Add expenses quickly from a photo.',
       feat6Title: 'Reimbursement tracking', feat6Body: 'Keep a clear view of settlements made.',
@@ -2519,7 +2509,7 @@
       feat10Title: 'Automatic reminders', feat10Body: 'Send a reminder — in the app and by e-mail — to whoever still owes you money.',
       feat11Title: 'Debt simplification', feat11Body: 'Rohy nets out balances across every group you share with someone, so fewer payments are needed to settle up.',
       feat12Title: 'Currency conversion', feat12Body: 'Pay an expense in a different currency than the group\'s (e.g. a plane ticket in euros): the rate is pre-filled automatically and stays editable.',
-      compareEyebrow: 'Feature comparison', compareH2: 'Built for everyday situations',
+      compareEyebrow: 'Rohy vs. other apps',
       compareColRohy: 'Rohy', compareColOthers: 'Competitors',
       compareRow1: 'Classic even split', compareRow2: 'Half-shares', compareRow3: 'Kids and dependents',
       compareRow4: 'Custom contributions', compareRow5: 'Targeted expenses', compareRow6: 'Reimbursement tracking',
@@ -3268,6 +3258,18 @@
       '<div class="ldg-mech"><span class="ldg-mech-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-target"></i></span><h3>' + L.mech3Title + '</h3><p>' + L.mech3Body + '</p></div>' +
       '<div class="ldg-mech"><span class="ldg-mech-icon"><i class="ph-bold ph-calculator"></i></span><h3>' + L.mech4Title + '</h3><p>' + L.mech4Body + '</p></div>' +
       '</div>' +
+      '<div class="ldg-compare-label">' + L.compareEyebrow + '</div>' +
+      '<table class="ldg-compare">' +
+      '<thead><tr><th></th><th>' + L.compareColRohy + '</th><th>' + L.compareColOthers + '</th></tr></thead>' +
+      '<tbody>' +
+      '<tr><td>' + L.compareRow1 + '</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
+      '<tr><td>' + L.compareRow2 + '</td><td class="yes">✓</td><td class="no">' + L.compareRare + '</td></tr>' +
+      '<tr><td>' + L.compareRow3 + '</td><td class="yes">✓</td><td class="no">' + L.compareRare + '</td></tr>' +
+      '<tr><td>' + L.compareRow4 + '</td><td class="yes">✓</td><td class="no">' + L.compareLimited + '</td></tr>' +
+      '<tr><td>' + L.compareRow5 + '</td><td class="yes">✓</td><td class="no">' + L.compareLimited + '</td></tr>' +
+      '<tr><td>' + L.compareRow6 + '</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
+      '</tbody>' +
+      '</table>' +
       '</section>' +
 
       '<section class="ldg-section ldg-example" id="ldg-exemple">' +
@@ -3309,11 +3311,8 @@
       '<div class="ldg-usecases">' +
       '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-house-line"></i></span><h3>' + L.uc1Title + '</h3><p>' + L.uc1Body + '</p></div>' +
       '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-gift"></i></span><h3>' + L.uc2Title + '</h3><p>' + L.uc2Body + '</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-flower-lotus"></i></span><h3>' + L.uc3Title + '</h3><p>' + L.uc3Body + '</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(196,67,42,.14);color:#C4432A"><i class="ph-bold ph-hand-coins"></i></span><h3>' + L.uc4Title + '</h3><p>' + L.uc4Body + '</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon"><i class="ph-bold ph-heart"></i></span><h3>' + L.uc5Title + '</h3><p>' + L.uc5Body + '</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(214,36,122,.12);color:#D6247A"><i class="ph-bold ph-buildings"></i></span><h3>' + L.uc6Title + '</h3><p>' + L.uc6Body + '</p></div>' +
-      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-airplane-tilt"></i></span><h3>' + L.uc7Title + '</h3><p>' + L.uc7Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(201,161,89,.18);color:#8a6a30"><i class="ph-bold ph-buildings"></i></span><h3>' + L.uc6Title + '</h3><p>' + L.uc6Body + '</p></div>' +
+      '<div class="ldg-usecase"><span class="ldg-uc-icon" style="background:rgba(196,67,42,.14);color:#C4432A"><i class="ph-bold ph-airplane-tilt"></i></span><h3>' + L.uc7Title + '</h3><p>' + L.uc7Body + '</p></div>' +
       '</div>' +
       '</section>' +
 
@@ -3337,8 +3336,6 @@
       '</div>' +
       '<div class="ldg-feat-rows">' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-users-three"></i><h3>' + L.feat1Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat1Body + '</p></details>' +
-      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-percent"></i><h3>' + L.feat2Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat2Body + '</p></details>' +
-      '<details class="ldg-feat-row"><summary><i class="ph-bold ph-target"></i><h3>' + L.feat3Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat3Body + '</p></details>' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-clock-counter-clockwise"></i><h3>' + L.feat4Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat4Body + '</p></details>' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-camera"></i><h3>' + L.feat5Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat5Body + '</p></details>' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-check-circle"></i><h3>' + L.feat6Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat6Body + '</p></details>' +
@@ -3349,21 +3346,6 @@
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-arrows-merge"></i><h3>' + L.feat11Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat11Body + '</p></details>' +
       '<details class="ldg-feat-row"><summary><i class="ph-bold ph-currency-circle-dollar"></i><h3>' + L.feat12Title + '</h3><i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.feat12Body + '</p></details>' +
       '</div>' +
-      '<div class="ldg-section-head" style="margin-top:48px">' +
-      '<span class="ldg-eyebrow">' + L.compareEyebrow + '</span>' +
-      '<h2>' + L.compareH2 + '</h2>' +
-      '</div>' +
-      '<table class="ldg-compare">' +
-      '<thead><tr><th></th><th>' + L.compareColRohy + '</th><th>' + L.compareColOthers + '</th></tr></thead>' +
-      '<tbody>' +
-      '<tr><td>' + L.compareRow1 + '</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
-      '<tr><td>' + L.compareRow2 + '</td><td class="yes">✓</td><td class="no">' + L.compareRare + '</td></tr>' +
-      '<tr><td>' + L.compareRow3 + '</td><td class="yes">✓</td><td class="no">' + L.compareRare + '</td></tr>' +
-      '<tr><td>' + L.compareRow4 + '</td><td class="yes">✓</td><td class="no">' + L.compareLimited + '</td></tr>' +
-      '<tr><td>' + L.compareRow5 + '</td><td class="yes">✓</td><td class="no">' + L.compareLimited + '</td></tr>' +
-      '<tr><td>' + L.compareRow6 + '</td><td class="yes">✓</td><td class="yes">✓</td></tr>' +
-      '</tbody>' +
-      '</table>' +
       '</section>' +
 
       '<section class="ldg-section" id="ldg-avis">' +
