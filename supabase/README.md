@@ -331,7 +331,26 @@ supabase functions deploy join-group --project-ref <ref>
 Rien à configurer en plus (pas de secret) — mais rappel : nécessite
 l'authentification anonyme activée, cf. section 3.
 
-## 8. Front-end branché
+## 8. Déployer la fonction de suppression de compte (delete-account)
+
+`functions/delete-account/index.ts` — droit à l'effacement RGPD.
+L'identité vient uniquement du JWT de l'appelant (jamais d'un id transmis
+par le client) : quitte chaque groupe dont elle est membre (transfère
+l'administration au membre le plus ancien si elle en est admin et qu'il en
+reste d'autres, sinon supprime le groupe entier), anonymise son profil
+(nom → « Compte supprimé », e-mail retiré, lien vers le compte auth
+rompu), puis supprime réellement le compte `auth.users` (connexion
+impossible ensuite). La ligne `profiles` elle-même n'est jamais
+supprimée — `paid_by`/`admin_id`/`from_user`/`to_user` n'ont pas de
+cascade dessus, un hard delete casserait l'historique des autres membres.
+
+```
+supabase functions deploy delete-account --project-ref <ref>
+```
+
+Rien à configurer en plus (pas de secret).
+
+## 9. Front-end branché
 
 `scripts/app.js` appelle désormais Supabase directement (`scripts/supabase-client.js`
 contient l'URL du projet et la clé publiable) : vraie inscription/connexion

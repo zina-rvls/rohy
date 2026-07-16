@@ -189,6 +189,9 @@
       confirmRemoveMemberId: null,
       showConfirmLeaveGroup: false,
       confirmLeaveGroupId: null,
+      showConfirmDeleteAccount: false,
+      deletingAccount: false,
+      accountJustDeleted: false,
       selectedGroupId: null,
       selectedPersonId: null,
       groupUnitMode: 'foyer',
@@ -926,6 +929,26 @@
     sb.auth.signOut();
     // onAuthStateChange (SIGNED_OUT) réinitialise l'état et affiche l'écran de connexion.
   }
+  // ---------- Suppression de compte (droit à l'effacement, cf.
+  // supabase/functions/delete-account) ----------
+  function openConfirmDeleteAccount() { setState({ showConfirmDeleteAccount: true, showAccount: false }); }
+  function cancelDeleteAccount() { setState({ showConfirmDeleteAccount: false }); }
+  function confirmDeleteAccount() {
+    setState({ deletingAccount: true });
+    sb.functions.invoke('delete-account', {}).then(function (res) {
+      extractFunctionErrorMessage(res).then(function (errMsg) {
+        if (errMsg) { setState({ deletingAccount: false }); showToast('Erreur : ' + errMsg); return; }
+        // accountJustDeleted survit à la réinitialisation d'état déclenchée
+        // par SIGNED_OUT (cf. Object.assign(defaultState(), {...}) plus
+        // bas) — affiche un écran de confirmation dédié plutôt qu'un simple
+        // toast, qui pourrait disparaître avant que la personne l'ait lu vu
+        // la réinitialisation immédiate de l'écran au même moment.
+        setStateSilent({ accountJustDeleted: true });
+        sb.auth.signOut();
+      });
+    });
+  }
+  function dismissAccountDeleted() { setState({ accountJustDeleted: false }); }
 
   // ---------- Reminders / settle ----------
   // Les Edge Functions renvoient un statut non-2xx pour les erreurs
@@ -2175,6 +2198,7 @@
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
       showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
+      showConfirmDeleteAccount: false,
       showReminderConfirm: false, showShareLink: false, shareLinkGroupId: null,
       showUpgradeAccount: false, upgradeError: null, upgradeForm: { name: '', email: '', password: '' },
       settleGroupId: null, showAddMemberForm: false,
@@ -2249,7 +2273,13 @@
     // suivante (une fois les nouveaux nœuds en place, rien à transitionner).
     root.classList.add('no-transition');
     var mainHtml;
-    if (state.passwordRecovery) {
+    if (state.accountJustDeleted) {
+      // Priorité absolue : ce drapeau survit volontairement à la
+      // réinitialisation d'état déclenchée par SIGNED_OUT (cf.
+      // confirmDeleteAccount) — sans ce court-circuit, la branche
+      // !state.loggedIn plus bas reprendrait la main dès ce même render().
+      mainHtml = renderAccountDeletedScreen();
+    } else if (state.passwordRecovery) {
       mainHtml = renderNewPasswordScreen();
     } else if (state.joinToken) {
       // Lien d'invitation ouvert (cf. renderJoinScreen) : passe devant tout
@@ -2730,6 +2760,17 @@
       '<input class="text-input" type="password" autocomplete="new-password" data-bind="newPassword" placeholder="•••••••• (8 caractères min)" value="' + escapeHtml(state.newPasswordForm.password) + '" />' +
       '<button class="btn-primary pressable" data-action="submitNewPassword">Mettre à jour le mot de passe</button>' +
       (state.loginError ? '<div class="form-error">' + escapeHtml(state.loginError) + '</div>' : '') +
+      '</div>'
+    );
+  }
+
+  function renderAccountDeletedScreen() {
+    return (
+      '<div class="login-screen">' +
+      '<div class="login-brand"><div class="login-icon">' + logoMark(30, '#0F8F6B', '#084b38') + '</div><span class="login-wordmark">Rohy</span></div>' +
+      '<div class="login-title">Compte supprimé</div>' +
+      '<div class="login-subtitle">Ton compte et tes informations personnelles ont été supprimés. Les dépenses partagées avec d\'autres membres restent visibles pour eux, sous un profil anonymisé.</div>' +
+      '<button class="btn-primary pressable" data-action="dismissAccountDeleted">Retour à l\'accueil</button>' +
       '</div>'
     );
   }
@@ -3680,6 +3721,11 @@
       // "danger" (rouge) comme le ferait une suppression, juste une ligne de
       // menu neutre comme les autres (cf. best practices desktop demandées).
       '<button class="account-dropdown-item pressable" data-action="logout"><i class="ph-bold ph-sign-out"></i>Se déconnecter</button>' +
+      // Suppression de compte : seule action réellement destructive de ce
+      // menu (droit à l'effacement RGPD, cf. supabase/functions/delete-
+      // account) — traitement "danger" pour la distinguer nettement de "Se
+      // déconnecter", réversible, juste au-dessus.
+      '<button class="account-dropdown-item pressable" style="color:var(--status-danger)" data-action="openConfirmDeleteAccount"><i class="ph-bold ph-trash" style="color:var(--status-danger)"></i>Supprimer mon compte</button>' +
       '</div>'
     );
   }
@@ -3697,6 +3743,7 @@
     if (state.showConfirmDeleteGroup) out += renderConfirmDeleteGroupModal();
     if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
     if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
+    if (state.showConfirmDeleteAccount) out += renderConfirmDeleteAccountModal();
     if (state.showReminderConfirm) out += renderReminderConfirmModal();
     return out;
   }
@@ -3874,6 +3921,34 @@
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="cancelLeaveGroup">Annuler</button>' +
       '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmLeaveGroup">Quitter</button>' +
+      '</div></div></div>'
+    );
+  }
+
+  function renderConfirmDeleteAccountModal() {
+    var cu = person(state.currentUserId);
+    if (!cu) return '';
+    var myGroups = state.groups.filter(function (g) { return g.memberIds.indexOf(state.currentUserId) !== -1; });
+    var groupsWithBalance = myGroups.filter(function (g) { return Math.abs(netBalanceFor(state.currentUserId, g.id)) > 0.5; });
+    var adminGroupsWithOthers = myGroups.filter(function (g) { return g.adminId === state.currentUserId && g.memberIds.length > 1; });
+    var warnParts = [];
+    if (groupsWithBalance.length > 0) {
+      warnParts.push(groupsWithBalance.length > 1
+        ? 'Des soldes non réglés dans ' + groupsWithBalance.length + ' groupes resteront visibles (marqués « Compte supprimé ») jusqu\'à leur règlement.'
+        : 'Un solde non réglé dans « ' + groupsWithBalance[0].name + ' » restera visible (marqué « Compte supprimé ») jusqu\'à son règlement.');
+    }
+    if (adminGroupsWithOthers.length > 0) {
+      warnParts.push('Tu es admin de ' + (adminGroupsWithOthers.length > 1 ? adminGroupsWithOthers.length + ' groupes' : '« ' + adminGroupsWithOthers[0].name + ' »') + ' — l\'administration sera transférée automatiquement à un autre membre.');
+    }
+    return (
+      '<div class="modal-overlay center" data-action="cancelDeleteAccount">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">Supprimer ton compte ?</div>' +
+      '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:14px">Ton nom et ton e-mail seront supprimés et tu ne pourras plus te connecter. Cette action est définitive.</div>' +
+      (warnParts.length ? '<div style="font-size:13px;color:var(--status-danger);margin-bottom:18px">' + warnParts.map(function (w) { return escapeHtml(w); }).join(' ') + '</div>' : '') +
+      '<div class="modal-footer-buttons">' +
+      '<button class="btn-cancel pressable" data-action="cancelDeleteAccount">Annuler</button>' +
+      '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmDeleteAccount"' + (state.deletingAccount ? ' disabled' : '') + '>' + (state.deletingAccount ? 'Suppression…' : 'Supprimer mon compte') + '</button>' +
       '</div></div></div>'
     );
   }
@@ -4164,6 +4239,7 @@
       '<button class="switch-user-row pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Donner un avis</span></button>' +
       '<button class="switch-user-row pressable" data-action="toggleTheme" style="margin-bottom:6px"><i class="ph-bold ' + (state.theme === 'dark' ? 'ph-sun' : 'ph-moon') + '" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">' + (state.theme === 'dark' ? 'Mode clair' : 'Mode sombre') + '</span></button>' +
       '<button class="delete-link" data-action="logout"><i class="ph-bold ph-sign-out" style="margin-right:6px"></i>Se déconnecter</button>' +
+      '<button class="delete-link" style="margin-top:8px" data-action="openConfirmDeleteAccount"><i class="ph-bold ph-trash" style="margin-right:6px"></i>Supprimer mon compte</button>' +
       '</div></div>'
     );
   }
@@ -4328,6 +4404,10 @@
         case 'performJoin': performJoin(); break;
         case 'cancelJoin': cancelJoin(); break;
         case 'logout': logout(); break;
+        case 'openConfirmDeleteAccount': openConfirmDeleteAccount(); break;
+        case 'cancelDeleteAccount': cancelDeleteAccount(); break;
+        case 'confirmDeleteAccount': confirmDeleteAccount(); break;
+        case 'dismissAccountDeleted': dismissAccountDeleted(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
         case 'setExpensesGroupFilter': setExpensesGroupFilter(id); break;
@@ -4564,7 +4644,7 @@
           theme: theme, landingLang: state.landingLang, showSplash: wasLoggedIn ? false : state.showSplash,
           joinPreview: state.joinPreview, joinNameInput: state.joinNameInput,
           joinError: state.joinError, joinSubmitting: state.joinSubmitting,
-          analyticsConsent: state.analyticsConsent,
+          analyticsConsent: state.analyticsConsent, accountJustDeleted: state.accountJustDeleted,
         });
         render();
       }
