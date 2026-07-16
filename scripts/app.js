@@ -2633,7 +2633,7 @@
       faq5Q: 'Mes données sont-elles sécurisées ?', faq5A: 'Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu\'aux membres de vos groupes.',
       finalH2: 'Prêt à simplifier vos dépenses de groupe ?', finalP: 'Créez votre premier groupe gratuitement et laissez Rohy faire les calculs à votre place.',
       footerTagline: 'Rohy signifie « lien » en malgache. Les comptes s\'équilibrent, les liens restent.',
-      footerCol1: 'Découvrir', footerLinkProblem: 'Le problème', footerLinkDifference: 'Pourquoi Rohy est différent', footerLinkHow: 'Comment ça marche', footerLinkUsecases: 'Cas d\'usage',
+      footerCol1: 'Découvrir', footerLinkProblem: 'Le problème', footerLinkDifference: 'Pourquoi Rohy est différent', footerLinkHow: 'Comment ça marche', footerLinkUsecases: 'Cas d\'usage', footerLinkFeatures: 'Fonctionnalités',
       footerCol2: 'En savoir plus', footerLinkTestimonials: 'Témoignages', footerLinkFaq: 'FAQ',
       footerBtnSignup: 'Créer un compte', footerBtnLogin: 'Connexion',
       footerBottom: '© 2026 Rohy.',
@@ -2700,7 +2700,7 @@
       faq5Q: 'Is my data secure?', faq5A: 'Yes. Your data is stored securely and only accessible to members of your groups.',
       finalH2: 'Ready to simplify your group expenses?', finalP: 'Create your first group for free and let Rohy do the math for you.',
       footerTagline: 'Rohy means "link" in Malagasy. The accounts balance out. The bonds remain.',
-      footerCol1: 'Discover', footerLinkProblem: 'The problem', footerLinkDifference: 'Why Rohy is different', footerLinkHow: 'How it works', footerLinkUsecases: 'Use cases',
+      footerCol1: 'Discover', footerLinkProblem: 'The problem', footerLinkDifference: 'Why Rohy is different', footerLinkHow: 'How it works', footerLinkUsecases: 'Use cases', footerLinkFeatures: 'Features',
       footerCol2: 'Learn more', footerLinkTestimonials: 'Testimonials', footerLinkFaq: 'FAQ',
       footerBtnSignup: 'Create an account', footerBtnLogin: 'Log in',
       footerBottom: '© 2026 Rohy.',
@@ -3667,7 +3667,7 @@
       '<p>' + L.footerTagline + '</p>' +
       '</div>' +
       '<div class="ldg-footer-links">' +
-      '<div class="ldg-footer-col"><h4>' + L.footerCol1 + '</h4><a href="#ldg-probleme">' + L.footerLinkProblem + '</a><a href="#ldg-difference">' + L.footerLinkDifference + '</a><a href="#ldg-comment">' + L.footerLinkHow + '</a><a href="#ldg-usecases">' + L.footerLinkUsecases + '</a></div>' +
+      '<div class="ldg-footer-col"><h4>' + L.footerCol1 + '</h4><a href="#ldg-probleme">' + L.footerLinkProblem + '</a><a href="#ldg-difference">' + L.footerLinkDifference + '</a><a href="#ldg-comment">' + L.footerLinkHow + '</a><a href="#ldg-usecases">' + L.footerLinkUsecases + '</a><a href="#ldg-features">' + L.footerLinkFeatures + '</a></div>' +
       '<div class="ldg-footer-col"><h4>' + L.footerCol2 + '</h4><a href="#ldg-avis">' + L.footerLinkTestimonials + '</a><a href="#ldg-faq">' + L.footerLinkFaq + '</a><button type="button" data-action="openPrivacy">' + privacyT().title + '</button></div>' +
       (showCtas ? '<div class="ldg-footer-col"><h4>Rohy</h4>' + (state.loggedIn ?
         '<button type="button" data-action="enterApp">' + L.navOpenApp.replace('🚀 ', '') + '</button>' :
