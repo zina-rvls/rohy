@@ -2598,7 +2598,7 @@
       footerCol1: 'Découvrir', footerLinkProblem: 'Le problème', footerLinkDifference: 'Pourquoi Rohy est différent', footerLinkHow: 'Comment ça marche', footerLinkUsecases: 'Cas d\'usage',
       footerCol2: 'En savoir plus', footerLinkTestimonials: 'Témoignages', footerLinkFaq: 'FAQ',
       footerBtnSignup: 'Créer un compte', footerBtnLogin: 'Connexion',
-      footerBottom: '© 2026 Rohy, « lien » en malgache.',
+      footerBottom: '© 2026 Rohy.',
     },
     en: {
       navLogin: 'Log in', navSignup: '🚀 Try Rohy for free', navOpenApp: '🚀 Open the app',
@@ -2665,7 +2665,7 @@
       footerCol1: 'Discover', footerLinkProblem: 'The problem', footerLinkDifference: 'Why Rohy is different', footerLinkHow: 'How it works', footerLinkUsecases: 'Use cases',
       footerCol2: 'Learn more', footerLinkTestimonials: 'Testimonials', footerLinkFaq: 'FAQ',
       footerBtnSignup: 'Create an account', footerBtnLogin: 'Log in',
-      footerBottom: '© 2026 Rohy, "link" in Malagasy.',
+      footerBottom: '© 2026 Rohy.',
     },
   };
   function landingT() { return LANDING_I18N[state.landingLang] || LANDING_I18N.fr; }
