@@ -861,7 +861,11 @@ button { font-family: inherit; }
 .ldg-final p { font-size: 14px; color: rgba(255,255,255,.85); margin: 0 0 22px; }
 .ldg-final .ldg-ctas { margin-bottom: 0; }
 .ldg-final .btn-primary { background: #fff; color: var(--brand-primary); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+/* Override the generic .btn-primary:hover (higher specificity would otherwise
+   swap this button's background to brand green, on an already-green section). */
+@media (hover: hover) { .ldg-final .btn-primary:hover:not(:active) { background: #fff; transform: translateY(-1px); box-shadow: 0 12px 30px rgba(0,0,0,.28); } }
 .ldg-final .btn-outline { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.4); color: #fff; }
+@media (hover: hover) { .ldg-final .btn-outline:hover:not(:active) { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.7); box-shadow: none; } }
 
 /* Footer */
 .ldg-footer { padding: 40px 0 8px; font-size: 12.5px; color: var(--text-tertiary); }
