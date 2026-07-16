@@ -738,6 +738,12 @@
   // !enteredApp, cf. plus bas) — on bascule directement l'écran, que
   // render() intercepte en priorité pour cet état précis.
   function openPrivacy() {
+    // Sans ce garde, cliquer sur "En savoir plus" (bandeau de consentement)
+    // alors qu'on est déjà sur cette page (rouverte via "Modifier mes
+    // préférences", par exemple) empilait une entrée de navigation
+    // redondante sans rien changer à l'écran — un clic qui semblait "ne
+    // mener nulle part" alors qu'on y était déjà.
+    if (state.screen === 'privacy') return;
     if (state.loggedIn && state.enteredApp) { navigate('privacy', { showAccount: false }); }
     else { setState({ screen: 'privacy' }); }
   }
@@ -3696,7 +3702,7 @@
       '<div class="about-standalone-screen">' +
       '<nav class="ldg-nav">' +
       '<div class="ldg-nav-brand">' + logoMark(26, '#0F8F6B', '#084b38') + '<span>Rohy</span></div>' +
-      '<button class="btn-outline pressable" data-action="closePrivacyScreen">' + escapeHtml(L.backLabel) + '</button>' +
+      '<button class="btn-outline pressable" style="flex:none;width:auto;padding:9px 16px" data-action="closePrivacyScreen">' + escapeHtml(L.backLabel) + '</button>' +
       '</nav>' +
       renderPrivacyScreen() +
       '</div>'
