@@ -801,18 +801,12 @@ button { font-family: inherit; }
 .ldg-feat-rows > .ldg-feat-row:nth-child(-n+2) { border-top: none; }
 .ldg-feat-row summary {
   display: flex; align-items: center; gap: 14px; cursor: pointer; list-style: none;
-  border-radius: 10px; padding: 6px 10px; margin: -6px -10px;
 }
 .ldg-feat-row summary::-webkit-details-marker { display: none; }
 .ldg-feat-row summary .ph-bold:first-child { font-size: 18px; color: var(--brand-primary); flex: none; }
 .ldg-feat-row summary h3 { flex: 1; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0; color: var(--text-primary); }
 .ldg-feat-row summary .caret { transition: transform .2s ease; color: var(--text-tertiary); font-size: 13px; flex: none; }
 .ldg-feat-row[open] summary .caret { transform: rotate(180deg); }
-/* Le titre était déjà accompagné d'une icône verte en permanence : un simple
-   changement de couleur du texte au survol passait inaperçu. On ajoute donc
-   un fond de ligne (cohérent avec .checkbox-row/.group-card ailleurs dans
-   l'appli) pour un retour beaucoup plus visible. */
-@media (hover: hover) { .ldg-feat-row summary:hover { background: var(--surface-overlay); } .ldg-feat-row summary:hover h3 { color: var(--brand-primary); } }
 .ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0 32px; }
 
 /* Exemple concret */
@@ -864,6 +858,18 @@ button { font-family: inherit; }
 .ldg-faq-item summary .caret { transition: transform .2s ease; color: var(--text-tertiary); font-size: 12px; flex: none; }
 .ldg-faq-item[open] summary .caret { transform: rotate(180deg); }
 .ldg-faq-item p { margin: 12px 0 0; font-size: 13.5px; color: var(--text-secondary); max-width: 62ch; }
+
+/* Liseré tressé (parallax léger, cf. window.addEventListener('scroll', ...)
+   dans app.js) : motif inspiré du tressage du logo (le "lien" de Rohy),
+   recréé en CSS plutôt qu'en image — trois dégradés répétés en diagonale,
+   à faible opacité, qui se déplacent doucement via background-position. */
+.ldg-thread-divider { height: 14px; margin: 4px 0 40px; border-radius: 999px; opacity: .55;
+  background:
+    repeating-linear-gradient(45deg, rgba(15, 143, 107, .4) 0 2px, transparent 2px 12px),
+    repeating-linear-gradient(-45deg, rgba(201, 161, 89, .45) 0 2px, transparent 2px 12px),
+    repeating-linear-gradient(45deg, rgba(214, 36, 122, .25) 0 1px, transparent 1px 12px);
+}
+@media (prefers-reduced-motion: reduce) { .ldg-thread-divider { background-position-x: 0 !important; } }
 
 /* Final CTA */
 .ldg-final {

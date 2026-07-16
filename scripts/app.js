@@ -3648,6 +3648,7 @@
       '</div>' +
       '</section>' +
 
+      '<div class="ldg-thread-divider" aria-hidden="true"></div>' +
       '<div class="ldg-final" data-reveal="ldg-final">' +
       '<h2>' + L.finalH2 + '</h2>' +
       '<p>' + L.finalP + '</p>' +
@@ -4656,6 +4657,34 @@
   // ne se déclenche jamais sur iPhone, alors qu'il fonctionne normalement
   // partout ailleurs (souris, autres navigateurs mobiles).
   document.addEventListener('touchstart', function () {}, { passive: true });
+
+  // Léger parallax sur le liseré tressé de la landing (.ldg-thread-divider,
+  // cf. renderAboutScreen) : un seul listener global posé une fois pour
+  // toutes (et non dans render(), qui tourne à chaque changement d'état) —
+  // il retrouve les éléments à chaque défilement, ce qui reste correct même
+  // après une reconstruction complète du DOM. Le déplacement se fait via
+  // background-position (pas de transform), et reste borné à la taille d'un
+  // motif (24px) : aucun risque de "bord" visible, quel que soit le défilement.
+  // Écoute en phase de capture sur document (et non window.scroll) car le
+  // défilement réel a lieu sur un conteneur interne (.about-standalone-screen
+  // / .content), pas sur la fenêtre elle-même — un événement 'scroll' sur un
+  // élément ne remonte pas jusqu'à window, seule la phase de capture l'attrape.
+  if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    var threadParallaxTicking = false;
+    document.addEventListener('scroll', function (e) {
+      if (threadParallaxTicking) return;
+      threadParallaxTicking = true;
+      requestAnimationFrame(function () {
+        var dividers = document.querySelectorAll('.ldg-thread-divider');
+        if (dividers.length) {
+          var scrollTop = e.target === document ? window.scrollY : (e.target.scrollTop || 0);
+          var offset = (scrollTop * 0.06) % 24;
+          for (var i = 0; i < dividers.length; i++) dividers[i].style.backgroundPositionX = offset + 'px';
+        }
+        threadParallaxTicking = false;
+      });
+    }, { capture: true, passive: true });
+  }
 
   document.addEventListener('DOMContentLoaded', function () {
     render();
