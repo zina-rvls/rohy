@@ -3753,9 +3753,22 @@
       (f.scanning ?
         '<div class="scan-dropzone scanning"><div class="scan-spinner"></div><span>Lecture du ticket en cours...</span></div>'
         :
+        // accept étendu aux PDF (pas seulement image/*) : sur desktop, ce
+        // bouton devient le seul moyen de joindre un reçu (cf. plus bas,
+        // section "Reçu / pièce jointe" masquée à vide au-delà de 900px car
+        // strictement redondante avec celui-ci) — il doit donc couvrir tout
+        // ce que couvrait l'ancien input dédié, facture PDF incluse.
         '<label class="scan-dropzone pressable">' +
-        '<input type="file" accept="image/*" capture="environment" data-bind-change="scanFile" />' +
-        '<i class="ph-bold ph-camera"></i><span>Scanner un ticket (remplit le formulaire)</span>' +
+        '<input type="file" accept="image/*,.pdf" capture="environment" data-bind-change="scanFile" />' +
+        '<i class="ph-bold ph-camera"></i>' +
+        // Texte différent selon la largeur plutôt qu'un seul libellé : sur
+        // mobile, capture="environment" ouvre réellement l'appareil photo
+        // ("scanner" est donc juste) ; sur desktop cet attribut est ignoré
+        // par le navigateur (simple sélecteur de fichier), donc "scanner"
+        // n'y décrit plus la bonne action — d'où "Ajouter un ticket /
+        // facture", plus juste quand il s'agit de choisir un fichier existant.
+        '<span class="scan-label-mobile">Scanner un ticket (remplit le formulaire)</span>' +
+        '<span class="scan-label-desktop">Ajouter un ticket / facture</span>' +
         '</label>') +
       '<div class="field-label">Groupe</div><div class="pill-row">' + groupChoices + '</div>' +
       '<div class="field-label">Description</div>' +
@@ -3778,25 +3791,41 @@
       '<div class="section-label" style="display:flex;align-items:center;justify-content:space-between">Qui participe ?' +
       '<span class="select-all-link" data-action="toggleAllParticipants">' + (allParticipantsSelected ? 'Tout désélectionner' : 'Tout sélectionner') + '</span>' +
       '</div>' + participantRows + remainderHtml +
-      '<div class="field-label">Reçu / pièce jointe (facultatif)</div>' +
-      (f.receiptPath && !f.receiptRemove ?
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
-        '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> Voir le reçu actuel</button>' +
-        '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu" aria-label="Retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
-        '</div>' : '') +
-      (f.receiptFile ?
-        '<div class="attachment-picked">' +
-        '<i class="ph-bold ph-file-check"></i>' +
-        '<span class="attachment-picked-name">' + escapeHtml(f.receiptFile.name) + '</span>' +
-        '<button type="button" class="attachment-picked-clear pressable" data-action="clearReceiptFile" title="Choisir un autre fichier" aria-label="Choisir un autre fichier"><i class="ph-bold ph-x"></i></button>' +
-        '</div>'
-        :
-        '<label class="attachment-dropzone pressable">' +
-        '<input type="file" accept="image/*,.pdf" data-bind-change="receiptFile" />' +
-        '<i class="ph-bold ph-paperclip"></i>' +
-        '<span>Ajouter une photo ou un PDF</span>' +
-        '</label>'
-      ) +
+      // Rien d'effectivement attaché (jamais eu de reçu, ou un reçu existant
+      // qu'on vient de retirer sans encore en choisir un autre) : sur
+      // desktop, ce label + cette zone ne seraient qu'un doublon exact du
+      // bouton "Ajouter un ticket / facture" tout en haut (qui joint déjà le
+      // fichier choisi, cf. scanReceipt) — masqués à partir de 900px (cf.
+      // styles.css). Sur mobile, gardés : "scanner" un ticket (capture
+      // caméra) et joindre un fichier existant restent deux gestes
+      // différents qu'on peut vouloir faire séparément. Dès qu'un reçu
+      // existe (chargé ou tout juste choisi), la section redevient utile
+      // sur toutes les tailles (voir/retirer/remplacer) et n'est donc
+      // jamais masquée.
+      (function () {
+        var receiptEmpty = (!f.receiptPath || f.receiptRemove) && !f.receiptFile;
+        return (
+          '<div class="field-label' + (receiptEmpty ? ' receipt-empty-hide' : '') + '">Reçu / pièce jointe (facultatif)</div>' +
+          (f.receiptPath && !f.receiptRemove ?
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+            '<button type="button" class="btn-outline pressable" style="flex:1" data-action="viewReceipt" data-path="' + escapeHtml(f.receiptPath) + '"><i class="ph-bold ph-paperclip"></i> Voir le reçu actuel</button>' +
+            '<button type="button" class="btn-icon-danger pressable" style="width:38px;flex-shrink:0" data-action="removeReceipt" title="retirer le reçu" aria-label="Retirer le reçu"><i class="ph-bold ph-trash"></i></button>' +
+            '</div>' : '') +
+          (f.receiptFile ?
+            '<div class="attachment-picked">' +
+            '<i class="ph-bold ph-file-check"></i>' +
+            '<span class="attachment-picked-name">' + escapeHtml(f.receiptFile.name) + '</span>' +
+            '<button type="button" class="attachment-picked-clear pressable" data-action="clearReceiptFile" title="Choisir un autre fichier" aria-label="Choisir un autre fichier"><i class="ph-bold ph-x"></i></button>' +
+            '</div>'
+            :
+            '<label class="attachment-dropzone pressable' + (receiptEmpty ? ' receipt-empty-hide' : '') + '">' +
+            '<input type="file" accept="image/*,.pdf" data-bind-change="receiptFile" />' +
+            '<i class="ph-bold ph-paperclip"></i>' +
+            '<span>Ajouter une photo ou un PDF</span>' +
+            '</label>'
+          )
+        );
+      })() +
       '<button class="btn-primary pressable" style="margin-top:20px" data-action="submitExpense">' + (f.editingId ? 'Enregistrer les modifications' : 'Enregistrer la dépense') + '</button>' +
       (state.formError ? '<div class="form-error">' + escapeHtml(state.formError) + '</div>' : '') +
       (f.editingId ? '<button class="delete-link" data-action="deleteExpense">Supprimer cette dépense</button>' : '') +

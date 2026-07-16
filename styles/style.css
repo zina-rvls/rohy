@@ -471,6 +471,15 @@ button { font-family: inherit; }
 .scan-dropzone.scanning { pointer-events: none; }
 .scan-spinner { width: 16px; height: 16px; border: 2px solid rgba(15, 143, 107, .3); border-top-color: var(--brand-primary); border-radius: 50%; animation: scanSpin .7s linear infinite; flex-shrink: 0; }
 @keyframes scanSpin { to { transform: rotate(360deg); } }
+.scan-label-desktop { display: none; }
+@media (min-width: 900px) {
+  .scan-label-mobile { display: none; }
+  .scan-label-desktop { display: inline; }
+  /* Sans reçu déjà attaché, ce bloc ferait doublon avec "Ajouter un ticket /
+     facture" ci-dessus (cf. commentaire dans renderAddExpenseModal) — masqué
+     uniquement sur desktop, où ce bouton couvre déjà entièrement ce geste. */
+  .receipt-empty-hide { display: none; }
+}
 
 /* --- Group detail --- */
 .member-table { background: var(--surface-raised); border-radius: 20px; padding: 16px; margin-bottom: 16px; }
