@@ -394,6 +394,38 @@ dans cette liste, a finalement été demandé et livré (cf. tableau ci-dessus).
 |---|---|
 | Créer un compte (lien magique, mot de passe, ou ré-invitation) avec une adresse déjà utilisée par un profil "invité sans compte" existant échouait avec une erreur Postgres brute (`duplicate key value violates unique constraint "profiles_email_unique"`), bloquant complètement l'inscription | ✅ fait — migration `0013_link_guest_profile_on_signup.sql` (cf. `supabase/README.md`) : le trigger de création de profil rattache désormais ce profil existant au nouveau compte au lieu d'en créer un doublon, en conservant son nom/couleur/part/historique |
 
+## RGPD
+
+Ce qui est déjà en place côté app (chacun avec sa propre entrée dans ce
+README au moment de son ajout) :
+- **Politique de confidentialité** — accessible avant connexion (pied de
+  page de la landing) et après (menu compte) ; `renderPrivacyScreen` dans
+  `scripts/app.js`.
+- **Consentement à la mesure d'audience** — bandeau qui bloque le
+  chargement de Cloudflare Web Analytics tant qu'il n'est pas explicitement
+  accepté (`loadCloudflareAnalytics`, `acceptAnalytics`/`declineAnalytics`).
+- **Suppression de compte** (droit à l'effacement) — "Supprimer mon
+  compte" dans le menu, cf. `supabase/functions/delete-account`.
+- **Export des données personnelles** (portabilité) — "Télécharger mes
+  données" dans la politique de confidentialité (`exportMyData`).
+
+Registre des sous-traitants (à tenir à jour si un prestataire change) —
+utile pour un registre des traitements (article 30 RGPD) ou pour répondre
+à un partenaire qui demande le détail des sous-traitants :
+
+| Sous-traitant | Traitement | Données concernées | Localisation |
+|---|---|---|---|
+| Supabase, Inc. | Base de données, authentification, stockage des reçus | Toutes les données de l'app | États-Unis |
+| Cloudflare, Inc. | Mesure d'audience (sans cookie de suivi individuel) | Adresse IP, pages visitées | États-Unis |
+| Resend | Envoi des e-mails de rappel de paiement | Adresse e-mail du destinataire, contenu du rappel | États-Unis |
+| Anthropic PBC | Lecture automatique des tickets scannés | Photo du ticket envoyée à l'API | États-Unis |
+
+**Reste à faire, côté administratif plutôt que code** : vérifier que
+chacun de ces prestataires propose un DPA (data processing agreement) /
+des clauses contractuelles types couvrant le transfert hors UE, et
+l'accepter côté compte Supabase/Cloudflare/Resend/Anthropic — ce n'est
+pas quelque chose que du code peut faire à ta place.
+
 ## Domaine
 
 Le domaine définitif de l'app est **rohy-app.com** (remplace l'URL GitHub
