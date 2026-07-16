@@ -53,6 +53,27 @@
     try { localStorage.setItem(LANDING_LANG_KEY, lang); } catch (err) { /* mode privé / quota */ }
   }
 
+  // Consentement à la mesure d'audience (Cloudflare Web Analytics, cf.
+  // loadCloudflareAnalytics) — null tant qu'aucun choix n'a été fait
+  // (bandeau affiché), 'granted'/'denied' une fois décidé. Le script n'est
+  // jamais chargé sans un 'granted' explicite, cf. index.html qui ne le
+  // référence plus du tout statiquement.
+  var ANALYTICS_CONSENT_KEY = 'rohy-analytics-consent';
+  function loadAnalyticsConsent() {
+    try { return localStorage.getItem(ANALYTICS_CONSENT_KEY); } catch (err) { return null; }
+  }
+  function saveAnalyticsConsent(value) {
+    try { localStorage.setItem(ANALYTICS_CONSENT_KEY, value); } catch (err) { /* mode privé / quota */ }
+  }
+  function loadCloudflareAnalytics() {
+    if (document.querySelector('script[data-cf-beacon]')) return;
+    var s = document.createElement('script');
+    s.type = 'module';
+    s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    s.setAttribute('data-cf-beacon', '{"token": "1c8def4bafea4996849e0e7d5d0ea9f1"}');
+    document.head.appendChild(s);
+  }
+
   // Relance "Créer un compte" (cf. tryWithoutAccount) : une fois refermée,
   // ne doit plus jamais réapparaître sur cet appareil — persistée en local
   // plutôt qu'en mémoire, pour survivre à un rechargement de page.
@@ -142,6 +163,7 @@
       theme: loadTheme(),
       landingLang: loadLandingLang(),
       showLandingMobileMenu: false,
+      analyticsConsent: loadAnalyticsConsent(),
       loggedIn: false,
       dataLoading: false,
       loginMode: 'password',
@@ -782,6 +804,19 @@
       return { theme: next };
     });
   }
+  function acceptAnalytics() {
+    saveAnalyticsConsent('granted');
+    setState({ analyticsConsent: 'granted' });
+    loadCloudflareAnalytics();
+  }
+  function declineAnalytics() {
+    saveAnalyticsConsent('denied');
+    setState({ analyticsConsent: 'denied' });
+  }
+  // Rouvre le bandeau pour revenir sur un choix déjà fait (cf. lien "Gérer
+  // mes préférences" dans la politique de confidentialité) — ne réinitialise
+  // pas le stockage tant que la personne n'a pas re-choisi explicitement.
+  function reopenAnalyticsChoice() { setState({ analyticsConsent: null }); }
 
   // Bascule FR/EN de la landing (cf. LANDING_I18N) — persistée comme le
   // thème, pour rester dans la langue choisie d'une visite à l'autre.
@@ -2213,13 +2248,14 @@
     // désactive le temps du remplacement, puis on la réactive à la frame
     // suivante (une fois les nouveaux nœuds en place, rien à transitionner).
     root.classList.add('no-transition');
+    var mainHtml;
     if (state.passwordRecovery) {
-      root.innerHTML = renderNewPasswordScreen();
+      mainHtml = renderNewPasswordScreen();
     } else if (state.joinToken) {
       // Lien d'invitation ouvert (cf. renderJoinScreen) : passe devant tout
       // le reste, connecté ou non — se referme de lui-même une fois la
       // personne ajoutée au groupe (performJoin remet joinToken à null).
-      root.innerHTML = renderJoinScreen();
+      mainHtml = renderJoinScreen();
     } else if (state.screen === 'privacy' && (!state.loggedIn || !state.enteredApp)) {
       // Politique de confidentialité ouverte depuis la landing (avant
       // connexion, ou connecté mais pas encore entré dans l'app) : même cas
@@ -2227,19 +2263,24 @@
       // ci doit donc être intercepté ici pour ne pas être écrasé par
       // renderAboutFromLogin(). Une fois entré dans l'app, ce même écran est
       // servi normalement par renderContent() (case 'privacy').
-      root.innerHTML = renderPrivacyStandalone();
+      mainHtml = renderPrivacyStandalone();
     } else if (!state.loggedIn) {
-      root.innerHTML = state.showLoginForm ? renderLogin() : renderAboutFromLogin();
+      mainHtml = state.showLoginForm ? renderLogin() : renderAboutFromLogin();
     } else if (!state.enteredApp) {
       // Racine du site : toujours la landing en premier, même connecté (cf.
       // commentaire sur `enteredApp` dans defaultState) — le CTA "Ouvrir
       // l'app" de la nav/du hero (enterApp) fait passer à l'écran suivant.
-      root.innerHTML = renderAboutFromLogin();
+      mainHtml = renderAboutFromLogin();
     } else if (state.dataLoading || !person(state.currentUserId)) {
-      root.innerHTML = renderLoadingScreen();
+      mainHtml = renderLoadingScreen();
     } else {
-      root.innerHTML = renderApp();
+      mainHtml = renderApp();
     }
+    // Bandeau de consentement mesure d'audience : superposé à n'importe quel
+    // écran (sauf le lancement, déjà exclu plus haut) tant qu'aucun choix
+    // n'a été fait — jamais affiché une fois state.analyticsConsent décidé
+    // ('granted' ou 'denied'), cf. acceptAnalytics/declineAnalytics.
+    root.innerHTML = mainHtml + (state.analyticsConsent === null ? renderConsentBanner() : '');
     bindEvents(root);
     restoreFocus(root, focusInfo);
     var newModalSheet = root.querySelector('.modal-sheet');
@@ -2599,7 +2640,10 @@
       s7Body: 'Tu disposes d\'un droit d\'accès, de rectification, d\'effacement, de portabilité et d\'opposition sur tes données. Pour les exercer, écris-nous à contact@rohy-app.com. Tu disposes aussi du droit d\'introduire une réclamation auprès de l\'autorité de protection des données de ton pays de résidence (la CNIL en France).',
       s8Title: 'Cookies et traceurs',
       s8Body: 'Rohy n\'utilise aucun cookie publicitaire ou de profilage. La mesure d\'audience (Cloudflare Web Analytics) est conçue pour fonctionner sans cookie de suivi individuel.',
+      manageConsent: 'Modifier mes préférences de mesure d\'audience',
       backLabel: '← Retour',
+      bannerText: 'Nous utilisons une mesure d\'audience (Cloudflare Web Analytics, sans cookie de suivi individuel) pour comprendre l\'usage de Rohy. Tu peux l\'accepter ou la refuser — ça ne change rien au fonctionnement de l\'app.',
+      bannerAccept: 'Accepter', bannerDecline: 'Refuser', bannerLearnMore: 'En savoir plus',
     },
     en: {
       title: 'Privacy policy',
@@ -2636,7 +2680,10 @@
       s7Body: 'You have the right to access, rectify, erase, port, and object to your data. To exercise these rights, write to us at contact@rohy-app.com. You also have the right to lodge a complaint with the data protection authority in your country of residence.',
       s8Title: 'Cookies and trackers',
       s8Body: 'Rohy uses no advertising or profiling cookies. Our traffic measurement tool (Cloudflare Web Analytics) is designed to work without individual tracking cookies.',
+      manageConsent: 'Change my traffic measurement preferences',
       backLabel: '← Back',
+      bannerText: 'We use a traffic measurement tool (Cloudflare Web Analytics, no individual tracking cookie) to understand how Rohy is used. You can accept or decline — it changes nothing about how the app works.',
+      bannerAccept: 'Accept', bannerDecline: 'Decline', bannerLearnMore: 'Learn more',
     },
   };
   function privacyT() { return PRIVACY_I18N[state.landingLang] || PRIVACY_I18N.fr; }
@@ -3542,6 +3589,7 @@
       '<h2>' + escapeHtml(L.s6Title) + '</h2><p>' + escapeHtml(L.s6Body) + '</p>' +
       '<h2>' + escapeHtml(L.s7Title) + '</h2><p>' + escapeHtml(L.s7Body) + '</p>' +
       '<h2>' + escapeHtml(L.s8Title) + '</h2><p>' + escapeHtml(L.s8Body) + '</p>' +
+      '<button type="button" class="select-all-link pressable" style="margin-top:8px" data-action="reopenAnalyticsChoice">' + escapeHtml(L.manageConsent) + '</button>' +
       '</section>' +
       '</div>'
     );
@@ -3561,6 +3609,23 @@
       '<button class="btn-outline pressable" data-action="closePrivacyScreen">' + escapeHtml(L.backLabel) + '</button>' +
       '</nav>' +
       renderPrivacyScreen() +
+      '</div>'
+    );
+  }
+
+  // Bandeau de consentement mesure d'audience — superposé par render() à
+  // n'importe quel écran tant qu'aucun choix n'a été fait (cf. plus haut).
+  // Fixe en bas de viewport, au-dessus de tout (y compris la bottom-nav
+  // mobile) : cf. styles.css pour le z-index.
+  function renderConsentBanner() {
+    var L = privacyT();
+    return (
+      '<div class="consent-banner" data-stop-click>' +
+      '<p>' + escapeHtml(L.bannerText) + ' <button type="button" class="consent-learn-more" data-action="openPrivacy">' + escapeHtml(L.bannerLearnMore) + '</button></p>' +
+      '<div class="consent-banner-actions">' +
+      '<button type="button" class="btn-outline pressable" data-action="declineAnalytics">' + escapeHtml(L.bannerDecline) + '</button>' +
+      '<button type="button" class="btn-primary pressable" data-action="acceptAnalytics">' + escapeHtml(L.bannerAccept) + '</button>' +
+      '</div>' +
       '</div>'
     );
   }
@@ -4251,6 +4316,9 @@
         case 'openAbout': openAbout(); break;
         case 'openPrivacy': openPrivacy(); break;
         case 'closePrivacyScreen': closePrivacyScreen(); break;
+        case 'acceptAnalytics': acceptAnalytics(); break;
+        case 'declineAnalytics': declineAnalytics(); break;
+        case 'reopenAnalyticsChoice': reopenAnalyticsChoice(); break;
         case 'openLoginForm': openLoginForm(); break;
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
@@ -4440,6 +4508,11 @@
     // toujours false, donc rien à amorcer ici.
     if (state.showSplash) armSplashTimeout();
     if (state.joinToken) fetchJoinPreview();
+    // Choix de mesure d'audience déjà connu (visite précédente) : on
+    // recharge directement le script si accepté, sans jamais réafficher le
+    // bandeau — celui-ci n'apparaît que quand analyticsConsent est encore
+    // null (cf. render()).
+    if (state.analyticsConsent === 'granted') loadCloudflareAnalytics();
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         setState({ passwordRecovery: true, loginError: null, newPasswordForm: { password: '' } });
@@ -4491,6 +4564,7 @@
           theme: theme, landingLang: state.landingLang, showSplash: wasLoggedIn ? false : state.showSplash,
           joinPreview: state.joinPreview, joinNameInput: state.joinNameInput,
           joinError: state.joinError, joinSubmitting: state.joinSubmitting,
+          analyticsConsent: state.analyticsConsent,
         });
         render();
       }

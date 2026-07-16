@@ -1014,6 +1014,25 @@ button { font-family: inherit; }
 /* --- Toast --- */
 .toast { position: absolute; bottom: 78px; left: 20px; right: 20px; background: var(--surface-overlay); color: var(--text-primary); padding: 13px 16px; border-radius: 14px; font-size: 13.5px; font-weight: 600; text-align: center; animation: popIn .22s cubic-bezier(.3, .7, .4, 1); box-shadow: 0 20px 60px rgba(0, 0, 0, .5); z-index: 20; }
 
+.consent-banner {
+  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 50; max-width: 720px; margin: 0 auto;
+  background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: 16px;
+  padding: 16px 18px; box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px; animation: popIn .22s cubic-bezier(.3, .7, .4, 1);
+}
+.consent-banner p { flex: 1; min-width: 220px; margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.consent-learn-more {
+  background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--brand-primary);
+  cursor: pointer; text-decoration: underline;
+}
+.consent-banner-actions { display: flex; gap: 8px; flex: none; }
+.consent-banner-actions .btn-outline, .consent-banner-actions .btn-primary { flex: none; width: auto; padding: 9px 16px; font-size: 13.5px; }
+@media (max-width: 700px) {
+  .consent-banner { bottom: 78px; flex-direction: column; align-items: stretch; }
+  .consent-banner-actions { justify-content: stretch; }
+  .consent-banner-actions .btn-outline, .consent-banner-actions .btn-primary { flex: 1; }
+}
+
 /* utility */
 .hidden { display: none !important; }
 
