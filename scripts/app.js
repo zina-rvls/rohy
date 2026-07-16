@@ -2593,12 +2593,8 @@
       faq3Q: 'Puis-je l\'utiliser sur mobile ?', faq3A: 'Oui. Rohy est optimisé pour les smartphones, tablettes et ordinateurs.',
       faq4Q: 'Puis-je gérer des demi-parts ?', faq4A: 'Oui. Rohy a été conçu pour gérer les contributions inégales, les enfants et les personnes à charge.',
       faq5Q: 'Mes données sont-elles sécurisées ?', faq5A: 'Oui. Vos données sont stockées de manière sécurisée et ne sont accessibles qu\'aux membres de vos groupes.',
-      meaningEyebrow: 'Le sens de Rohy',
-      meaningLine1Pre: 'Rohy signifie ', meaningLine1Strong: '« lien »', meaningLine1Post: ' en malgache.',
-      meaningLine2: 'Parce qu\'au-delà des dépenses, ce sont les liens entre les personnes qui comptent.',
-      meaningClosing: 'Les comptes s\'équilibrent. Les liens restent.',
       finalH2: 'Prêt à simplifier vos dépenses de groupe ?', finalP: 'Créez votre premier groupe gratuitement et laissez Rohy faire les calculs à votre place.',
-      footerTagline: 'Suivi de dépenses partagées entre amis, colocataires ou en famille, pensé pour les foyers, pas seulement pour diviser par deux.',
+      footerTagline: 'Rohy signifie « lien » en malgache. Les comptes s\'équilibrent, les liens restent.',
       footerCol1: 'Découvrir', footerLinkProblem: 'Le problème', footerLinkDifference: 'Pourquoi Rohy est différent', footerLinkHow: 'Comment ça marche', footerLinkUsecases: 'Cas d\'usage',
       footerCol2: 'En savoir plus', footerLinkTestimonials: 'Témoignages', footerLinkFaq: 'FAQ',
       footerBtnSignup: 'Créer un compte', footerBtnLogin: 'Connexion',
@@ -2664,12 +2660,8 @@
       faq3Q: 'Can I use it on mobile?', faq3A: 'Yes. Rohy is optimized for smartphones, tablets, and computers.',
       faq4Q: 'Can I manage half-shares?', faq4A: 'Yes. Rohy was built to handle uneven contributions, kids, and dependents.',
       faq5Q: 'Is my data secure?', faq5A: 'Yes. Your data is stored securely and only accessible to members of your groups.',
-      meaningEyebrow: 'The meaning of Rohy',
-      meaningLine1Pre: 'Rohy means ', meaningLine1Strong: '"link"', meaningLine1Post: ' in Malagasy.',
-      meaningLine2: 'Because beyond the expenses, it\'s the bonds between people that matter.',
-      meaningClosing: 'The accounts balance out. The bonds remain.',
       finalH2: 'Ready to simplify your group expenses?', finalP: 'Create your first group for free and let Rohy do the math for you.',
-      footerTagline: 'Shared expense tracking for friends, roommates, or family — built for households, not just splitting in two.',
+      footerTagline: 'Rohy means "link" in Malagasy. The accounts balance out. The bonds remain.',
       footerCol1: 'Discover', footerLinkProblem: 'The problem', footerLinkDifference: 'Why Rohy is different', footerLinkHow: 'How it works', footerLinkUsecases: 'Use cases',
       footerCol2: 'Learn more', footerLinkTestimonials: 'Testimonials', footerLinkFaq: 'FAQ',
       footerBtnSignup: 'Create an account', footerBtnLogin: 'Log in',
@@ -3615,15 +3607,6 @@
       '<details class="ldg-faq-item"><summary>' + L.faq3Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq3A + '</p></details>' +
       '<details class="ldg-faq-item"><summary>' + L.faq4Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq4A + '</p></details>' +
       '<details class="ldg-faq-item"><summary>' + L.faq5Q + '<i class="ph-bold ph-caret-down caret"></i></summary><p>' + L.faq5A + '</p></details>' +
-      '</div>' +
-      '</section>' +
-
-      '<section class="ldg-section ldg-meaning" id="ldg-sens">' +
-      '<div class="ldg-meaning-inner">' +
-      '<span class="ldg-eyebrow">' + L.meaningEyebrow + '</span>' +
-      '<p class="ldg-meaning-line">' + L.meaningLine1Pre + '<strong>' + L.meaningLine1Strong + '</strong>' + L.meaningLine1Post + '</p>' +
-      '<p class="ldg-meaning-line">' + L.meaningLine2 + '</p>' +
-      '<p class="ldg-meaning-closing">' + L.meaningClosing + '</p>' +
       '</div>' +
       '</section>' +
 

@@ -807,16 +807,6 @@ button { font-family: inherit; }
 .ldg-faq-item[open] summary .caret { transform: rotate(180deg); }
 .ldg-faq-item p { margin: 12px 0 0; font-size: 13.5px; color: var(--text-secondary); max-width: 62ch; }
 
-/* Le sens de Rohy : bref moment de respiration/émotion avant le CTA final */
-.ldg-meaning { text-align: center; }
-.ldg-meaning-inner { max-width: 46ch; margin: 0 auto; }
-.ldg-meaning-line { font-size: 16px; color: var(--text-secondary); margin: 14px 0 0; }
-.ldg-meaning-line strong { color: var(--text-primary); }
-.ldg-meaning-closing {
-  font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(19px, 2.6vw, 23px);
-  color: var(--brand-primary); margin: 22px 0 0;
-}
-
 /* Final CTA */
 .ldg-final {
   text-align: center; border-radius: 24px; padding: 44px 28px; margin-top: 12px;
