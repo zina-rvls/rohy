@@ -62,7 +62,33 @@
 @keyframes screenIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes popIn { from { opacity: 0; transform: translateY(-6px) scale(.98) } to { opacity: 1; transform: translateY(0) scale(1) } }
 
-* { box-sizing: border-box; transition: background-color .15s ease, border-color .15s ease; }
+/* Micro-interactions (survol/pression/focus) : voir les .pressable, .*:hover
+   et :focus-visible plus bas. Respecte la préférence système de réduction
+   des animations — coupe tout net (transitions ET animations), y compris
+   les keyframes ci-dessus, plutôt que de les ignorer. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* transform/box-shadow ajoutés à la transition globale : les micro-
+   interactions (survol, pression) s'animent en douceur au lieu de basculer
+   d'un état à l'autre sans transition. Durée délibérément courte (au lieu
+   des .15s de background-color/border-color) — un retour au clic doit
+   rester net, pas ressembler à un ralenti. .no-transition (cf. juste
+   dessous) neutralise déjà tout ceci pendant un re-rendu complet. */
+* { box-sizing: border-box; transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .12s cubic-bezier(.4, 0, .2, 1), box-shadow .15s ease; }
+/* Anneau de focus clavier unique pour tout le site (boutons, champs, liens) —
+   plutôt que le contour par défaut du navigateur, incohérent d'un
+   navigateur à l'autre et parfois invisible sur fond sombre. :focus-visible
+   (pas :focus) : n'apparaît qu'à la navigation clavier, jamais au clic
+   souris — un site "premium" ne doit pas avoir l'air de cocher une case
+   accessibilité au prix de l'esthétique clic-souris. */
+:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
 /* Un re-rendu (innerHTML) reconstruit tout le sous-arbre : sans ça, la
    transition ci-dessus rejoue sur les nœuds fraîchement créés à chaque
    frappe dans un champ non "silencieux", provoquant un flash visuel.
@@ -309,6 +335,11 @@ button { font-family: inherit; }
   font-size: 16px; margin-bottom: 14px;
   font-family: 'Manrope', sans-serif;
 }
+/* :focus-visible aurait suffi pour le clavier (cf. règle globale), mais un
+   champ de saisie doit aussi confirmer visuellement un clic souris/tactile
+   dedans — contrairement à un bouton, ce n'est pas un simple déclencheur
+   d'action ponctuelle, on y reste pour taper. */
+.text-input:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(15, 143, 107, .14); outline: none; }
 /* Un <select> avec juste la classe .text-input garde la flèche native du
    navigateur/OS, qui jure avec le reste du design (pas la même forme, pas
    toujours bien centrée dans le padding). .select-field masque cette
@@ -331,7 +362,12 @@ button { font-family: inherit; }
    (souris/trackpad). Sans ce garde-fou, un survol reste "collé" après un
    tap sur tout appareil tactile (téléphone, ou tablette assez large pour
    passer les seuils desktop ci-dessous) jusqu'au tap suivant ailleurs. */
-@media (hover: hover) { .btn-primary:hover { background: var(--brand-primary-hover); } }
+/* :hover:not(:active) plutôt que :hover seul : au clic souris, hover et
+   active sont vrais en même temps — sans ce garde, à spécificité égale,
+   cette règle (plus bas dans le fichier) l'emporterait sur .pressable:active
+   et le léger décalage vers le haut masquerait l'enfoncement du bouton au
+   clic. Même raisonnement pour toutes les règles :hover ajoutées ci-après. */
+@media (hover: hover) { .btn-primary:hover:not(:active) { background: var(--brand-primary-hover); transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(15, 143, 107, .4), 0 10px 28px rgba(15, 143, 107, .3); } }
 /* Même gabarit que .btn-primary (utilisé côte à côte avec elle, cf.
    "Qui doit quoi à qui" sur Dépenses), mais en fuchsia — signale une
    action "étape suivante" plutôt que l'action par défaut de l'écran. */
@@ -373,7 +409,10 @@ button { font-family: inherit; }
 .icon-btn { width: 34px; height: 34px; border-radius: 14px; background: var(--surface-raised); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 16px; flex-shrink: 0; border: none; }
 .icon-btn.small { width: 36px; height: 36px; }
 .icon-btn.brand { background: var(--brand-primary); color: #fff; box-shadow: 0 0 0 1px rgba(15, 143, 107, .4), 0 8px 20px rgba(15, 143, 107, .22); }
-@media (hover: hover) { .icon-btn.brand:hover { background: var(--brand-primary-hover); } }
+@media (hover: hover) {
+  .icon-btn:hover:not(:active) { background: var(--surface-overlay); }
+  .icon-btn.brand:hover:not(:active) { background: var(--brand-primary-hover); }
+}
 .top-title { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 19px; color: var(--text-primary); letter-spacing: -0.2px; }
 /* Sur l'écran d'accueil, le titre texte ("Mes dépenses") cède la place au
    logo + wordmark (cf. .top-bar-wordmark) — mais seulement sur mobile. Sur
@@ -429,6 +468,7 @@ button { font-family: inherit; }
 /* --- Groups --- */
 .group-card { background: var(--surface-raised); border-radius: 20px; padding: 16px; margin-bottom: 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; border: none; width: 100%; text-align: left; }
 .group-card:active { transform: scale(0.98); }
+@media (hover: hover) { .group-card:hover:not(:active) { box-shadow: 0 6px 20px rgba(0, 0, 0, .1); transform: translateY(-1px); } }
 .group-icon { width: 44px; height: 44px; border-radius: 14px; background: var(--surface-overlay); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); font-size: 19px; flex-shrink: 0; }
 .group-name { font-size: 16px; font-weight: 700; color: var(--text-primary); }
 .group-members { font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
@@ -491,6 +531,7 @@ button { font-family: inherit; }
 .admin-actions { display: flex; gap: 10px; margin-bottom: 16px; }
 .btn-outline { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border: 1px solid var(--border-default); border-radius: 14px; color: var(--text-primary); font-weight: 700; font-size: 13.5px; cursor: pointer; background: var(--surface-raised); }
 .btn-outline:active { transform: scale(0.98); }
+@media (hover: hover) { .btn-outline:hover:not(:active) { border-color: var(--brand-primary); box-shadow: 0 4px 14px rgba(0, 0, 0, .08); } }
 .btn-icon-danger { width: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-default); border-radius: 14px; color: var(--status-danger); cursor: pointer; background: none; }
 .suggestion-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface-raised); border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; font-size: 13.5px; color: var(--text-primary); }
 .suggestion-amount { font-family: 'Sora', sans-serif; font-weight: 800; color: var(--brand-primary-hover); }
@@ -499,6 +540,7 @@ button { font-family: inherit; }
 .expense-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-subtle); cursor: pointer; }
 .expense-row:first-child { border-top: none; }
 .expense-row:active { opacity: .7; }
+@media (hover: hover) { .expense-row:hover:not(:active) { opacity: .85; } }
 .expense-icon { width: 34px; height: 34px; border-radius: 12px; background: var(--surface-overlay); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 15px; flex-shrink: 0; }
 .expense-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .expense-subtitle { font-size: 11.5px; color: var(--text-tertiary); }
@@ -514,6 +556,7 @@ button { font-family: inherit; }
 .btn-danger-fill:active { transform: scale(0.97); }
 .btn-outline-flex { flex: 1; text-align: center; padding: 12px; background: var(--surface-raised); color: var(--text-primary); border-radius: 14px; font-weight: 700; font-size: 14px; cursor: pointer; border: 1px solid var(--border-default); }
 .btn-outline-flex:active { transform: scale(0.97); }
+@media (hover: hover) { .btn-outline-flex:hover:not(:active) { border-color: var(--brand-primary); box-shadow: 0 4px 14px rgba(0, 0, 0, .08); } }
 .reminder-preview { background: var(--status-danger-bg); border: 1px solid var(--status-danger); border-radius: 14px; padding: 12px 14px; font-size: 13px; color: var(--text-primary); margin-bottom: 16px; }
 .person-expense-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border-subtle); }
 .person-expense-row:first-child { border-top: none; }
@@ -756,6 +799,7 @@ button { font-family: inherit; }
 .ldg-feat-row summary h3 { flex: 1; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0; color: var(--text-primary); }
 .ldg-feat-row summary .caret { transition: transform .2s ease; color: var(--text-tertiary); font-size: 13px; flex: none; }
 .ldg-feat-row[open] summary .caret { transform: rotate(180deg); }
+@media (hover: hover) { .ldg-feat-row summary:hover h3 { color: var(--brand-primary); } }
 .ldg-feat-row p { font-size: 13px; color: var(--text-secondary); margin: 10px 0 0 32px; }
 
 /* Exemple concret */
@@ -798,6 +842,7 @@ button { font-family: inherit; }
 .ldg-faq-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; margin-top: 4px; align-items: start; }
 @media (max-width: 700px) { .ldg-faq-list { grid-template-columns: 1fr; } }
 .ldg-faq-item { border: 1px solid var(--border-subtle); border-radius: 14px; padding: 16px 18px; background: var(--surface-raised); }
+@media (hover: hover) { .ldg-faq-item:hover { border-color: var(--brand-primary); } }
 .ldg-faq-item summary {
   display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer;
   font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14.5px; color: var(--text-primary); list-style: none;
@@ -982,10 +1027,16 @@ button { font-family: inherit; }
 .pill { padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-default); background: var(--surface-overlay); color: var(--text-primary); }
 .pill.active { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
 .pill:active { transform: scale(0.96); }
+/* .pill:not(.active) : un survol ne doit pas suggérer qu'une option déjà
+   sélectionnée pourrait l'être davantage — cf. même logique de garde-fou
+   sur les autres survols de cette feuille. */
+@media (hover: hover) { .pill:not(.active):hover:not(:active) { border-color: var(--brand-primary); } }
 .checkbox { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--border-default); background: transparent; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; flex-shrink: 0; cursor: pointer; }
 .checkbox.checked { border-color: var(--brand-primary); background: var(--brand-primary); }
+@media (hover: hover) { .checkbox:not(.checked):hover { border-color: var(--brand-primary); } }
 .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border-subtle); cursor: pointer; }
 .checkbox-row:first-child { border-top: none; }
+@media (hover: hover) { .checkbox-row:hover { background: var(--surface-overlay); } }
 /* font-size 16px sur les deux (au lieu de 12/12.5px) : même raison que
    .text-input, ce sont aussi des champs natifs qu'on touche directement
    (Safari iOS zoome la page en dessous de ce seuil). Largeur de
@@ -998,7 +1049,7 @@ button { font-family: inherit; }
 .modal-footer-buttons { display: flex; gap: 10px; }
 .btn-cancel { flex: 1; text-align: center; padding: 12px; background: transparent; border: 1px solid var(--border-default); color: var(--text-primary); border-radius: 14px; font-weight: 700; font-size: 14px; cursor: pointer; }
 .btn-confirm { flex: 1; text-align: center; padding: 12px; background: var(--brand-primary); color: #fff; border-radius: 14px; font-weight: 700; font-size: 14px; cursor: pointer; border: none; }
-@media (hover: hover) { .btn-confirm:hover { background: var(--brand-primary-hover); } }
+@media (hover: hover) { .btn-confirm:hover:not(:active) { background: var(--brand-primary-hover); transform: translateY(-1px); } }
 .delete-link { text-align: center; color: var(--status-danger); font-size: 13.5px; font-weight: 700; margin-top: 14px; cursor: pointer; background: none; border: none; width: 100%; padding: 0; }
 
 /* --- Toast --- */
