@@ -430,6 +430,48 @@
     };
   }
 
+  // Portabilité des données personnelles (RGPD, cf. politique de
+  // confidentialité) — distinct de l'export d'un groupe (buildGroupExportTables,
+  // ci-dessous) : ici, un seul fichier avec tout ce qui concerne
+  // spécifiquement la personne connectée, tous groupes confondus, plutôt
+  // qu'un grand livre partagé d'un groupe donné. JSON (structuré, lisible
+  // par machine) plutôt que CSV/Excel/PDF : la forme attendue par le RGPD
+  // pour un export "brut", pas un document de présentation.
+  function exportMyData() {
+    var me = person(state.currentUserId);
+    if (!me) return;
+    var myGroups = state.groups.filter(function (g) { return g.memberIds.indexOf(me.id) !== -1; });
+    var myGroupIds = myGroups.map(function (g) { return g.id; });
+    var data = {
+      exportedAt: new Date().toISOString(),
+      profile: { id: me.id, name: me.name, email: me.email || null, color: me.color, shareWeight: me.shareWeight },
+      groups: myGroups.map(function (g) {
+        return { id: g.id, name: g.name, currency: g.currency, role: g.adminId === me.id ? 'admin' : 'membre' };
+      }),
+      expenses: state.expenses.filter(function (e) {
+        return myGroupIds.indexOf(e.groupId) !== -1 && (e.paidBy === me.id || e.participants.indexOf(me.id) !== -1);
+      }).map(function (e) {
+        return {
+          id: e.id, groupId: e.groupId, label: e.label, amount: e.amount, date: e.date,
+          paidByMe: e.paidBy === me.id, participant: e.participants.indexOf(me.id) !== -1,
+          originalCurrency: e.originalCurrency || null, originalAmount: e.originalAmount || null,
+        };
+      }),
+      payments: state.payments.filter(function (p) {
+        return p.from === me.id || p.to === me.id;
+      }).map(function (p) {
+        return { id: p.id, groupId: p.groupId, amount: p.amount, date: p.date, direction: p.from === me.id ? 'envoyé' : 'reçu' };
+      }),
+      reminders: state.reminders.filter(function (r) {
+        return r.fromPersonId === me.id || r.toPersonId === me.id;
+      }).map(function (r) {
+        return { id: r.id, groupId: r.groupId || null, amount: r.amount, date: r.date, direction: r.fromPersonId === me.id ? 'envoyé' : 'reçu' };
+      }),
+    };
+    downloadBlob('rohy-mes-donnees-' + slugify(me.name) + '.json', JSON.stringify(data, null, 2), 'application/json;charset=utf-8');
+    showToast('Données téléchargées');
+  }
+
   function exportGroupCsv(groupId) {
     var d = buildGroupExportTables(groupId);
     if (!d) return;
@@ -2671,6 +2713,8 @@
       s8Title: 'Cookies et traceurs',
       s8Body: 'Rohy n\'utilise aucun cookie publicitaire ou de profilage. La mesure d\'audience (Cloudflare Web Analytics) est conçue pour fonctionner sans cookie de suivi individuel.',
       manageConsent: 'Modifier mes préférences de mesure d\'audience',
+      exportMyData: 'Télécharger mes données',
+      exportMyDataLoggedOut: 'Connecte-toi pour télécharger tes données.',
       backLabel: '← Retour',
       bannerText: 'Nous utilisons une mesure d\'audience (Cloudflare Web Analytics, sans cookie de suivi individuel) pour comprendre l\'usage de Rohy. Tu peux l\'accepter ou la refuser — ça ne change rien au fonctionnement de l\'app.',
       bannerAccept: 'Accepter', bannerDecline: 'Refuser', bannerLearnMore: 'En savoir plus',
@@ -2711,6 +2755,8 @@
       s8Title: 'Cookies and trackers',
       s8Body: 'Rohy uses no advertising or profiling cookies. Our traffic measurement tool (Cloudflare Web Analytics) is designed to work without individual tracking cookies.',
       manageConsent: 'Change my traffic measurement preferences',
+      exportMyData: 'Download my data',
+      exportMyDataLoggedOut: 'Log in to download your data.',
       backLabel: '← Back',
       bannerText: 'We use a traffic measurement tool (Cloudflare Web Analytics, no individual tracking cookie) to understand how Rohy is used. You can accept or decline — it changes nothing about how the app works.',
       bannerAccept: 'Accept', bannerDecline: 'Decline', bannerLearnMore: 'Learn more',
@@ -3629,6 +3675,9 @@
       '<h2>' + escapeHtml(L.s5Title) + '</h2><p>' + escapeHtml(L.s5Body) + '</p>' +
       '<h2>' + escapeHtml(L.s6Title) + '</h2><p>' + escapeHtml(L.s6Body) + '</p>' +
       '<h2>' + escapeHtml(L.s7Title) + '</h2><p>' + escapeHtml(L.s7Body) + '</p>' +
+      (state.loggedIn && state.enteredApp
+        ? '<button type="button" class="select-all-link pressable" data-action="exportMyData">' + escapeHtml(L.exportMyData) + '</button>'
+        : '<p style="font-size:13px;color:var(--text-tertiary)">' + escapeHtml(L.exportMyDataLoggedOut) + '</p>') +
       '<h2>' + escapeHtml(L.s8Title) + '</h2><p>' + escapeHtml(L.s8Body) + '</p>' +
       '<button type="button" class="select-all-link pressable" style="margin-top:8px" data-action="reopenAnalyticsChoice">' + escapeHtml(L.manageConsent) + '</button>' +
       '</section>' +
@@ -4395,6 +4444,7 @@
         case 'acceptAnalytics': acceptAnalytics(); break;
         case 'declineAnalytics': declineAnalytics(); break;
         case 'reopenAnalyticsChoice': reopenAnalyticsChoice(); break;
+        case 'exportMyData': exportMyData(); break;
         case 'openLoginForm': openLoginForm(); break;
         case 'goToLanding': goToLanding(); break;
         case 'ctaSignupFromAbout': ctaSignupFromAbout(); break;
