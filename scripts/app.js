@@ -2358,6 +2358,7 @@
     // suivante (une fois les nouveaux nœuds en place, rien à transitionner).
     root.classList.add('no-transition');
     var mainHtml;
+    var showingAppShell = false;
     if (state.accountJustDeleted) {
       // Priorité absolue : ce drapeau survit volontairement à la
       // réinitialisation d'état déclenchée par SIGNED_OUT (cf.
@@ -2390,12 +2391,16 @@
       mainHtml = renderLoadingScreen();
     } else {
       mainHtml = renderApp();
+      // Seul ce cas affiche .bottom-nav (cf. renderApp) : le bandeau de
+      // consentement doit alors se loger juste au-dessus plutôt que la
+      // recouvrir (cf. .consent-banner.above-nav, styles.css).
+      showingAppShell = true;
     }
     // Bandeau de consentement mesure d'audience : superposé à n'importe quel
     // écran (sauf le lancement, déjà exclu plus haut) tant qu'aucun choix
     // n'a été fait — jamais affiché une fois state.analyticsConsent décidé
     // ('granted' ou 'denied'), cf. acceptAnalytics/declineAnalytics.
-    root.innerHTML = mainHtml + (state.analyticsConsent === null ? renderConsentBanner() : '');
+    root.innerHTML = mainHtml + (state.analyticsConsent === null ? renderConsentBanner(showingAppShell) : '');
     bindEvents(root);
     initScrollReveal(root);
     restoreFocus(root, focusInfo);
@@ -3735,10 +3740,10 @@
   // n'importe quel écran tant qu'aucun choix n'a été fait (cf. plus haut).
   // Fixe en bas de viewport, au-dessus de tout (y compris la bottom-nav
   // mobile) : cf. styles.css pour le z-index.
-  function renderConsentBanner() {
+  function renderConsentBanner(showingAppShell) {
     var L = privacyT();
     return (
-      '<div class="consent-banner" data-stop-click>' +
+      '<div class="consent-banner' + (showingAppShell ? ' above-nav' : '') + '" data-stop-click>' +
       '<p>' + escapeHtml(L.bannerText) + ' <button type="button" class="consent-learn-more" data-action="openPrivacy">' + escapeHtml(L.bannerLearnMore) + '</button></p>' +
       '<div class="consent-banner-actions">' +
       '<button type="button" class="btn-outline pressable" data-action="declineAnalytics">' + escapeHtml(L.bannerDecline) + '</button>' +

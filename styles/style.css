@@ -1092,9 +1092,22 @@ button { font-family: inherit; }
 .consent-banner-actions { display: flex; gap: 8px; flex: none; }
 .consent-banner-actions .btn-outline, .consent-banner-actions .btn-primary { flex: none; width: auto; padding: 9px 16px; font-size: 13.5px; }
 @media (max-width: 700px) {
-  .consent-banner { bottom: 78px; flex-direction: column; align-items: stretch; }
-  .consent-banner-actions { justify-content: stretch; }
-  .consent-banner-actions .btn-outline, .consent-banner-actions .btn-primary { flex: 1; }
+  /* Ancré au bord réel de l'écran (plein largeur, coins arrondis en haut
+     seulement — même logique que .modal-sheet) plutôt que flottant avec des
+     marges de tous les côtés : ça évite l'espace vide sous le bandeau et
+     réduit la hauteur perçue. Les boutons restent côte à côte (pas empilés
+     en pleine largeur) pour la même raison. */
+  .consent-banner {
+    left: 0; right: 0; bottom: 0; margin: 0; max-width: none;
+    border-radius: 20px 20px 0 0; border-width: 1px 0 0;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    flex-direction: column; align-items: stretch; gap: 12px;
+  }
+  /* .above-nav : bandeau rouvert (ex. depuis "Modifier mes préférences")
+     alors que la barre d'onglets mobile est déjà affichée — il se loge
+     juste au-dessus plutôt que de la recouvrir. */
+  .consent-banner.above-nav { bottom: 68px; border-radius: 20px 20px 0 0; padding-bottom: 14px; }
+  .consent-banner-actions { justify-content: flex-end; }
 }
 
 /* utility */
