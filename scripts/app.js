@@ -193,6 +193,10 @@
       deletingAccount: false,
       accountJustDeleted: false,
       showConfirmSwitchAccount: false,
+      showEditProfile: false,
+      editProfileName: '',
+      editProfileError: null,
+      editProfileSubmitting: false,
       selectedGroupId: null,
       selectedPersonId: null,
       groupUnitMode: 'foyer',
@@ -1998,6 +2002,24 @@
     });
   }
 
+  // ---------- Modifier mon prénom ----------
+  function openEditProfile() {
+    var cu = person(state.currentUserId);
+    setState({ showEditProfile: true, showAccount: false, editProfileError: null, editProfileName: cu ? cu.name : '' });
+  }
+  function setEditProfileName(v) { setStateSilent({ editProfileName: v, editProfileError: null }); }
+  function cancelEditProfile() { setState({ showEditProfile: false }); }
+  function submitEditProfile() {
+    var name = (state.editProfileName || '').trim();
+    if (!name) { setState({ editProfileError: 'Entre un prénom.' }); return; }
+    setState({ editProfileSubmitting: true, editProfileError: null });
+    sb.from('profiles').update({ name: name }).eq('id', state.currentUserId).then(function (res) {
+      if (res.error) { setState({ editProfileSubmitting: false, editProfileError: res.error.message }); return; }
+      setState({ showEditProfile: false, editProfileSubmitting: false });
+      loadAppData().then(function () { showToast('Prénom mis à jour'); });
+    });
+  }
+
   function openManageMembers(groupId) { setState({ showManageMembers: true, manageMembersGroupId: groupId, manageMembersSearchQuery: '' }); }
   function setManageMembersSearch(v) { setState({ manageMembersSearchQuery: v }); }
   function toggleAddMemberForm() {
@@ -2264,6 +2286,7 @@
       showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
       showConfirmDeleteAccount: false,
       showConfirmSwitchAccount: false,
+      showEditProfile: false, editProfileError: null,
       showReminderConfirm: false, showShareLink: false, shareLinkGroupId: null,
       showUpgradeAccount: false, upgradeError: null, upgradeForm: { name: '', email: '', password: '' },
       settleGroupId: null, showAddMemberForm: false,
@@ -3812,6 +3835,7 @@
       '<div class="account-dropdown-header">' +
       '<div class="avatar avatar-30 avatar-account" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<span class="account-dropdown-name">' + escapeHtml(cu.name) + '</span>' +
+      '<button class="icon-btn pressable" style="margin-left:auto" data-action="openEditProfile" aria-label="Modifier mon prénom"><i class="ph-bold ph-pencil-simple"></i></button>' +
       '</div>' +
       '<div class="account-dropdown-divider"></div>' +
       (state.isAnonymous ? '<button class="account-dropdown-item pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus"></i>Créer un compte</button>' : '') +
@@ -3854,6 +3878,7 @@
     if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
     if (state.showConfirmDeleteAccount) out += renderConfirmDeleteAccountModal();
     if (state.showConfirmSwitchAccount) out += renderConfirmSwitchAccountModal();
+    if (state.showEditProfile) out += renderEditProfileModal();
     if (state.showReminderConfirm) out += renderReminderConfirmModal();
     return out;
   }
@@ -4083,6 +4108,21 @@
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="cancelSwitchAccount">Annuler</button>' +
       '<button class="btn-confirm pressable" data-action="confirmSwitchAccount">Se connecter</button>' +
+      '</div></div></div>'
+    );
+  }
+
+  function renderEditProfileModal() {
+    return (
+      '<div class="modal-overlay center" data-action="cancelEditProfile">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">Modifier mon prénom</div>' +
+      '<div class="field-label">Prénom</div>' +
+      '<input class="text-input" data-bind="editProfileName" placeholder="Ton prénom" value="' + escapeHtml(state.editProfileName || '') + '" />' +
+      (state.editProfileError ? '<div class="form-error">' + escapeHtml(state.editProfileError) + '</div>' : '') +
+      '<div class="modal-footer-buttons" style="margin-top:14px">' +
+      '<button class="btn-cancel pressable" data-action="cancelEditProfile">Annuler</button>' +
+      '<button class="btn-confirm pressable" data-action="submitEditProfile"' + (state.editProfileSubmitting ? ' disabled' : '') + '>' + (state.editProfileSubmitting ? 'Enregistrement…' : 'Enregistrer') + '</button>' +
       '</div></div></div>'
     );
   }
@@ -4366,6 +4406,7 @@
       '<div style="display:flex;align-items:center;gap:12px;padding:4px 0 22px">' +
       '<div class="avatar avatar-38" style="background:' + cu.color + '">' + initials(cu.name) + '</div>' +
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
+      '<button class="icon-btn pressable" style="margin-left:auto" data-action="openEditProfile" aria-label="Modifier mon prénom"><i class="ph-bold ph-pencil-simple"></i></button>' +
       '</div>' +
       (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Créer un compte</span></button>' : '') +
       (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openConfirmSwitchAccount"><i class="ph-bold ph-sign-in" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Se connecter à un compte existant</span></button>' : '') +
@@ -4546,6 +4587,9 @@
         case 'openConfirmSwitchAccount': openConfirmSwitchAccount(); break;
         case 'cancelSwitchAccount': cancelSwitchAccount(); break;
         case 'confirmSwitchAccount': confirmSwitchAccount(); break;
+        case 'openEditProfile': openEditProfile(); break;
+        case 'cancelEditProfile': cancelEditProfile(); break;
+        case 'submitEditProfile': submitEditProfile(); break;
         case 'dismissAccountDeleted': dismissAccountDeleted(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
@@ -4637,6 +4681,7 @@
         case 'upgradeName': setUpgradeName(v); break;
         case 'upgradeEmail': setUpgradeEmail(v); break;
         case 'upgradePassword': setUpgradePassword(v); break;
+        case 'editProfileName': setEditProfileName(v); break;
         case 'feedbackComment': setFeedbackComment(v); break;
         case 'newPassword': setNewPassword(v); break;
         case 'expenseLabel': setLabel(v); break;
