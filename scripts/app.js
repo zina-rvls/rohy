@@ -2420,27 +2420,26 @@
   // tissé final (quelle bande passe au-dessus/en-dessous de quelle autre)
   // dès leur apparition — seuls la direction et l'ORDRE d'arrivée des 6
   // bandes (via animation-delay) donnent l'impression de tissage progressif.
+  // Délai d'apparition par brin (cf. .splash-v/.splash-h-ltr/.splash-h-rtl,
+  // styles.css) : réutilise LOGO_RECTS (la géométrie exacte du logo statique,
+  // brins pleins + segments coupés aux croisements pour le vrai tissage
+  // over/under) plutôt qu'une forme dédiée à l'écran de lancement — le motif
+  // construit à l'ouverture est donc pixel pour pixel celui utilisé partout
+  // ailleurs (footer, en-tête...), pas une approximation.
   function renderSplashScreen() {
+    var rects = LOGO_RECTS.map(function (r, i) {
+      var cls, delay;
+      if (i < 3) { cls = 'splash-v'; delay = [0, .09, .18][i]; }
+      else if (i < 5) { cls = 'splash-h-ltr'; delay = .5; }
+      else if (i < 8) { cls = 'splash-h-rtl'; delay = .8; }
+      else { cls = 'splash-h-ltr'; delay = 1.1; }
+      return '<rect class="' + cls + '" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="3" fill="#0F8F6B" stroke="#084b38" stroke-width="3" stroke-linecap="square" style="animation-delay:' + delay + 's"></rect>';
+    }).join('');
     return (
       '<div class="splash-screen">' +
       '<div class="splash-row">' +
       '<svg viewBox="0 0 100 100" width="100" height="100" aria-hidden="true">' +
-      '<g class="splash-weave">' +
-      '<rect class="splash-v" x="20" y="10" width="12" height="80" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:0s;transform-origin:26px 50px"></rect>' +
-      '<rect class="splash-v" x="44" y="10" width="12" height="80" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:.09s;transform-origin:50px 50px"></rect>' +
-      '<rect class="splash-v" x="68" y="10" width="12" height="80" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:.18s;transform-origin:74px 50px"></rect>' +
-      '<rect class="splash-h-left" x="10" y="20" width="80" height="12" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:.4s;transform-origin:50px 26px"></rect>' +
-      '<rect class="splash-h-right" x="10" y="44" width="80" height="12" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:.49s;transform-origin:50px 50px"></rect>' +
-      '<rect class="splash-h-left" x="10" y="68" width="80" height="12" rx="3" fill="none" stroke="#0F8F6B" stroke-width="3" style="animation-delay:.58s;transform-origin:50px 74px"></rect>' +
-      // Aux 4 croisements, un pavé plein (couleur de marque) posé par-dessus
-      // donne l'impression que le tissage est solide à cet endroit précis —
-      // exactement le traitement du motif animé "07 · Motion" du design
-      // system (contour seul pour les brins, pavés pleins aux croisements).
-      '<rect class="splash-patch" x="44" y="20" width="12" height="12" rx="3" fill="#0F8F6B" style="animation-delay:.95s;transform-origin:50px 26px"></rect>' +
-      '<rect class="splash-patch" x="20" y="44" width="12" height="12" rx="3" fill="#0F8F6B" style="animation-delay:1.05s;transform-origin:26px 50px"></rect>' +
-      '<rect class="splash-patch" x="68" y="44" width="12" height="12" rx="3" fill="#0F8F6B" style="animation-delay:1.05s;transform-origin:74px 50px"></rect>' +
-      '<rect class="splash-patch" x="44" y="68" width="12" height="12" rx="3" fill="#0F8F6B" style="animation-delay:1.15s;transform-origin:50px 74px"></rect>' +
-      '</g>' +
+      '<g class="splash-weave">' + rects + '</g>' +
       '</svg>' +
       '<div class="splash-text">' +
       '<div class="splash-wordmark">Rohy</div>' +
