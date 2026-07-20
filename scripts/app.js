@@ -2455,7 +2455,12 @@
     return (
       '<div class="splash-screen">' +
       '<div class="splash-row">' +
-      '<svg viewBox="0 0 100 100" width="100" height="100" aria-hidden="true">' +
+      // viewBox élargi (marge de 6 unités de chaque côté) plutôt que 0 0 100
+      // 100 pile : le contour (stroke-width 3, centré sur le tracé) déborde
+      // déjà de 1,5 unité de chaque côté à l'état statique, et le rebond final
+      // (.splash-weave, scale jusqu'à 1.035) l'accentue encore — sans marge,
+      // les extrémités des brins se retrouvaient rognées pile au bord du SVG.
+      '<svg viewBox="-6 -6 112 112" width="100" height="100" aria-hidden="true">' +
       '<g class="splash-weave">' + rects + '</g>' +
       '</svg>' +
       '<div class="splash-text">' +
