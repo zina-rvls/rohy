@@ -192,6 +192,7 @@
       showConfirmDeleteAccount: false,
       deletingAccount: false,
       accountJustDeleted: false,
+      showConfirmSwitchAccount: false,
       selectedGroupId: null,
       selectedPersonId: null,
       groupUnitMode: 'foyer',
@@ -976,6 +977,21 @@
     setState({ showAccount: false });
     sb.auth.signOut();
     // onAuthStateChange (SIGNED_OUT) réinitialise l'état et affiche l'écran de connexion.
+  }
+
+  // ---------- Passer d'un compte invité (anonyme) à un compte existant
+  // ----------
+  // La réinitialisation d'état déclenchée par SIGNED_OUT (cf. plus bas,
+  // sb.auth.onAuthStateChange) reconstruit l'état depuis defaultState() —
+  // cette variable, hors de `state`, y survit et indique au bloc SIGNED_OUT
+  // d'amener directement l'écran de connexion plutôt que la landing.
+  var pendingLoginAfterSignOut = false;
+  function openConfirmSwitchAccount() { setState({ showConfirmSwitchAccount: true, showAccount: false }); }
+  function cancelSwitchAccount() { setState({ showConfirmSwitchAccount: false }); }
+  function confirmSwitchAccount() {
+    pendingLoginAfterSignOut = true;
+    setState({ showConfirmSwitchAccount: false });
+    sb.auth.signOut();
   }
   // ---------- Suppression de compte (droit à l'effacement, cf.
   // supabase/functions/delete-account) ----------
@@ -2247,6 +2263,7 @@
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
       showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
       showConfirmDeleteAccount: false,
+      showConfirmSwitchAccount: false,
       showReminderConfirm: false, showShareLink: false, shareLinkGroupId: null,
       showUpgradeAccount: false, upgradeError: null, upgradeForm: { name: '', email: '', password: '' },
       settleGroupId: null, showAddMemberForm: false,
@@ -3793,6 +3810,12 @@
       '</div>' +
       '<div class="account-dropdown-divider"></div>' +
       (state.isAnonymous ? '<button class="account-dropdown-item pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus"></i>Créer un compte</button>' : '') +
+      // "J'ai déjà un compte" (cf. openConfirmSwitchAccount) : contrairement
+      // à "Créer un compte" (upgrade la session anonyme en place, données
+      // conservées), se connecter à un AUTRE compte existant abandonne
+      // forcément les données de cette session invité — d'où la
+      // confirmation avant de déconnecter.
+      (state.isAnonymous ? '<button class="account-dropdown-item pressable" data-action="openConfirmSwitchAccount"><i class="ph-bold ph-sign-in"></i>Se connecter à un compte existant</button>' : '') +
       '<button class="account-dropdown-item pressable" data-action="openAbout"><i class="ph-bold ph-info"></i>À propos</button>' +
       '<button class="account-dropdown-item pressable" data-action="openPrivacy"><i class="ph-bold ph-shield-check"></i>Confidentialité</button>' +
       '<button class="account-dropdown-item pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text"></i>Donner un avis</button>' +
@@ -3825,6 +3848,7 @@
     if (state.showConfirmRemoveMember) out += renderConfirmRemoveMemberModal();
     if (state.showConfirmLeaveGroup) out += renderConfirmLeaveGroupModal();
     if (state.showConfirmDeleteAccount) out += renderConfirmDeleteAccountModal();
+    if (state.showConfirmSwitchAccount) out += renderConfirmSwitchAccountModal();
     if (state.showReminderConfirm) out += renderReminderConfirmModal();
     return out;
   }
@@ -4030,6 +4054,30 @@
       '<div class="modal-footer-buttons">' +
       '<button class="btn-cancel pressable" data-action="cancelDeleteAccount">Annuler</button>' +
       '<button class="btn-confirm pressable" style="background:var(--status-danger)" data-action="confirmDeleteAccount"' + (state.deletingAccount ? ' disabled' : '') + '>' + (state.deletingAccount ? 'Suppression…' : 'Supprimer mon compte') + '</button>' +
+      '</div></div></div>'
+    );
+  }
+
+  // Contrairement à confirmDeleteAccount (qui transfère l'administration des
+  // groupes avant de couper l'accès, cf. supabase/functions/delete-account),
+  // un simple signOut() sur une session anonyme n'a AUCUN filet : les
+  // groupes créés/rejoints pendant cette session invité deviennent
+  // inaccessibles pour tout le monde qui en dépendait de cette session, sans
+  // recours possible (pas d'e-mail à récupérer). D'où la liste explicite
+  // plutôt qu'un avertissement générique.
+  function renderConfirmSwitchAccountModal() {
+    var myGroups = state.groups.filter(function (g) { return g.memberIds.indexOf(state.currentUserId) !== -1; });
+    return (
+      '<div class="modal-overlay center" data-action="cancelSwitchAccount">' +
+      '<div class="modal-card" data-stop-click>' +
+      '<div class="modal-title" style="margin-bottom:14px">Se connecter à un autre compte ?</div>' +
+      '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:14px">Tu utilises actuellement Rohy en tant qu\'invité(e), un compte temporaire propre à cet appareil. Te connecter à un compte existant déconnecte cette session invité.</div>' +
+      (myGroups.length > 0 ?
+        '<div style="font-size:13px;color:var(--status-danger);margin-bottom:18px">Aucun moyen de revenir dessus ensuite : tu perdras l\'accès à ' + (myGroups.length > 1 ? 'ces ' + myGroups.length + ' groupes' : '« ' + escapeHtml(myGroups[0].name) + ' »') + ' (' + myGroups.map(function (g) { return escapeHtml(g.name); }).join(', ') + ') et à leurs dépenses, pour toi comme pour les autres membres.</div>' :
+        '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:18px">Cette session invité n\'a encore aucun groupe — rien à perdre pour l\'instant.</div>') +
+      '<div class="modal-footer-buttons">' +
+      '<button class="btn-cancel pressable" data-action="cancelSwitchAccount">Annuler</button>' +
+      '<button class="btn-confirm pressable" data-action="confirmSwitchAccount">Se connecter</button>' +
       '</div></div></div>'
     );
   }
@@ -4315,6 +4363,7 @@
       '<div style="font-size:15px;font-weight:600;color:var(--text-primary)">' + escapeHtml(cu.name) + '</div>' +
       '</div>' +
       (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openUpgradeAccount"><i class="ph-bold ph-user-plus" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Créer un compte</span></button>' : '') +
+      (state.isAnonymous ? '<button class="switch-user-row pressable" data-action="openConfirmSwitchAccount"><i class="ph-bold ph-sign-in" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Se connecter à un compte existant</span></button>' : '') +
       '<button class="switch-user-row pressable" data-action="openAbout"><i class="ph-bold ph-info" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">À propos</span></button>' +
       '<button class="switch-user-row pressable" data-action="openPrivacy"><i class="ph-bold ph-shield-check" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Confidentialité</span></button>' +
       '<button class="switch-user-row pressable" data-action="openFeedbackFromMenu"><i class="ph-bold ph-chat-text" style="font-size:18px;color:var(--text-tertiary)"></i><span style="font-size:14.5px;color:var(--text-primary)">Donner un avis</span></button>' +
@@ -4489,6 +4538,9 @@
         case 'openConfirmDeleteAccount': openConfirmDeleteAccount(); break;
         case 'cancelDeleteAccount': cancelDeleteAccount(); break;
         case 'confirmDeleteAccount': confirmDeleteAccount(); break;
+        case 'openConfirmSwitchAccount': openConfirmSwitchAccount(); break;
+        case 'cancelSwitchAccount': cancelSwitchAccount(); break;
+        case 'confirmSwitchAccount': confirmSwitchAccount(); break;
         case 'dismissAccountDeleted': dismissAccountDeleted(); break;
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
@@ -4755,7 +4807,12 @@
           joinPreview: state.joinPreview, joinNameInput: state.joinNameInput,
           joinError: state.joinError, joinSubmitting: state.joinSubmitting,
           analyticsConsent: state.analyticsConsent, accountJustDeleted: state.accountJustDeleted,
+          // cf. confirmSwitchAccount : atterrit directement sur le formulaire
+          // de connexion plutôt que sur la landing, après un "Se connecter"
+          // depuis un compte invité.
+          showLoginForm: pendingLoginAfterSignOut,
         });
+        pendingLoginAfterSignOut = false;
         render();
       }
     });
