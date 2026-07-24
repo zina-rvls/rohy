@@ -3206,6 +3206,11 @@
     var moi = state.currentUserId;
     var isAdmin = g.adminId === moi;
     var debts = computeDebtsForGroup(g.id);
+    // Montant nominal de chaque dépense (e.amount), pas paidExternal — même
+    // convention que la ligne de dépense elle-même (cf. expenseAmountLabel),
+    // pour que ce total corresponde à ce qu'on voit en additionnant la liste.
+    var totalExpenses = state.expenses.filter(function (e) { return e.groupId === g.id; })
+      .reduce(function (a, e) { return a + e.amount; }, 0);
 
     // Un retrait de "gérer les membres" enlève l'adhésion au groupe, mais un
     // solde non réglé doit rester visible ici (les dépenses passées restent
@@ -3313,6 +3318,10 @@
       }).join('');
 
     return (
+      '<div class="balance-card">' +
+      '<div class="balance-label">Total des dépenses</div>' +
+      '<div class="balance-amount" style="color:var(--text-primary)">' + escapeHtml(fmtIn(totalExpenses, g.currency)) + '</div>' +
+      '</div>' +
       '<div class="member-table"><div class="section-label">Payé / part / solde</div>' + groupUnitToggle + memberTableHeader + memberRows + '</div>' +
       (isAdmin ?
         '<div class="admin-actions">' +
