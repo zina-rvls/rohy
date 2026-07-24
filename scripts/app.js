@@ -65,6 +65,37 @@
   function saveAnalyticsConsent(value) {
     try { localStorage.setItem(ANALYTICS_CONSENT_KEY, value); } catch (err) { /* mode privé / quota */ }
   }
+
+  // Position dans l'app (écran courant, groupe/personne sélectionnés) —
+  // sessionStorage, pas localStorage : survit à un rechargement du même
+  // onglet (corrige "je recharge sur Groupes et je retombe sur la landing"),
+  // mais reste vide dans un tout nouvel onglet, ce qui préserve le choix
+  // délibéré d'afficher la landing en premier sur une toute nouvelle visite
+  // (cf. enteredApp dans defaultState). Effacée explicitement à la
+  // déconnexion (cf. onAuthStateChange) pour ne jamais faire réapparaître
+  // l'écran d'un compte après connexion à un autre dans le même onglet.
+  var NAV_STATE_KEY = 'rohy-nav-state';
+  function saveNavState(s) {
+    try {
+      sessionStorage.setItem(NAV_STATE_KEY, JSON.stringify({
+        enteredApp: s.enteredApp, screen: s.screen, navStack: s.navStack,
+        selectedGroupId: s.selectedGroupId, selectedPersonId: s.selectedPersonId,
+      }));
+    } catch (err) { /* mode privé / quota */ }
+  }
+  // Ne renvoie que si enteredApp est vrai : un lien d'invitation ou un
+  // rechargement pendant l'écran de connexion n'ont pas de position d'app à
+  // reprendre, autant laisser defaultState() décider normalement.
+  function resumedNavPatch() {
+    try {
+      var raw = sessionStorage.getItem(NAV_STATE_KEY);
+      var saved = raw ? JSON.parse(raw) : null;
+      return (saved && saved.enteredApp) ? saved : {};
+    } catch (err) { return {}; }
+  }
+  function clearNavState() {
+    try { sessionStorage.removeItem(NAV_STATE_KEY); } catch (err) { /* mode privé / quota */ }
+  }
   function loadCloudflareAnalytics() {
     if (document.querySelector('script[data-cf-beacon]')) return;
     var s = document.createElement('script');
@@ -179,6 +210,7 @@
       newPasswordForm: { password: '' },
       currentUserId: null,
       showAccount: false,
+      showGroupMenu: false,
       showManageMembers: false,
       manageMembersGroupId: null,
       manageMembersSearchQuery: '',
@@ -236,7 +268,10 @@
     };
   }
 
-  var state = defaultState();
+  // Reprend l'écran où on était avant un rechargement (cf. resumedNavPatch) —
+  // no-op tant que rien n'a encore été enregistré (nouvel onglet, ou jamais
+  // entré dans l'app), auquel cas la landing s'affiche normalement.
+  var state = Object.assign({}, defaultState(), resumedNavPatch());
   var toastTimer = null;
   var inviteeNameDebounceTimer = null;
   var addMemberNameDebounceTimer = null;
@@ -244,6 +279,7 @@
   function setState(patch) {
     var partial = typeof patch === 'function' ? patch(state) : patch;
     state = Object.assign({}, state, partial);
+    saveNavState(state);
     render();
   }
 
@@ -1866,8 +1902,10 @@
   }
   // ---------- Lien d'invitation par groupe (cf. renderShareLinkModal /
   // join-group Edge Function / renderJoinScreen) ----------
-  function openShareLink(groupId) { setState({ showShareLink: true, shareLinkGroupId: groupId }); }
-  function generateShareLink() {
+  // onDone (optionnel) : appelé une fois le token confirmé en base — sert à
+  // enchaîner sur le partage natif (cf. shareInviteLink) sans dupliquer la
+  // logique de génération pour autant.
+  function generateShareLink(onDone) {
     var groupId = state.shareLinkGroupId;
     if (!groupId) return;
     var token = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (String(Date.now()) + Math.random().toString(36).slice(2));
@@ -1882,7 +1920,35 @@
       setState(function (s) {
         return { groups: s.groups.map(function (g) { return g.id === groupId ? Object.assign({}, g, { shareToken: token }) : g; }) };
       });
+      if (onDone) onDone();
     });
+  }
+  // Action principale du menu du groupe (cf. renderGroupMenuTrigger) : un
+  // seul tap plutôt que "ouvrir la modale puis générer puis copier" — génère
+  // le lien silencieusement s'il n'existe pas encore, puis propose le
+  // partage natif du système (feuille de partage iOS/Android/desktop) quand
+  // disponible. La modale (copier/régénérer/désactiver) reste le repli sur
+  // les navigateurs sans Web Share API, mais s'ouvre alors directement sur
+  // le lien déjà prêt, sans étape "Générer un lien" à cliquer en premier.
+  function shareInviteLink(groupId) {
+    setState({ showGroupMenu: false, shareLinkGroupId: groupId });
+    var g = group(groupId);
+    if (!g) return;
+    var proceed = function () {
+      var freshG = group(groupId);
+      if (!freshG || !freshG.shareToken) return;
+      var url = APP_URL + '?join=' + freshG.shareToken;
+      if (navigator.share) {
+        // catch silencieux : navigator.share rejette aussi quand la personne
+        // annule elle-même la feuille de partage, pas seulement en cas
+        // d'erreur réelle — rien à signaler dans ce cas.
+        navigator.share({ title: 'Rejoins ' + freshG.name + ' sur Rohy', url: url }).catch(function () {});
+      } else {
+        setState({ showShareLink: true });
+      }
+    };
+    if (g.shareToken) { proceed(); return; }
+    generateShareLink(proceed);
   }
   function disableShareLink() {
     var groupId = state.shareLinkGroupId;
@@ -2277,10 +2343,11 @@
 
   // ---------- Modales ----------
   function openAccount() { setState({ showAccount: true }); }
+  function toggleGroupMenu() { setState(function (s) { return { showGroupMenu: !s.showGroupMenu }; }); }
   function closeModal() {
     lastModalScrollTop = null;
     setState({
-      showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showManageMembers: false,
+      showAddExpense: false, showAddGroup: false, showSettle: false, showAccount: false, showGroupMenu: false, showManageMembers: false,
       showConfirmDeleteGroup: false, confirmDeleteGroupId: null, formError: null,
       showConfirmRemoveMember: false, confirmRemoveMemberGroupId: null, confirmRemoveMemberId: null,
       showConfirmLeaveGroup: false, confirmLeaveGroupId: null,
@@ -2954,6 +3021,7 @@
       '<div class="top-title' + (isHome ? ' home-title' : '') + '">' + escapeHtml(title) + '</div>' +
       (subtitle ? '<div class="top-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
       '</div>' +
+      (state.screen === 'groupDetail' ? renderGroupMenuTrigger() : '') +
       // Icône de compte : seul point d'accès à "Mon compte"/déconnexion
       // avant cette modification, elle n'était joignable que depuis
       // l'accueil ("Bonjour, ..."). Toujours visible ici, sur tous les
@@ -2964,6 +3032,32 @@
       // du haut, cf. À propos/Se déconnecter qui suivent le même principe.
       '<button class="avatar avatar-30 pressable account-icon-btn" data-action="openAccount" style="background:' + cu.color + ';border:none;padding:0;cursor:pointer" title="Mon compte" aria-label="Mon compte">' + initials(cu.name) + '</button>' +
       (showAddButton ? '<button class="icon-btn small brand pressable" data-action="openAddExpenseGlobal" aria-label="Ajouter une dépense"><i class="ph-bold ph-plus"></i></button>' : '') +
+      '</div>'
+    );
+  }
+
+  // Actions d'administration du groupe (gérer les membres, partager le lien,
+  // supprimer/quitter) : déplacées ici depuis le corps de l'écran (cf.
+  // ancien .admin-actions) — des boutons pleine largeur juste sous le solde
+  // n'avaient pas leur place parmi les informations qu'on vient consulter en
+  // premier ; un menu contextuel dans la barre du haut est plus idiomatique
+  // pour des actions secondaires (même principe que "Mon compte").
+  function renderGroupMenuTrigger() {
+    var g = group(state.selectedGroupId);
+    if (!g) return '';
+    var isAdmin = g.adminId === state.currentUserId;
+    return (
+      '<div style="position:relative">' +
+      '<button class="icon-btn pressable" data-action="toggleGroupMenu" aria-label="Options du groupe"><i class="ph-bold ph-dots-three-vertical"></i></button>' +
+      (state.showGroupMenu ?
+        '<div class="group-menu-overlay" data-action="closeModal"></div>' +
+        '<div class="group-menu-dropdown" data-stop-click>' +
+        '<button class="group-menu-item pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i>Gérer les membres</button>' +
+        '<button class="group-menu-item pressable" data-action="shareInviteLink" data-id="' + g.id + '"><i class="ph-bold ph-link"></i>Partager le lien d\'invitation</button>' +
+        (isAdmin ?
+          '<button class="group-menu-item pressable" style="color:var(--status-danger)" data-action="openConfirmDeleteGroup" data-id="' + g.id + '"><i class="ph-bold ph-trash" style="color:var(--status-danger)"></i>Supprimer le groupe</button>' :
+          '<button class="group-menu-item pressable" style="color:var(--status-danger)" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open" style="color:var(--status-danger)"></i>Quitter ce groupe</button>') +
+        '</div>' : '') +
       '</div>'
     );
   }
@@ -3323,15 +3417,6 @@
       '<div class="balance-amount" style="color:var(--text-primary)">' + escapeHtml(fmtIn(totalExpenses, g.currency)) + '</div>' +
       '</div>' +
       '<div class="member-table"><div class="section-label">Payé / part / solde</div>' + groupUnitToggle + memberTableHeader + memberRows + '</div>' +
-      (isAdmin ?
-        '<div class="admin-actions">' +
-        '<button class="btn-outline pressable" data-action="openManageMembers" data-id="' + g.id + '"><i class="ph-bold ph-users-three"></i> Gérer les membres</button>' +
-        '<button class="btn-outline pressable" data-action="openShareLink" data-id="' + g.id + '"><i class="ph-bold ph-link"></i> Partager le lien d\'invitation</button>' +
-        '<button class="btn-icon-danger pressable" data-action="openConfirmDeleteGroup" data-id="' + g.id + '" aria-label="Supprimer le groupe"><i class="ph-bold ph-trash"></i></button>' +
-        '</div>' :
-        '<div class="admin-actions">' +
-        '<button class="btn-outline pressable" data-action="openConfirmLeaveGroup" data-id="' + g.id + '"><i class="ph-bold ph-door-open"></i> Quitter ce groupe</button>' +
-        '</div>') +
       (txns.length || hasFoyerConsolidation ?
         '<div class="section-label">Pour équilibrer</div>' +
         (txns.length ? suggestions : '<div style="font-size:13px;color:var(--text-tertiary);margin-bottom:14px">Rien à régler pour le moment.</div>') : '') +
@@ -4574,6 +4659,8 @@
         case 'closeReminderConfirm': closeReminderConfirm(); break;
         case 'confirmSendReminder': confirmSendReminder(); break;
         case 'openAccount': openAccount(); break;
+        case 'toggleGroupMenu': toggleGroupMenu(); break;
+        case 'shareInviteLink': shareInviteLink(id); break;
         case 'openAbout': openAbout(); break;
         case 'openPrivacy': openPrivacy(); break;
         case 'closePrivacyScreen': closePrivacyScreen(); break;
@@ -4609,7 +4696,6 @@
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
         case 'openAddGroup': openAddGroup(); break;
         case 'openManageMembers': openManageMembers(id); break;
-        case 'openShareLink': openShareLink(id); break;
         case 'generateShareLink': generateShareLink(); break;
         case 'disableShareLink': disableShareLink(); break;
         case 'copyShareLink': copyShareLink(); break;
@@ -4861,6 +4947,13 @@
         // après que la preview du lien ait déjà été récupérée — sans ça,
         // defaultState() l'effacerait et l'écran resterait bloqué sur
         // "Chargement du lien d'invitation…" indéfiniment.
+        // Une vraie déconnexion (b) repart sur la landing sans reprendre la
+        // position enregistrée, et efface cette dernière — sinon une
+        // connexion ultérieure dans le même onglet (même à un autre compte)
+        // réafficherait l'écran de la session précédente. Le cas (a) reprend
+        // la position normalement (cf. resumedNavPatch), comme au tout
+        // premier chargement de la page.
+        if (wasLoggedIn) clearNavState();
         state = Object.assign({}, defaultState(), {
           theme: theme, landingLang: state.landingLang, showSplash: wasLoggedIn ? false : state.showSplash,
           joinPreview: state.joinPreview, joinNameInput: state.joinNameInput,
@@ -4870,7 +4963,7 @@
           // de connexion plutôt que sur la landing, après un "Se connecter"
           // depuis un compte invité.
           showLoginForm: pendingLoginAfterSignOut,
-        });
+        }, wasLoggedIn ? {} : resumedNavPatch());
         pendingLoginAfterSignOut = false;
         render();
       }

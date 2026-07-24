@@ -517,7 +517,25 @@ button { font-family: inherit; }
 .col-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .col-num { width: 64px; text-align: right; font-size: 12.5px; color: var(--text-tertiary); }
 .col-bal { width: 80px; text-align: right; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 13px; }
-.admin-actions { display: flex; gap: 10px; margin-bottom: 16px; }
+/* Menu contextuel des actions du groupe (cf. renderGroupMenuTrigger) — pas
+   scopé à un @media desktop comme .account-dropdown : cette barre du haut
+   reste identique sur mobile et desktop, contrairement au menu compte qui a
+   sa propre variante feuille-mobile séparée. */
+.group-menu-overlay { position: fixed; inset: 0; z-index: 10; }
+.group-menu-dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 8px; width: 240px;
+  display: flex; flex-direction: column; background: var(--surface-raised);
+  border: 1px solid var(--border-subtle); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .24); padding: 8px; z-index: 11;
+  animation: popIn .15s ease;
+}
+.group-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px;
+  border-radius: 10px; border: none; background: none; cursor: pointer; font-size: 13.5px;
+  font-weight: 600; color: var(--text-primary); font-family: 'Manrope', sans-serif;
+}
+@media (hover: hover) { .group-menu-item:hover:not(:active) { background: var(--surface-overlay); } }
+.group-menu-item i { font-size: 16px; color: var(--text-tertiary); flex: none; }
 .btn-outline { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border: 1px solid var(--border-default); border-radius: 14px; color: var(--text-primary); font-weight: 700; font-size: 13.5px; cursor: pointer; background: var(--surface-raised); }
 .btn-outline:active { transform: scale(0.98); }
 @media (hover: hover) { .btn-outline:hover:not(:active) { border-color: var(--brand-primary); box-shadow: 0 4px 14px rgba(0, 0, 0, .08); } }
