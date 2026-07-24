@@ -883,7 +883,11 @@
     try { window.history.replaceState({}, '', window.location.pathname); } catch (err) { /* ignore */ }
   }
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
-  function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
+  // Change de groupe réinitialise les filtres membre/catégorie (cascade
+  // parent → enfant classique) : sans ça, un filtre membre resté actif mais
+  // absent du nouveau groupe rendait la liste vide sans qu'aucune pastille
+  // active ne l'explique à l'écran.
+  function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null, expensesPersonFilter: null, expensesCategoryFilter: null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
   function setExpensesPersonFilter(id) { setState({ expensesPersonFilter: id || null }); }
   function setExpensesCategoryFilter(id) { setState({ expensesCategoryFilter: id || null }); }
