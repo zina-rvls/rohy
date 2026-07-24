@@ -257,7 +257,7 @@
       addMemberForm: { name: '', email: '', shareWeight: '1', guardianId: null, linkExistingId: null },
       form: { label: '', amount: '', groupId: null, paidBy: null, participantIds: [], overrides: {}, category: 'autre', splitMode: 'default', splitValues: {} },
       expensesSearchQuery: '',
-      expensesMineOnly: false,
+      expensesPersonFilter: null,
       expensesCategoryFilter: null,
       expensesSort: 'date_desc',
       lastActiveGroupId: null,
@@ -885,7 +885,7 @@
   function setHomeGroupFilter(id) { setState({ homeGroupFilter: id || null }); }
   function setExpensesGroupFilter(id) { setState({ expensesGroupFilter: id || null }); }
   function setExpensesSearch(v) { setState({ expensesSearchQuery: v }); }
-  function toggleExpensesMineOnly() { setState(function (s) { return { expensesMineOnly: !s.expensesMineOnly }; }); }
+  function setExpensesPersonFilter(id) { setState({ expensesPersonFilter: id || null }); }
   function setExpensesCategoryFilter(id) { setState({ expensesCategoryFilter: id || null }); }
   function setExpensesSort(v) { setState({ expensesSort: v }); }
   function setPersonGroupFilter(id) { setState({ personGroupFilter: id || null }); }
@@ -3095,6 +3095,27 @@
     return '<div class="pill-row" style="margin-bottom:16px">' + allPill + groupPills + '</div>';
   }
 
+  // Remplace l'ancien filtre booléen "Me concerne uniquement" : un filtre
+  // par personne (n'importe quel membre, pas seulement soi) pour voir les
+  // dépenses propres à chacun, sur le même modèle que les filtres groupe/
+  // catégorie ci-dessus. N'affiche que les personnes réellement présentes
+  // dans les dépenses du périmètre courant (payeur ou participant).
+  function renderPersonFilterPills(selectedId, expensesInScope) {
+    var presentIds = {};
+    expensesInScope.forEach(function (e) {
+      presentIds[e.paidBy] = true;
+      e.participants.forEach(function (pid) { presentIds[pid] = true; });
+    });
+    var people = Object.keys(presentIds).map(function (pid) { return person(pid); }).filter(Boolean);
+    if (people.length < 2) return '';
+    people.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var allPill = '<div class="pill' + (!selectedId ? ' active' : '') + '" data-action="setExpensesPersonFilter" data-id="">Tous les membres</div>';
+    var personPills = people.map(function (p) {
+      return '<div class="pill' + (selectedId === p.id ? ' active' : '') + '" data-action="setExpensesPersonFilter" data-id="' + p.id + '">' + escapeHtml(p.name) + '</div>';
+    }).join('');
+    return '<div class="pill-row" style="margin-bottom:10px">' + allPill + personPills + '</div>';
+  }
+
   function renderCategoryFilterPills(selectedId, expensesInScope) {
     var presentIds = {};
     expensesInScope.forEach(function (e) { presentIds[categoryForIcon(e.icon)] = true; });
@@ -3487,10 +3508,10 @@
     var totalDueExternal = expenses.reduce(function (a, e) { return a + (e.amount - (e.paidExternal != null ? e.paidExternal : e.amount)); }, 0);
 
     var searchQuery = (state.expensesSearchQuery || '').trim().toLowerCase();
-    var mineOnly = !!state.expensesMineOnly;
+    var personFilter = state.expensesPersonFilter || null;
     var categoryFilter = state.expensesCategoryFilter || null;
     var visibleExpenses = expenses.filter(function (e) {
-      if (mineOnly && e.paidBy !== state.currentUserId && e.participants.indexOf(state.currentUserId) === -1) return false;
+      if (personFilter && e.paidBy !== personFilter && e.participants.indexOf(personFilter) === -1) return false;
       if (categoryFilter && categoryForIcon(e.icon) !== categoryFilter) return false;
       if (!searchQuery) return true;
       var g = group(e.groupId);
@@ -3545,9 +3566,7 @@
         '</div>' +
         (totalDueExternal > 0.5 ? '<div class="warning-banner" style="padding:10px 14px;font-size:12.5px">' + fmtC(totalDueExternal) + ' restent à verser à des tiers (acomptes non soldés)</div>' : '')) +
       (expenses.length > 0 ?
-        '<div class="pill-row" style="margin-bottom:10px">' +
-        '<div class="pill' + (mineOnly ? ' active' : '') + '" data-action="toggleExpensesMineOnly"><i class="ph-bold ph-user-focus" style="margin-right:5px"></i>Me concerne uniquement</div>' +
-        '</div>' +
+        renderPersonFilterPills(personFilter, expenses) +
         renderCategoryFilterPills(categoryFilter, expenses) +
         '<div style="display:flex;gap:8px;margin-bottom:12px">' +
         '<input class="text-input" style="margin-bottom:0;flex:1" data-bind="expensesSearch" placeholder="Rechercher une dépense..." value="' + escapeHtml(state.expensesSearchQuery) + '" />' +
@@ -4690,7 +4709,7 @@
         case 'openAddExpenseGlobal': openAddExpense(id || state.lastActiveGroupId || (state.groups[0] && state.groups[0].id)); break;
         case 'setHomeGroupFilter': setHomeGroupFilter(id); break;
         case 'setExpensesGroupFilter': setExpensesGroupFilter(id); break;
-        case 'toggleExpensesMineOnly': toggleExpensesMineOnly(); break;
+        case 'setExpensesPersonFilter': setExpensesPersonFilter(id); break;
         case 'setExpensesCategoryFilter': setExpensesCategoryFilter(id); break;
         case 'setPersonGroupFilter': setPersonGroupFilter(id); break;
         case 'openAddExpenseForGroup': openAddExpense(state.selectedGroupId); break;
